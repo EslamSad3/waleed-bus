@@ -37,18 +37,39 @@ export async function ensureTenantRole(systemUrl: string, tenantPassword: string
         END IF;
       END $$;
     `);
+    // Supabase's `postgres` role is not a superuser, so attribute flags such as
+    // NOSUPERUSER/NOBYPASSRLS cannot be ALTERed — only LOGIN and PASSWORD.
     await client.query(
-      `ALTER ROLE ${TENANT_ROLE} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD ${sqlLiteral(tenantPassword)}`,
+      `ALTER ROLE ${TENANT_ROLE} LOGIN PASSWORD ${sqlLiteral(tenantPassword)}`,
     );
     await client.query('COMMIT');
-    steps.push(`role ${TENANT_ROLE} ensured (LOGIN, NOSUPERUSER, NOBYPASSRLS)`);
-    return steps;
+    steps.push(`role ${TENANT_ROLE} ensured (password set)`);
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
     throw error;
   } finally {
     await client.end();
   }
+  // The security guarantee is verified, not assumed: the RLS tenant role must
+  // never hold superuser or BYPASSRLS.
+  const verify = new pg.Client({ connectionString: systemUrl });
+  await verify.connect();
+  try {
+    const { rows } = await verify.query(
+      `SELECT rolcanlogin, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = '${TENANT_ROLE}'`,
+    );
+    const role = rows[0];
+    if (!role) throw new Error(`role ${TENANT_ROLE} missing after ensure`);
+    if (!role.rolcanlogin || role.rolsuper || role.rolbypassrls) {
+      throw new Error(
+        `role ${TENANT_ROLE} is insecure: login=${role.rolcanlogin} superuser=${role.rolsuper} bypassRLS=${role.rolbypassrls}`,
+      );
+    }
+    steps.push(`role ${TENANT_ROLE} verified (LOGIN, NOSUPERUSER, NOBYPASSRLS)`);
+  } finally {
+    await verify.end();
+  }
+  return steps;
 }
 
 export async function setupRls(systemUrl: string, tenantPassword: string): Promise<string[]> {

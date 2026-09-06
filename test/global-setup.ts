@@ -86,7 +86,10 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   assertLocal(tenantUrl, 'TEST_DATABASE_URL');
   assertLocal(systemUrl, 'TEST_DIRECT_URL');
 
-  const tenantPassword = process.env.TENANT_DB_PASSWORD ?? 'app_tenant_pw';
+  // The tenant password comes from the TEST URL itself — never from
+  // TENANT_DB_PASSWORD, which belongs to the real environment the .env points at.
+  const tenantUrl_ = new URL(tenantUrl);
+  const tenantPassword = decodeURIComponent(tenantUrl_.password) || 'app_tenant_pw';
   // Role first (migrations validate the tenant URL), then migrations as owner,
   // then policies + grants once the tables exist.
   await ensureTenantRole(systemUrl, tenantPassword);
