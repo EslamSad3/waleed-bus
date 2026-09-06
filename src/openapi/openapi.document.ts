@@ -28,7 +28,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .setVersion(API_VERSION)
     .addBearerAuth()
     .addTag('auth', 'Login, rotating refresh tokens, logout, and the verified session identity.')
-    .addTag('health', 'Liveness probe.')
+    .addTag('health', 'Liveness probe and service information.')
     .addTag('roles', 'Platform role administration — privileged path, super admin only, audited.')
     .addTag('permissions', 'Platform permission catalog administration — privileged path, audited.')
     .addTag('users', 'Platform user administration — privileged path, audited.')

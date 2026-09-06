@@ -38,6 +38,55 @@
         ]
       }
     },
+    "/": {
+      "get": {
+        "operationId": "RootController_serviceInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Service name, contract version, and entrypoint paths.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "example": "Bus Fleet API"
+                        },
+                        "version": {
+                          "type": "string",
+                          "example": "1.0.0"
+                        },
+                        "docs": {
+                          "type": "string",
+                          "example": "/docs"
+                        },
+                        "health": {
+                          "type": "string",
+                          "example": "/health"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Service information.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "AuthController_login",
@@ -3187,7 +3236,7 @@
     },
     {
       "name": "health",
-      "description": "Liveness probe."
+      "description": "Liveness probe and service information."
     },
     {
       "name": "roles",

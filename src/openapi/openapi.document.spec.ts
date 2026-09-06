@@ -71,6 +71,7 @@ describe('OpenAPI document', () => {
 
   it('documents every controller route', () => {
     const expectedPaths = [
+      '/',
       '/health',
       '/auth/login',
       '/auth/refresh',
@@ -103,7 +104,12 @@ describe('OpenAPI document', () => {
   });
 
   it('requires bearer auth everywhere except public endpoints', () => {
-    const publicOperations = new Set(['post /auth/login', 'post /auth/refresh', 'get /health']);
+    const publicOperations = new Set([
+      'get /',
+      'post /auth/login',
+      'post /auth/refresh',
+      'get /health',
+    ]);
     for (const [path, method, op] of operations()) {
       const key = `${method} ${path}`;
       if (publicOperations.has(key)) {

@@ -10,7 +10,7 @@ import { BusesModule } from './buses/buses.module.js';
 import { resolveObserveCredentials } from './config/configuration.js';
 import { ConfigModule } from './config/config.module.js';
 import { FleetsModule } from './fleets/fleets.module.js';
-import { HealthController } from './health.controller.js';
+import { HealthController, RootController } from './health.controller.js';
 import { PermissionsModule } from './permissions/permissions.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RolesModule } from './roles/roles.module.js';
@@ -48,7 +48,7 @@ const observeCredentials = resolveObserveCredentials();
     TripsModule,
     BookingsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, RootController],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: EnvelopeInterceptor },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
