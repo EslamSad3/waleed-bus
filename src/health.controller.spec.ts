@@ -33,14 +33,11 @@ describe('RootController', () => {
 
   it('is public — the landing endpoint must answer without a bearer token', async () => {
     const reflector = new Reflector();
-    const module: TestingModule = await Test.createTestingModule({
+    await Test.createTestingModule({
       controllers: [RootController],
     }).compile();
-    const handler = Reflect.ownKeys(RootController.prototype).find(
-      (key) => key === 'serviceInfo',
-    ) as string;
     expect(
-      reflector.get<boolean>(IS_PUBLIC_KEY, RootController.prototype[handler]),
+      reflector.get<boolean>(IS_PUBLIC_KEY, RootController.prototype.serviceInfo),
       '@Public() metadata on serviceInfo',
     ).toBe(true);
   });

@@ -2,8 +2,10 @@ import 'dotenv/config';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
+import type { NextFunction, Request, Response } from 'express';
 import { AppModule, ObserveInstrument } from './app.module.js';
 import { buildOpenApiDocument } from './openapi/openapi.document.js';
+import { swaggerUiCdnRedirect } from './swagger-ui-assets.js';
 
 /**
  * Builds the fully configured application (validation pipe, Swagger, envelope)
@@ -26,6 +28,19 @@ export async function createApp(): Promise<INestApplication> {
   // The document is built from the same shared config checked in as
   // docs/openapi.json (`pnpm docs:generate`) — never diverging copies.
   SwaggerModule.setup('docs', app, buildOpenApiDocument(app));
+
+  // express.static serves the Swagger UI files from disk, which serverless
+  // bundlers cannot see (nothing imports them). When such a file falls
+  // through, redirect to a pinned-major CDN copy instead of 404ing; on a
+  // normal server the files exist and this never fires.
+  app.use('/docs', (req: Request, res: Response, next: NextFunction) => {
+    const redirect = swaggerUiCdnRedirect(req.path);
+    if (redirect) {
+      res.redirect(redirect);
+      return;
+    }
+    next();
+  });
 
   return app;
 }
