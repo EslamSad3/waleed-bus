@@ -1,0 +1,64 @@
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { AuthService } from './auth.service.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { Public } from '../common/decorators/public.decorator.js';
+import { ApiAuthErrors, ApiEnvelopeResponse } from '../openapi/api-helpers.js';
+import { CurrentUserDto, LoginDto, LoginResponseDto, RefreshDto } from './dto/auth.dto.js';
+import type { RequestUser } from './jwt-payload.js';
+
+@ApiTags('auth')
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  /** Response carries tokens only — authorization claims live inside the JWT. */
+  @Public()
+  @Post('login')
+  @ApiOperation({ summary: 'Exchange email + password for an access/refresh token pair.' })
+  @ApiEnvelopeResponse(
+    201,
+    'Token pair issued. No role data is duplicated in the body — authorization claims live inside the JWT.',
+    LoginResponseDto,
+  )
+  @ApiResponse({ status: 401, description: 'Invalid credentials or deactivated account (uniform response).' })
+  login(@Body() dto: LoginDto, @Req() request: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
+    return this.authService.login({
+      email: dto.email,
+      password: dto.password,
+      ip: request.ip,
+      userAgent: typeof request.headers['user-agent'] === 'string' ? request.headers['user-agent'] : undefined,
+    });
+  }
+
+  @Public()
+  @Post('refresh')
+  @ApiOperation({ summary: 'Rotate the refresh token and mint a new access token.' })
+  @ApiEnvelopeResponse(201, 'Fresh token pair; the presented refresh token is revoked.', LoginResponseDto)
+  @ApiResponse({ status: 401, description: 'Unknown, expired, or already-rotated refresh token.' })
+  refresh(@Body() dto: RefreshDto, @Req() request: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
+    return this.authService.refresh(
+      dto.refreshToken,
+      request.ip,
+      typeof request.headers['user-agent'] === 'string' ? request.headers['user-agent'] : undefined,
+    );
+  }
+
+  @ApiSecurity('bearer')
+  @ApiAuthErrors()
+  @Post('logout')
+  @ApiOperation({ summary: 'Revoke the current refresh token/session.' })
+  @ApiEnvelopeResponse(200, 'Session revoked; data is null.')
+  logout(@CurrentUser() user: RequestUser) {
+    return this.authService.logout(user.sessionId);
+  }
+
+  @ApiSecurity('bearer')
+  @ApiAuthErrors()
+  @Get('me')
+  @ApiOperation({ summary: 'Return the verified session identity from the JWT claims.' })
+  @ApiEnvelopeResponse(200, 'The authenticated identity attached to every request.', CurrentUserDto)
+  me(@CurrentUser() user: RequestUser) {
+    return user;
+  }
+}
