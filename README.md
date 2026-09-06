@@ -75,3 +75,35 @@ pnpm run db:migrate:diff   # generate SQL; save under prisma/migrations/<ts>_<na
 pnpm run db:migrate:deploy # apply as the owner
 pnpm run db:check-rls      # verify every table has RLS + a policy
 ```
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the full gate — typecheck,
+lint, unit + e2e with the coverage thresholds, and build — on every PR that
+targets `main` (against a `postgres:16` service container) and again on every
+push to `main`.
+
+## Deployment (Vercel)
+
+The API deploys as a single serverless function through Vercel's Node
+Backends detection:
+
+- `server.js` is the entrypoint (outranks `src/main.ts`): it boots the shared
+  `createApp()` from the **tsc-compiled `dist/` output** and exports the raw
+  Express instance. The `dist/` import is load-bearing — Vercel bundles entry
+  sources with esbuild, which does not emit the decorator parameter metadata
+  NestJS DI resolves constructor parameters through; the `tsc` output already
+  contains it as plain JS.
+- `vercel.json` runs `pnpm build` first so `dist/` is fresh at bundle time.
+- `GET /` is a public service-info route. Swagger UI lives at `/docs`; inside
+  serverless bundles its static asset files are redirected to a pinned-major
+  CDN copy (express.static's files are invisible to the bundle tracer).
+
+Environment variables required on Vercel (Production + Preview):
+`DATABASE_URL`, `DIRECT_URL` — both with `?sslmode=no-verify` for the
+Supabase pooler — plus `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`,
+`JWT_EXPIRES_IN`; `SEED_SUPER_ADMIN_*` and `OBSERVE_*` are optional.
+
+Verify a deployment with `vercel curl <deployment-url>/health` — the CLI
+handles Deployment Protection, while a plain `curl` only gets the SSO
+redirect.
