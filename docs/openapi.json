@@ -96,7 +96,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LoginDto"
+                "$ref": "#/components/schemas/LoginRequestDto"
               }
             }
           }
@@ -126,10 +126,13 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or deactivated account (uniform response)."
+            "description": "Invalid credentials (uniform response)."
+          },
+          "403": {
+            "description": "Correct credentials but phone verification required (PHONE_NOT_VERIFIED)."
           }
         },
-        "summary": "Exchange email + password for an access/refresh token pair.",
+        "summary": "Shared login: email platform login, or PASSENGER phone / provider login.",
         "tags": [
           "auth"
         ]
@@ -344,6 +347,273 @@
         "summary": "Read the platform audit trail (cursor pagination, newest first).",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "PassengerAuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending passenger; verification challenge opened for the phone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid payload."
+          },
+          "429": {
+            "description": "Send throttle exceeded (retryAfter seconds)."
+          }
+        },
+        "summary": "Register a passenger with name + phone + password (pending verification).",
+        "tags": [
+          "passenger-auth"
+        ]
+      }
+    },
+    "/auth/phone/send-otp": {
+      "post": {
+        "operationId": "PassengerAuthController_sendOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Challenge active; expiresInSeconds until expiry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid phone."
+          },
+          "429": {
+            "description": "Resend cooldown or send throttle (retryAfter seconds)."
+          }
+        },
+        "summary": "Open or refresh the OTP challenge for a phone.",
+        "tags": [
+          "passenger-auth"
+        ]
+      }
+    },
+    "/auth/phone/verify-otp": {
+      "post": {
+        "operationId": "PassengerAuthController_verifyOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Phone verified.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ProfileStatusDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invalid code (uniform, no oracle)."
+          },
+          "410": {
+            "description": "Expired challenge; request a new code."
+          },
+          "429": {
+            "description": "Verify throttle exceeded (retryAfter seconds)."
+          }
+        },
+        "summary": "Verify the OTP and mark the phone verified (single use).",
+        "tags": [
+          "passenger-auth"
+        ]
+      }
+    },
+    "/me/profile-status": {
+      "get": {
+        "operationId": "PassengerAuthController_profileStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Completeness status with missing fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ProfileStatusDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report profile completeness and phone verification state.",
+        "tags": [
+          "passenger-auth"
+        ]
+      }
+    },
+    "/me": {
+      "patch": {
+        "operationId": "PassengerAuthController_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile with verification state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload or empty update."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "Phone unavailable (non-revealing)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update name, phone, or picture. A new phone resets verification.",
+        "tags": [
+          "passenger-auth"
         ]
       }
     },
@@ -3273,6 +3543,10 @@
     {
       "name": "audit",
       "description": "Platform audit log reads — privileged path, super admin only."
+    },
+    {
+      "name": "passenger-auth",
+      "description": "Mobile passenger registration, OTP phone verification, and profile completion."
     }
   ],
   "servers": [],
@@ -3304,14 +3578,22 @@
           "refreshToken"
         ]
       },
-      "LoginDto": {
+      "LoginRequestDto": {
         "type": "object",
         "properties": {
+          "loginType": {
+            "type": "string",
+            "example": "PASSENGER",
+            "enum": [
+              "PASSENGER",
+              "FLEET_OWNER",
+              "DRIVER"
+            ]
+          },
           "email": {
             "type": "string",
             "example": "admin@bus.local",
-            "format": "email",
-            "maxLength": 255
+            "format": "email"
           },
           "password": {
             "type": "string",
@@ -3319,12 +3601,23 @@
             "format": "password",
             "minLength": 8,
             "maxLength": 128
+          },
+          "phone": {
+            "type": "string",
+            "example": "01000000000"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "GOOGLE",
+              "APPLE"
+            ]
+          },
+          "idToken": {
+            "type": "string",
+            "description": "Provider identity token."
           }
-        },
-        "required": [
-          "email",
-          "password"
-        ]
+        }
       },
       "RefreshDto": {
         "type": "object",
@@ -3348,9 +3641,10 @@
             "format": "uuid"
           },
           "email": {
-            "type": "string",
+            "type": "object",
             "example": "admin@bus.local",
-            "format": "email"
+            "format": "email",
+            "nullable": true
           },
           "appRole": {
             "type": "string",
@@ -3450,6 +3744,111 @@
           "success",
           "createdAt"
         ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Ahmed",
+            "maxLength": 255
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "01000000000",
+            "maxLength": 20
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "name",
+          "phoneNumber",
+          "password"
+        ]
+      },
+      "SendOtpDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "example": "01000000000",
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "phoneNumber"
+        ]
+      },
+      "ProfileStatusDto": {
+        "type": "object",
+        "properties": {
+          "profileComplete": {
+            "type": "boolean",
+            "example": false
+          },
+          "missingFields": {
+            "example": [
+              "phoneNumber"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "phoneVerified": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "profileComplete",
+          "missingFields",
+          "phoneVerified"
+        ]
+      },
+      "VerifyOtpDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "example": "01000000000",
+            "maxLength": 20
+          },
+          "otp": {
+            "type": "string",
+            "example": "123456",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "phoneNumber",
+          "otp"
+        ]
+      },
+      "UpdateMeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Ahmed",
+            "maxLength": 255
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "01000000001",
+            "maxLength": 20
+          },
+          "picture": {
+            "type": "string",
+            "example": "https://cdn.example.com/p.png",
+            "maxLength": 1024
+          }
+        }
       },
       "RoleDto": {
         "type": "object",

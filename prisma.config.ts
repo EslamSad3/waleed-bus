@@ -23,6 +23,9 @@ export default defineConfig({
     url: isMigrateCommand
       ? process.env.DIRECT_URL ?? PLACEHOLDER
       : process.env.DATABASE_URL ?? PLACEHOLDER,
+    // Scratch database for `prisma migrate diff --from-migrations`
+    // (replays history to compute the delta; never your real database).
+    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
   },
   migrations: {
     seed: 'tsx prisma/seed.ts',

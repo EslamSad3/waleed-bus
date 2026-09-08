@@ -38,6 +38,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag('trips', 'Fleet-owned trip CRUD — tenant path, RLS-enforced.')
     .addTag('bookings', 'Fleet-owned booking CRUD — tenant path, RLS-enforced.')
     .addTag('audit', 'Platform audit log reads — privileged path, super admin only.')
+    .addTag('passenger-auth', 'Mobile passenger registration, OTP phone verification, and profile completion.')
     .build();
   return SwaggerModule.createDocument(app, config);
 }

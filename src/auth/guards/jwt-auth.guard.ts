@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '../../config/config.module.js';
 import { TenantContextService } from '../../authorization/services/tenant-context.service.js';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator.js';
+import { ALLOW_RESTRICTED_KEY } from '../../common/decorators/profile-scope.decorator.js';
+import { CodedException } from '../../common/filters/coded.exception.js';
 import type { JwtPayload, RequestUser } from '../jwt-payload.js';
 
 /**
@@ -65,13 +67,39 @@ export class JwtAuthGuard implements CanActivate {
 
     if (!user) throw new UnauthorizedException();
 
+    // Passenger sessions are scoped from live verification state (spec 002):
+    // a passenger token with missing/unverified phone is restricted to
+    // profile/OTP routes. Non-passenger tokens are always full.
+    const profileScope: RequestUser['profileScope'] =
+      payload.app_role === 'passenger' && (!user.phoneNumber || !user.phoneVerifiedAt)
+        ? 'restricted'
+        : 'full';
+
     request.user = {
       id: user.id,
       email: user.email,
       appRole: payload.app_role,
       authVersion: user.authVersion,
       sessionId: payload.sessionId,
+      profileScope,
     } satisfies RequestUser;
+
+    if (profileScope === 'restricted') {
+      const allowRestricted = this.reflector.getAllAndOverride<boolean>(ALLOW_RESTRICTED_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (!allowRestricted) {
+        const missingFields = [
+          ...(user.name ? [] : ['name']),
+          ...(user.phoneNumber ? [] : ['phoneNumber']),
+          ...(user.phoneVerifiedAt ? [] : ['phoneVerified']),
+        ];
+        throw new CodedException(403, 'PROFILE_INCOMPLETE', 'Profile completion is required.', {
+          missingFields,
+        });
+      }
+    }
     return true;
   }
 

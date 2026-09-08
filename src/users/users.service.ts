@@ -25,7 +25,7 @@ export interface UpdateUserInput {
 
 export interface SafeUser {
   id: string;
-  email: string;
+  email: string | null;
   name: string | null;
   isActive: boolean;
   authVersion: number;

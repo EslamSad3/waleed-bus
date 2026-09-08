@@ -1,7 +1,10 @@
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { AuditService } from '../audit/audit.service.js';
 import { ConfigService } from '../config/config.module.js';
+import { ProvidersService } from '../passenger-auth/providers.service.js';
+import { ThrottleService } from '../passenger-auth/throttle.service.js';
 
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { AuthService } from './auth.service.js';
@@ -37,16 +40,28 @@ describe('AuthService', () => {
   let service: AuthService;
   let system: ReturnType<typeof makeSystemStub>;
   let jwt: JwtService;
+  let audit: { log: ReturnType<typeof vi.fn> };
 
   const password = 'Passw0rd!123';
 
   beforeAll(async () => {
     const { hash } = await import('argon2');
+    audit = { log: vi.fn(async () => undefined) };
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: SystemPrismaService, useFactory: makeSystemStub },
         { provide: ConfigService, useValue: configStub },
+        { provide: AuditService, useValue: audit },
+        { provide: ProvidersService, useValue: { verify: vi.fn() } },
+        {
+          provide: ThrottleService,
+          useValue: {
+            hit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
+            peek: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
+            reset: vi.fn(async () => undefined),
+          },
+        },
         JwtService,
       ],
     }).compile();
@@ -210,6 +225,93 @@ describe('AuthService', () => {
     expect(system.session.updateMany).toHaveBeenCalledWith({
       where: { id: 'session-9', revokedAt: null },
       data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  describe('passenger phone login (spec 002)', () => {
+    const phone = '01000000011';
+    const passengerId = '00000000-0000-4000-8000-000000000011';
+
+    async function passengerRow(overrides: Record<string, unknown> = {}) {
+      const { hash } = await import('argon2');
+      return {
+        id: passengerId,
+        email: null,
+        passwordHash: await hash(password),
+        name: 'Ahmed',
+        phoneNumber: phone,
+        phoneVerifiedAt: new Date(),
+        isActive: true,
+        authVersion: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+      } as never;
+    }
+
+    function mockPassengerRole() {
+      vi.mocked(system.userRole.findMany).mockResolvedValueOnce([
+        { userId: passengerId, roleId: 'role-passenger', role: { slug: 'passenger', isActive: true } },
+      ] as never);
+    }
+
+    it('issues passenger tokens for a verified phone', async () => {
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow());
+      mockPassengerRole();
+      const result = await service.loginPassengerPhone({ phone, password, ip: '127.0.0.1', userAgent: 'vitest' });
+      expect(result.accessToken).toEqual(expect.any(String));
+      const payload = await jwt.verifyAsync(result.accessToken, {
+        secret: jwtConfig.secret,
+        issuer: jwtConfig.issuer,
+        audience: jwtConfig.audience,
+        algorithms: ['HS256'],
+      });
+      expect(payload).toMatchObject({ sub: passengerId, app_role: 'passenger', authVersion: 1 });
+      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'auth.login.success' }));
+    });
+
+    it('returns PHONE_NOT_VERIFIED for correct credentials on an unverified phone', async () => {
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow({ phoneVerifiedAt: null }));
+      const error = await service
+        .loginPassengerPhone({ phone, password, ip: '', userAgent: '' })
+        .catch((e: unknown) => e);
+      expect(error).toMatchObject({ status: 403 });
+      expect((error as { getResponse: () => unknown }).getResponse()).toMatchObject({
+        code: 'PHONE_NOT_VERIFIED',
+        details: { phoneNumber: phone },
+      });
+    });
+
+    it('returns the generic 401 for a wrong password', async () => {
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow());
+      const error = await service
+        .loginPassengerPhone({ phone, password: 'wrong-password', ip: '', userAgent: '' })
+        .catch((e: unknown) => e);
+      expect(error).toMatchObject({ status: 401 });
+      expect((error as { getResponse: () => unknown }).getResponse()).toMatchObject({
+        code: 'AUTHENTICATION_FAILED',
+      });
+    });
+
+    it('returns the generic 401 for an unknown phone', async () => {
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(null);
+      const error = await service
+        .loginPassengerPhone({ phone: '01000000099', password, ip: '', userAgent: '' })
+        .catch((e: unknown) => e);
+      expect(error).toMatchObject({ status: 401 });
+      expect((error as { getResponse: () => unknown }).getResponse()).toMatchObject({
+        code: 'AUTHENTICATION_FAILED',
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.login.failure', success: false }),
+      );
+    });
+
+    it('returns the generic 401 for a passwordless provider-only account', async () => {
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow({ passwordHash: null }));
+      await expect(
+        service.loginPassengerPhone({ phone, password, ip: '', userAgent: '' }),
+      ).rejects.toMatchObject({ status: 401 });
     });
   });
 });

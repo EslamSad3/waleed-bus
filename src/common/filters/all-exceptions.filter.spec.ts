@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { AllExceptionsFilter } from './all-exceptions.filter.js';
+import { CodedException } from './coded.exception.js';
 
 function makeHost() {
   const captured: { status?: number; body?: unknown } = {};
@@ -57,5 +58,32 @@ describe('AllExceptionsFilter', () => {
     filter.catch(new HttpException('Forbidden resource', 403), host);
     expect(captured.status).toBe(403);
     expect(captured.body).toEqual({ statusCode: 403, message: 'Forbidden resource' });
+  });
+
+  it('passes through code/details/retryAfter from CodedException', () => {
+    const { host, captured } = makeHost();
+    filter.catch(
+      new CodedException(429, 'OTP_RATE_LIMITED', 'Too many attempts. Try again later.', { scope: 'send' }, 60),
+      host,
+    );
+    expect(captured.status).toBe(429);
+    expect(captured.body).toEqual({
+      statusCode: 429,
+      code: 'OTP_RATE_LIMITED',
+      message: 'Too many attempts. Try again later.',
+      details: { scope: 'send' },
+      retryAfter: 60,
+    });
+  });
+
+  it('omits undefined details/retryAfter from CodedException', () => {
+    const { host, captured } = makeHost();
+    filter.catch(new CodedException(401, 'AUTHENTICATION_FAILED', 'Unable to authenticate with the provided credentials.'), host);
+    expect(captured.status).toBe(401);
+    expect(captured.body).toEqual({
+      statusCode: 401,
+      code: 'AUTHENTICATION_FAILED',
+      message: 'Unable to authenticate with the provided credentials.',
+    });
   });
 });

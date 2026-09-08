@@ -25,6 +25,15 @@ export interface AppConfig {
     superAdminEmail?: string;
     superAdminPassword?: string;
   };
+  passengerAuth: {
+    /** Temporary fixed OTP until an SMS provider is chosen (spec 002 FR-007). */
+    fixedOtpCode: string;
+    googleClientId?: string;
+    appleClientId?: string;
+    /** Overridable for tests; production defaults are the provider endpoints. */
+    googleJwksUri: string;
+    appleJwksUri: string;
+  };
   observe: ObserveConfig;
 }
 
@@ -66,6 +75,9 @@ function collectProblems(env: NodeJS.ProcessEnv): string[] {
   const port = Number(env.PORT ?? 3000);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) problems.push('PORT (invalid)');
 
+  const fixedOtpCode = env.OTP_FIXED_CODE ?? '123456';
+  if (!/^\d{6}$/.test(fixedOtpCode)) problems.push('OTP_FIXED_CODE (must be 6 digits)');
+
   return problems;
 }
 
@@ -92,6 +104,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     seed: {
       superAdminEmail: env.SEED_SUPER_ADMIN_EMAIL,
       superAdminPassword: env.SEED_SUPER_ADMIN_PASSWORD,
+    },
+    passengerAuth: {
+      fixedOtpCode: env.OTP_FIXED_CODE ?? '123456',
+      googleClientId: env.GOOGLE_CLIENT_ID || undefined,
+      appleClientId: env.APPLE_CLIENT_ID || undefined,
+      googleJwksUri: env.GOOGLE_JWKS_URI || 'https://www.googleapis.com/oauth2/v3/certs',
+      appleJwksUri: env.APPLE_JWKS_URI || 'https://appleid.apple.com/auth/keys',
     },
     observe: resolveObserveCredentials(env) ?? { serviceId: env.OBSERVE_SERVICE_ID ?? 'bus' },
   };

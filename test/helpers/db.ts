@@ -23,6 +23,9 @@ const ALL_TABLES = [
   'buses',
   'trips',
   'bookings',
+  'user_auth_providers',
+  'phone_verification_challenges',
+  'throttle_counters',
 ];
 
 /** Truncates every domain table (owner connection) — e2e suites start clean. */

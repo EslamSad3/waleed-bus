@@ -16,7 +16,9 @@ interface JsonResponseType {
 }
 
 /**
- * Single error response shape: `{ statusCode, message }`.
+ * Single error response shape: `{ statusCode, message }`, extended with
+ * `code` / `details` / `retryAfter` when the thrown HttpException carries
+ * them (see CodedException — PRD error catalog for mobile clients).
  * Unknown errors are masked as 500 so internals (stacks, connection strings)
  * never reach the client. Prisma P2025 (record not found) maps to 404 — the
  * standard answer for cross-tenant misses.
@@ -33,7 +35,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const body = exception.getResponse();
       const message =
         typeof body === 'string' ? body : ((body as { message?: unknown }).message ?? exception.message);
-      response.status(status).json({ statusCode: status, message });
+      const out: Record<string, unknown> = { statusCode: status, message };
+      if (typeof body === 'object' && body !== null) {
+        const coded = body as { code?: unknown; details?: unknown; retryAfter?: unknown };
+        if (typeof coded.code === 'string') out.code = coded.code;
+        if (coded.details !== undefined) out.details = coded.details;
+        if (typeof coded.retryAfter === 'number') out.retryAfter = coded.retryAfter;
+      }
+      response.status(status).json(out);
       return;
     }
 

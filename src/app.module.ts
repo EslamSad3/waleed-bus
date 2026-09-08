@@ -11,6 +11,7 @@ import { resolveObserveCredentials } from './config/configuration.js';
 import { ConfigModule } from './config/config.module.js';
 import { FleetsModule } from './fleets/fleets.module.js';
 import { HealthController, RootController } from './health.controller.js';
+import { PassengerAuthModule } from './passenger-auth/passenger-auth.module.js';
 import { PermissionsModule } from './permissions/permissions.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RolesModule } from './roles/roles.module.js';
@@ -47,6 +48,7 @@ const observeCredentials = resolveObserveCredentials();
     BusesModule,
     TripsModule,
     BookingsModule,
+    PassengerAuthModule,
   ],
   controllers: [HealthController, RootController],
   providers: [

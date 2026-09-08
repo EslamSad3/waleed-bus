@@ -4,10 +4,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationModule } from '../authorization/authorization.module.js';
+import { PassengerAuthModule } from '../passenger-auth/passenger-auth.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), AuthorizationModule],
+  imports: [JwtModule.register({}), AuthorizationModule, AuditModule, PassengerAuthModule],
   controllers: [AuthController],
   providers: [
     AuthService,

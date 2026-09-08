@@ -58,10 +58,10 @@ describe('OpenAPI document', () => {
     });
 
     const tagNames = (doc.tags ?? []).map((t) => t.name);
-    expect(tagNames).toEqual(
+      expect(tagNames).toEqual(
       expect.arrayContaining([
         'auth', 'health', 'roles', 'permissions', 'users', 'fleets',
-        'fleet-members', 'buses', 'trips', 'bookings', 'audit',
+        'fleet-members', 'buses', 'trips', 'bookings', 'audit', 'passenger-auth',
       ]),
     );
     for (const tag of doc.tags ?? []) {
@@ -77,6 +77,11 @@ describe('OpenAPI document', () => {
       '/auth/refresh',
       '/auth/logout',
       '/auth/me',
+      '/auth/register',
+      '/auth/phone/send-otp',
+      '/auth/phone/verify-otp',
+      '/me/profile-status',
+      '/me',
       '/roles',
       '/roles/{id}',
       '/roles/{id}/permissions',
@@ -108,6 +113,9 @@ describe('OpenAPI document', () => {
       'get /',
       'post /auth/login',
       'post /auth/refresh',
+      'post /auth/register',
+      'post /auth/phone/send-otp',
+      'post /auth/phone/verify-otp',
       'get /health',
     ]);
     for (const [path, method, op] of operations()) {

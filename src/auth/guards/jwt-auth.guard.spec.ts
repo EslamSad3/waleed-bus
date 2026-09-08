@@ -3,7 +3,10 @@ import { Reflector } from '@nestjs/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { UnauthorizedException } from '@nestjs/common';
+import 'reflect-metadata';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { ALLOW_RESTRICTED_KEY } from '../../common/decorators/profile-scope.decorator.js';
+import { CodedException } from '../../common/filters/coded.exception.js';
 import { TenantContextService } from '../../authorization/services/tenant-context.service.js';
 
 const jwtConfig = {
@@ -159,5 +162,79 @@ describe('JwtAuthGuard', () => {
     const token = await tokenFor();
     const { ctx } = makeContext(`Bearer ${token}`);
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  describe('passenger profile scope (spec 002)', () => {
+    const passengerUser = {
+      ...user,
+      email: null,
+      name: 'Ahmed',
+      phoneNumber: '01000000000',
+      phoneVerifiedAt: null,
+    };
+
+    function mockPassenger(found: Record<string, unknown>) {
+      tenant.withUserContext.mockImplementation(async (_u: string, fn: (tx: unknown) => unknown) =>
+        fn({
+          user: { findUnique: vi.fn().mockResolvedValue(found) },
+          session: { findUnique: vi.fn().mockResolvedValue({ id: 's1', revokedAt: null, expiresAt: new Date(Date.now() + 60_000) }) },
+        }),
+      );
+    }
+
+    async function passengerToken() {
+      return tokenFor({ app_role: 'passenger', email: null });
+    }
+
+    it('attaches restricted scope for a passenger with unverified phone', async () => {
+      mockPassenger(passengerUser);
+      const { ctx, request } = makeContext(`Bearer ${await passengerToken()}`);
+      await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(CodedException);
+      expect(request['user']).toMatchObject({ appRole: 'passenger', profileScope: 'restricted' });
+    });
+
+    it('rejects restricted sessions on unmarked routes with PROFILE_INCOMPLETE', async () => {
+      mockPassenger(passengerUser);
+      const { ctx } = makeContext(`Bearer ${await passengerToken()}`);
+      let error: unknown;
+      try {
+        await guard.canActivate(ctx);
+      } catch (e: unknown) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(CodedException);
+      expect((error as CodedException).getStatus()).toBe(403);
+      expect((error as CodedException).getResponse()).toMatchObject({
+        code: 'PROFILE_INCOMPLETE',
+        details: { missingFields: ['phoneVerified'] },
+      });
+    });
+
+    it('allows restricted sessions on @AllowRestricted() routes', async () => {
+      mockPassenger(passengerUser);
+      const handler = () => undefined;
+      Reflect.defineMetadata(ALLOW_RESTRICTED_KEY, true, handler);
+      const request: Record<string, unknown> = { headers: { authorization: `Bearer ${await passengerToken()}` } };
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => request, getResponse: () => ({}) }),
+        getHandler: () => handler,
+        getClass: () => class {},
+      } as unknown as ExecutionContext;
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(request['user']).toMatchObject({ profileScope: 'restricted' });
+    });
+
+    it('attaches full scope for a passenger with verified phone', async () => {
+      mockPassenger({ ...passengerUser, phoneVerifiedAt: new Date() });
+      const { ctx, request } = makeContext(`Bearer ${await passengerToken()}`);
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(request['user']).toMatchObject({ profileScope: 'full' });
+    });
+
+    it('keeps non-passenger tokens full even without phone columns', async () => {
+      const { ctx, request } = makeContext(`Bearer ${await tokenFor()}`);
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(request['user']).toMatchObject({ profileScope: 'full' });
+    });
   });
 });

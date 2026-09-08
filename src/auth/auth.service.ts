@@ -6,11 +6,32 @@ import {
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
+import { AuditService } from '../audit/audit.service.js';
+import { CodedException } from '../common/filters/coded.exception.js';
+import { normalizePhone } from '../passenger-auth/phone.util.js';
+import {
+  ProvidersService,
+  type SocialProvider,
+} from '../passenger-auth/providers.service.js';
+import { ThrottleService } from '../passenger-auth/throttle.service.js';
 import { ConfigService } from '../config/config.module.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import type { JwtPayload } from './jwt-payload.js';
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Locked login budgets (spec clarification 2026-09-07). */
+const LOGIN_PHONE_BUDGET = { limit: 5, windowMs: 15 * 60_000 };
+const LOGIN_IP_BUDGET = { limit: 20, windowMs: 15 * 60_000 };
+
+/** Generic failure: reveals nothing about existence, role, or correctness. */
+function authenticationFailed(): CodedException {
+  return new CodedException(
+    401,
+    'AUTHENTICATION_FAILED',
+    'Unable to authenticate with the provided credentials.',
+  );
+}
 
 export interface LoginResult {
   accessToken: string;
@@ -29,7 +50,49 @@ export class AuthService {
     private readonly system: SystemPrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly audit: AuditService,
+    private readonly providers: ProvidersService,
+    private readonly throttle: ThrottleService,
   ) {}
+
+  /** Lazily-computed dummy hash so unknown-phone logins cost ~one verify (no timing oracle). */
+  private dummyHash: Promise<string> | null = null;
+
+  private getDummyHash(): Promise<string> {
+    if (!this.dummyHash) this.dummyHash = argon2.hash('dummy-login-secret');
+    return this.dummyHash;
+  }
+
+  /**
+   * Passenger login throttle (spec FR-015): per-phone and per-source fixed
+   * windows counting FAILURES. The gate peeks first so successes never burn
+   * budget; each failure site records via recordLoginFailure. The source
+   * bucket decays with its window; the phone bucket additionally resets on
+   * success.
+   */
+  private async checkLoginBudget(targetKey: string | null, ip: string | undefined): Promise<void> {
+    const verdicts = await Promise.all([
+      targetKey ? this.throttle.peek(targetKey, LOGIN_PHONE_BUDGET) : null,
+      ip ? this.throttle.peek(`login:ip:${ip}`, LOGIN_IP_BUDGET) : null,
+    ]);
+    const denied = verdicts.find((v) => v && !v.allowed);
+    if (denied) {
+      throw new CodedException(
+        429,
+        'OTP_RATE_LIMITED',
+        'Too many attempts. Try again later.',
+        { scope: 'login' },
+        denied.retryAfterSeconds,
+      );
+    }
+  }
+
+  private async recordLoginFailure(targetKey: string | null, ip: string | undefined): Promise<void> {
+    await Promise.all([
+      targetKey ? this.throttle.hit(targetKey, LOGIN_PHONE_BUDGET) : null,
+      ip ? this.throttle.hit(`login:ip:${ip}`, LOGIN_IP_BUDGET) : null,
+    ]);
+  }
 
   static hashRefreshToken(raw: string): string {
     return createHash('sha256').update(raw).digest('hex');
@@ -45,10 +108,33 @@ export class AuthService {
       where: { email: input.email.toLowerCase() },
     });
     // Uniform 401 for unknown email / wrong password / inactive user.
-    if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
+    // (Passwordless provider-only accounts carry a null hash and can never
+    // use this path — passenger phone/provider login lands in Phase 4/5.)
+    if (!user || !user.isActive || !user.passwordHash) {
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        metadata: { method: 'email' },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const valid = await argon2.verify(user.passwordHash, input.password).catch(() => false);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        targetUserId: user.id,
+        metadata: { method: 'email' },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
     const accessToken = await this.signAccessToken({
@@ -57,6 +143,94 @@ export class AuthService {
       app_role: await this.resolveAppRole(user.id),
       authVersion: user.authVersion,
       sessionId: session,
+    });
+    await this.audit.log({
+      action: 'auth.login.success',
+      resource: 'session',
+      targetUserId: user.id,
+      metadata: { method: 'email' },
+      ip: input.ip,
+      userAgent: input.userAgent,
+    });
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Passenger phone+password login (spec 002 FR-003/FR-014/FR-021).
+   * Correct credentials on an unverified phone yield the distinct
+   * PHONE_NOT_VERIFIED signal; every other failure is the generic 401.
+   */
+  async loginPassengerPhone(input: {
+    phone: string;
+    password: string;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<LoginResult> {
+    let phone: string;
+    try {
+      phone = normalizePhone(input.phone);
+    } catch {
+      throw authenticationFailed();
+    }
+    await this.checkLoginBudget(`login:phone:${phone}`, input.ip);
+    const fail = async (targetUserId: string | undefined): Promise<void> => {
+      await this.recordLoginFailure(`login:phone:${phone}`, input.ip);
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        targetUserId,
+        metadata: { method: 'passenger-phone' },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+    };
+
+    const user = await this.system.user.findUnique({ where: { phoneNumber: phone } });
+    if (!user || !user.isActive || !user.passwordHash) {
+      // Same-cost path: verify against a dummy hash so unknown phones,
+      // inactive accounts, and passwordless accounts are indistinguishable.
+      await argon2.verify(await this.getDummyHash(), input.password).catch(() => false);
+      await fail(user?.id);
+      throw authenticationFailed();
+    }
+    const valid = await argon2.verify(user.passwordHash, input.password).catch(() => false);
+    if (!valid) {
+      await fail(user.id);
+      throw authenticationFailed();
+    }
+    if (!user.phoneVerifiedAt) {
+      await this.recordLoginFailure(`login:phone:${phone}`, input.ip);
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        targetUserId: user.id,
+        metadata: { method: 'passenger-phone', code: 'PHONE_NOT_VERIFIED' },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+      throw new CodedException(403, 'PHONE_NOT_VERIFIED', 'Phone verification is required.', {
+        phoneNumber: phone,
+      });
+    }
+
+    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const accessToken = await this.signAccessToken({
+      sub: user.id,
+      email: user.email,
+      app_role: await this.resolveAppRole(user.id),
+      authVersion: user.authVersion,
+      sessionId: session,
+    });
+    await this.throttle.reset(`login:phone:${phone}`);
+    await this.audit.log({
+      action: 'auth.login.success',
+      resource: 'session',
+      targetUserId: user.id,
+      metadata: { method: 'passenger-phone' },
+      ip: input.ip,
+      userAgent: input.userAgent,
     });
     return { accessToken, refreshToken };
   }
@@ -91,6 +265,108 @@ export class AuthService {
       sessionId: newSessionId,
     });
     return { accessToken, refreshToken };
+  }
+
+  /**
+   * Passenger Google/Apple login (spec 002 FR-004/FR-005). Verifies the
+   * provider token, links or creates the passenger, and issues a session
+   * whose scope derives from verification state (restricted until a phone
+   * is verified). Invalid tokens and inactive accounts share the generic
+   * failure — link status is never disclosed.
+   */
+  async loginPassengerProvider(input: {
+    provider: SocialProvider;
+    idToken: string;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<LoginResult & { profileComplete: boolean }> {
+    await this.checkLoginBudget(null, input.ip);
+    const fail = async (): Promise<void> => {
+      await this.recordLoginFailure(null, input.ip);
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        metadata: { method: 'passenger-provider', provider: input.provider },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+    };
+
+    let identity;
+    try {
+      identity = await this.providers.verify(input.provider, input.idToken);
+    } catch {
+      await fail();
+      throw authenticationFailed();
+    }
+
+    const link = await this.system.userAuthProvider.findFirst({
+      where: { provider: identity.provider, providerUserId: identity.providerUserId },
+      include: { user: true },
+    });
+    let user = link?.user ?? null;
+    if (!user) {
+      user = await this.system.$transaction(async (tx) => {
+        const role = await tx.role.upsert({
+          where: { slug: 'passenger' },
+          update: {},
+          create: {
+            name: 'Passenger',
+            slug: 'passenger',
+            description: 'Mobile app passenger (system row; assigned via user_roles)',
+            isSystem: true,
+          },
+        });
+        const created = await tx.user.create({
+          data: {
+            name: identity.name,
+            email: identity.email,
+            phoneNumber: null,
+            globalRoles: { create: { roleId: role.id } },
+          },
+        });
+        await tx.userAuthProvider.create({
+          data: {
+            userId: created.id,
+            provider: identity.provider,
+            providerUserId: identity.providerUserId,
+          },
+        });
+        return created;
+      });
+      await this.audit.log({
+        action: 'provider.link',
+        resource: 'user_auth_provider',
+        targetUserId: user.id,
+        metadata: { provider: identity.provider },
+        ip: input.ip,
+        userAgent: input.userAgent,
+      });
+    }
+    if (!user.isActive) {
+      await fail();
+      throw authenticationFailed();
+    }
+
+    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const accessToken = await this.signAccessToken({
+      sub: user.id,
+      email: user.email,
+      app_role: await this.resolveAppRole(user.id),
+      authVersion: user.authVersion,
+      sessionId: session,
+    });
+    await this.audit.log({
+      action: 'auth.login.success',
+      resource: 'session',
+      targetUserId: user.id,
+      metadata: { method: 'passenger-provider', provider: identity.provider },
+      ip: input.ip,
+      userAgent: input.userAgent,
+    });
+    const profileComplete = !!(user.name && user.phoneNumber && user.phoneVerifiedAt);
+    return { accessToken, refreshToken, profileComplete };
   }
 
   async logout(sessionId: string): Promise<{ success: boolean }> {

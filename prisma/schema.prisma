@@ -12,19 +12,24 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique @db.VarChar(255)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  name         String?  @db.VarChar(255)
-  isActive     Boolean  @default(true) @map("is_active")
-  authVersion  Int      @default(1) @map("auth_version")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String?   @unique @db.VarChar(255)
+  passwordHash    String?   @map("password_hash") @db.VarChar(255)
+  name            String?   @db.VarChar(255)
+  phoneNumber     String?   @unique @map("phone_number") @db.VarChar(20)
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
+  picture         String?   @db.VarChar(1024)
+  isActive        Boolean   @default(true) @map("is_active")
+  authVersion     Int       @default(1) @map("auth_version")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  sessions    Session[]
-  globalRoles UserRole[]
-  memberships FleetMember[]
-  ownedFleets Fleet[] @relation("FleetOwner")
+  sessions       Session[]
+  globalRoles    UserRole[]
+  memberships    FleetMember[]
+  ownedFleets    Fleet[]               @relation("FleetOwner")
+  authProviders  UserAuthProvider[]
+  otpChallenges  PhoneVerificationChallenge[]
 
   @@map("users")
 }
@@ -218,4 +223,55 @@ model Booking {
   @@index([fleetId])
   @@index([tripId])
   @@map("bookings")
+}
+
+/// Social identity link: one row per (provider, providerUserId).
+/// `provider` is a plain string ('GOOGLE' | 'APPLE', validated app-layer) —
+/// never a TypeScript enum (constitution III).
+model UserAuthProvider {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  provider       String   @db.VarChar(20)
+  providerUserId String   @map("provider_user_id") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("user_auth_providers")
+}
+
+/// Time-bound single-use phone verification demand. One active row per phone
+/// (unique phone_number; resend upserts). No code column in the fixed-code
+/// phase — verification compares against the OTP_FIXED_CODE constant.
+model PhoneVerificationChallenge {
+  id          String    @id @default(uuid()) @db.Uuid
+  phoneNumber String    @unique @map("phone_number") @db.VarChar(20)
+  /// REGISTRATION | PROFILE | PHONE_CHANGE (validated in the application layer)
+  purpose     String    @db.VarChar(20)
+  userId      String?   @map("user_id") @db.Uuid
+  expiresAt   DateTime  @map("expires_at")
+  attempts    Int       @default(0)
+  consumedAt  DateTime? @map("consumed_at")
+  lastSentAt  DateTime  @map("last_sent_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("phone_verification_challenges")
+}
+
+/// Generic DB-backed rate-limit bucket. Keys: login:phone:<n>,
+/// login:ip:<ip>, otp:send:<phone>, otp:verify:<challengeId>.
+model ThrottleCounter {
+  key         String   @db.VarChar(128)
+  count       Int      @default(0)
+  windowStart DateTime @map("window_start")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@id([key])
+  @@map("throttle_counters")
 }

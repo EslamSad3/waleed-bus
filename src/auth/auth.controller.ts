@@ -3,8 +3,9 @@ import { ApiOperation, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger
 import { AuthService } from './auth.service.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { Public } from '../common/decorators/public.decorator.js';
+import { CodedException } from '../common/filters/coded.exception.js';
 import { ApiAuthErrors, ApiEnvelopeResponse } from '../openapi/api-helpers.js';
-import { CurrentUserDto, LoginDto, LoginResponseDto, RefreshDto } from './dto/auth.dto.js';
+import { CurrentUserDto, LoginRequestDto, LoginResponseDto, RefreshDto } from './dto/auth.dto.js';
 import type { RequestUser } from './jwt-payload.js';
 
 @ApiTags('auth')
@@ -15,20 +16,40 @@ export class AuthController {
   /** Response carries tokens only — authorization claims live inside the JWT. */
   @Public()
   @Post('login')
-  @ApiOperation({ summary: 'Exchange email + password for an access/refresh token pair.' })
+  @ApiOperation({ summary: 'Shared login: email platform login, or PASSENGER phone / provider login.' })
   @ApiEnvelopeResponse(
     201,
     'Token pair issued. No role data is duplicated in the body — authorization claims live inside the JWT.',
     LoginResponseDto,
   )
-  @ApiResponse({ status: 401, description: 'Invalid credentials or deactivated account (uniform response).' })
-  login(@Body() dto: LoginDto, @Req() request: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
-    return this.authService.login({
-      email: dto.email,
-      password: dto.password,
+  @ApiResponse({ status: 401, description: 'Invalid credentials (uniform response).' })
+  @ApiResponse({ status: 403, description: 'Correct credentials but phone verification required (PHONE_NOT_VERIFIED).' })
+  login(@Body() dto: LoginRequestDto, @Req() request: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
+    const context = {
       ip: request.ip,
       userAgent: typeof request.headers['user-agent'] === 'string' ? request.headers['user-agent'] : undefined,
-    });
+    };
+    // Absent loginType: legacy email platform login (unchanged behavior).
+    if (dto.loginType === undefined) {
+      return this.authService.login({ email: dto.email as string, password: dto.password as string, ...context });
+    }
+    // Only the passenger slice is in scope (spec 002); any other account
+    // type gets the same generic failure as wrong credentials (no oracle).
+    if (dto.loginType !== 'PASSENGER') {
+      throw new CodedException(
+        401,
+        'AUTHENTICATION_FAILED',
+        'Unable to authenticate with the provided credentials.',
+      );
+    }
+    if (dto.provider !== undefined) {
+      return this.authService.loginPassengerProvider({
+        provider: dto.provider as 'GOOGLE' | 'APPLE',
+        idToken: dto.idToken as string,
+        ...context,
+      });
+    }
+    return this.authService.loginPassengerPhone({ phone: dto.phone as string, password: dto.password as string, ...context });
   }
 
   @Public()
