@@ -1,0 +1,9 @@
+allowBuilds:
+  '@prisma/engines': true
+  '@embedded-postgres/windows-x64': true
+  '@scarf/scarf': false
+  argon2: true
+  esbuild: true
+  prisma: true
+  workerd: true
+  msgpackr-extract: true
