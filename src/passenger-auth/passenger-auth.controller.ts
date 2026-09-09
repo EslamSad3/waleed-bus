@@ -108,10 +108,11 @@ export class PassengerAuthController {
   @Patch('me')
   @ApiSecurity('bearer')
   @ApiAuthErrors()
-  @ApiOperation({ summary: 'Update name, phone, or picture. A new phone resets verification.' })
+  @ApiOperation({ summary: 'Update name, phone, or picture. A new phone stays pending (60s OTP window) while the verified number keeps working.' })
   @ApiEnvelopeResponse(200, 'Updated profile with verification state.')
   @ApiResponse({ status: 400, description: 'Invalid payload or empty update.' })
   @ApiResponse({ status: 409, description: 'Phone unavailable (non-revealing).' })
+  @ApiResponse({ status: 429, description: 'Phone-change throttled: pending window still active or per-user budget exceeded (retryAfter seconds).' })
   updateMe(@CurrentUser() user: RequestUser, @Body() dto: UpdateMeDto) {
     return this.passengers.updateProfile(user.id, dto);
   }

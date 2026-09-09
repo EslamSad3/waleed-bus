@@ -14,12 +14,13 @@ Success `201`:
 ```json
 { "statusCode": 201, "data": { "sent": true, "expiresInSeconds": 300 } }
 ```
-- Creates or refreshes the single active challenge for the phone (`expires_at = now + 5 min`, `last_sent_at = now`, fresh 5-guess budget). Purpose derived from caller context (`REGISTRATION` | `PROFILE` | `PHONE_CHANGE`). Audit `otp.send` (phone only, no code).
+- Creates or refreshes the single active challenge for the phone (`expires_at = now + lifetime`, `last_sent_at = now`, fresh 5-guess budget). Lifetime is 5 minutes for `REGISTRATION`/`PROFILE`, 60 seconds for `PHONE_CHANGE` (opened implicitly by `PATCH /me`, which returns its `expiresInSeconds`). Purpose derived from caller context (`REGISTRATION` | `PROFILE` | `PHONE_CHANGE`). Audit `otp.send` (phone only, no code).
 - Uniform response regardless of whether the phone is registered (no oracle).
 
 Failures:
 - `429 OTP_RATE_LIMITED` + `retryAfter` — resend within 60-s cooldown, or >3 sends per phone per 10 min. No new challenge is created on rejection.
 - `400` — malformed phone.
+- A resend past the cooldown refreshes the live challenge (fresh guess budget, fresh window — except `PHONE_CHANGE`, which keeps its 60s window) but NEVER drops its account binding: purpose/`userId` stay, so verification still stamps the right user. Without this, verify-otp would return a success that stamps nobody and the next login would report `PHONE_NOT_VERIFIED`.
 
 ## POST /auth/phone/verify-otp — consume challenge. **Public.**
 
@@ -34,7 +35,7 @@ Success `200`:
 ```json
 { "statusCode": 200, "data": { "success": true, "phoneVerified": true } }
 ```
-- Atomic transaction (`SELECT … FOR UPDATE` on the challenge row): mark consumed, set `user.phoneNumber` (if changed) + `phoneVerifiedAt = now`, link challenge to user, audit `otp.verify.success`. Only one concurrent verify can succeed; losers get `OTP_INVALID`.
+- Atomic transaction (`SELECT … FOR UPDATE` on the challenge row): mark consumed, set `user.phoneNumber` (if changed) + `phoneVerifiedAt = now`, link challenge to user, audit `otp.verify.success`. For `PHONE_CHANGE` this is the moment the pending number swaps in; if another account claimed the number meanwhile, verification fails with non-revealing `409 PHONE_UNAVAILABLE` (challenge consumed, owner keeps the old number). Only one concurrent verify can succeed; losers get `OTP_INVALID`.
 - Session effect: the caller's live sessions (restricted or new login) derive `full` scope from `phoneVerifiedAt` on their next request — no re-login required. If the request carries a restricted Bearer token, the response additionally includes a fresh full-scope hint (`profileComplete: true`); token refresh is unnecessary since scope is server-derived.
 
 Error bodies (all generic, code-carrying):

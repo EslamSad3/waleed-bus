@@ -23,14 +23,32 @@ Request (all fields optional, at least one required):
 { "name": "Ahmed", "phoneNumber": "01000000001", "picture": "https://…" }
 ```
 
-Rules:
-- `name` update: saved, verification state untouched.
-- `phoneNumber` update: normalized; conflict with any account's phone → non-revealing `409 PHONE_UNAVAILABLE` ("Unable to complete this update." — no existence disclosure); on success the new phone is stored with `phoneVerifiedAt = null`, a `PHONE_CHANGE` challenge is opened (subject to send-throttle), all live sessions implicitly drop to `restricted`, audit `phone.change`. Response includes `verificationRequired: true`.
-- `picture`: optional URL string (length-capped), saved as-is.
-
-Success `200`:
+Success `200` (no pending change):
 ```json
-{ "statusCode": 200, "data": { "id": "uuid", "name": "Ahmed", "phoneNumber": "01000000001", "phoneVerified": false, "picture": null, "verificationRequired": true } }
+{
+  "statusCode": 200,
+  "data": { "profileComplete": true, "missingFields": [], "phoneVerified": true, "pendingPhoneNumber": null, "expiresInSeconds": null }
+}
+```
+- `pendingPhoneNumber` / `expiresInSeconds` (remaining seconds) describe the active phone-change request, if any, so the client can resume verification after a restart.
+
+## PATCH /me — update name / phone / picture
+
+Request (all fields optional, at least one required):
+```json
+{ "name": "Ahmed", "phoneNumber": "01000000001", "picture": "https://…" }
 ```
 
-Failures: `400` validation; `409 PHONE_UNAVAILABLE` (non-revealing); `429 OTP_RATE_LIMITED` if the auto-opened challenge hits send-throttle (phone is still updated to unverified; client retries send-otp after `retryAfter`).
+Rules:
+- `name` / `picture`: saved, verification state untouched (allowed while a change is pending).
+- `phoneNumber` update: normalized; conflict with any account's phone → non-revealing `409 PHONE_UNAVAILABLE` ("Unable to complete this update." — no existence disclosure). On success the verified number is NOT touched: a `PHONE_CHANGE` challenge with a 60-second window is opened for the new number (this endpoint IS the send-otp step — the client goes straight to verify-otp and never calls send-otp), the session keeps full scope, and the response carries `verificationRequired: true`, `sent: true`, `pendingPhoneNumber`, and `expiresInSeconds: 60`. Verifying within the window swaps the number in; expiry drops the request with the verified phone and session intact.
+- Re-saving the same pending number within the window is idempotent: `200` with the remaining window (`sent: false`), no throttle burn, no new challenge.
+- One pending change at a time: a further `phoneNumber` update while one is active → `429 OTP_RATE_LIMITED` (`details.scope: "phone-change"`, `retryAfter` = remaining window seconds). Phone changes are additionally rate-limited to 3 per user per 10 minutes (`details.scope: "phone-change"`) plus the shared per-phone send budget (`details.scope: "send"`).
+- `picture`: optional URL string (length-capped), saved as-is.
+
+Success `200` (phone change):
+```json
+{ "statusCode": 200, "data": { "id": "uuid", "name": "Ahmed", "phoneNumber": "01000000000", "phoneVerified": true, "picture": null, "verificationRequired": true, "sent": true, "pendingPhoneNumber": "01000000001", "expiresInSeconds": 60 } }
+```
+
+Failures: `400` validation; `409 PHONE_UNAVAILABLE` (non-revealing); `429 OTP_RATE_LIMITED` + `retryAfter` — pending window still active, per-user budget exceeded, or the auto-opened challenge hits the send budget / 60s resend cooldown (no phone data is written on throttle rejections; the client retries after `retryAfter`).

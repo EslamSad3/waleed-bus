@@ -45,7 +45,14 @@ function makeSystem(store: Map<string, ChallengeRow>) {
         },
       ),
     },
-    user: { update: vi.fn(async (args: unknown) => args) },
+    user: {
+      update: vi.fn(async (args: unknown) => args),
+      findUnique: vi.fn(
+        async (_args: {
+          where: Record<string, string>;
+        }): Promise<{ id: string; phoneNumber: string | null } | null> => null,
+      ),
+    },
   };
   const system = {
     $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(tx)),
@@ -99,6 +106,41 @@ describe('OtpService', () => {
     });
   });
 
+  it('opens a phone-change challenge with a custom 60s lifetime', async () => {
+    const result = await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 60_000);
+    expect(result).toEqual({ expiresInSeconds: 60 });
+    expect(store.get(PHONE)).toMatchObject({
+      purpose: 'PHONE_CHANGE',
+      expiresAt: new Date(NOW.getTime() + 60_000),
+    });
+  });
+
+  it('swaps the number on phone-change verification when still free', async () => {
+    await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 60_000);
+    tx.user.findUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
+      if (where.id === USER) return { id: USER, phoneNumber: '01000000099' };
+      return null;
+    });
+    const result = await service.verifyChallenge(PHONE, '123456', NOW);
+    expect(result).toEqual({ userId: USER });
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: USER },
+      data: { phoneNumber: PHONE, phoneVerifiedAt: expect.any(Date) },
+    });
+  });
+
+  it('rejects phone-change verification when the number was taken meanwhile', async () => {
+    await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 60_000);
+    tx.user.findUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
+      if (where.id === USER) return { id: USER, phoneNumber: '01000000099' };
+      if (where.phoneNumber === PHONE) return { id: '00000000-0000-4000-8000-000000000002', phoneNumber: PHONE };
+      return null;
+    });
+    await expectCode(service.verifyChallenge(PHONE, '123456', NOW), 'PHONE_UNAVAILABLE');
+    // The pending request is consumed so the owner can try another number.
+    expect(store.get(PHONE)?.consumedAt).not.toBeNull();
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
   it('rejects resend inside the 60s cooldown with retryAfter', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     await expectCode(
@@ -112,6 +154,31 @@ describe('OtpService', () => {
     store.get(PHONE)!.attempts = 4;
     await service.openChallenge(PHONE, 'REGISTRATION', USER, new Date(NOW.getTime() + 61_000));
     expect(store.get(PHONE)).toMatchObject({ attempts: 0, consumedAt: null });
+  });
+
+  it('send-otp resend preserves a live registration binding', async () => {
+    await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
+    // send-otp passes userId null (public resend) past the cooldown.
+    const resend = await service.openChallenge(PHONE, 'PROFILE', null, new Date(NOW.getTime() + 61_000));
+    expect(resend).toEqual({ expiresInSeconds: 300 });
+    expect(store.get(PHONE)).toMatchObject({ purpose: 'REGISTRATION', userId: USER });
+    // Verification still stamps the bound user.
+    await service.verifyChallenge(PHONE, '123456', new Date(NOW.getTime() + 62_000));
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: USER },
+      data: { phoneNumber: PHONE, phoneVerifiedAt: expect.any(Date) },
+    });
+  });
+
+  it('send-otp resend preserves a live phone-change window', async () => {
+    await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 120_000);
+    const resend = await service.openChallenge(PHONE, 'PROFILE', null, new Date(NOW.getTime() + 61_000));
+    expect(store.get(PHONE)).toMatchObject({
+      purpose: 'PHONE_CHANGE',
+      userId: USER,
+      expiresAt: new Date(NOW.getTime() + 120_000),
+    });
+    expect(resend.expiresInSeconds).toBeLessThanOrEqual(60);
   });
 
   it('verifies the fixed code and stamps the user', async () => {

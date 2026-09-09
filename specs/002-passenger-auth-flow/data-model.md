@@ -64,13 +64,13 @@ Generic DB-backed rate-limit buckets (spec FR-015/FR-016; locked budgets).
 | `window_start` | Timestamptz | window anchor; stale windows reset on next hit |
 | `updated_at` | Timestamptz | — |
 
-- Windows: login 15 min (5 per phone, 20 per source IP); `otp:send` 10 min (3 per phone); `otp:verify` 10 min (10 per challenge, independent of the 5-guess lock).
+- Windows: login 15 min (5 per phone, 20 per source IP); `otp:send` 10 min (3 per phone); `otp:verify` 10 min (10 per challenge, independent of the 5-guess lock); `phone-change` 10 min (3 per user).
 - Success resets the relevant counter (`login:phone` on successful login; challenge row consumed on verify success).
 - No `app_tenant` grants (constitution V): all access via system path inside `ThrottleService`/`OtpService` transactions.
 
 ## `Session` — no schema change
 
-Scope is derived per request (R-05): `full` iff live `user.phoneNumber != null && user.phoneVerifiedAt != null`, else `restricted`. Phone change (`phoneNumber := new, phoneVerifiedAt := null` in one transaction + `authVersion` untouched) instantly restricts all live sessions; successful verification upgrades them with no re-login. Refresh rotation and 7-day TTL unchanged.
+Scope is derived per request (R-05): `full` iff live `user.phoneNumber != null && user.phoneVerifiedAt != null`, else `restricted`. A phone change never touches the user row — the `PHONE_CHANGE` challenge row (60s window, purpose-bound to the requesting user) IS the pending state; verifying swaps the number in, expiry drops the request, and live sessions keep full scope throughout (`authVersion` untouched). Refresh rotation and 7-day TTL unchanged.
 
 ## Seed / migration ordering
 

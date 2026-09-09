@@ -117,6 +117,23 @@ describe('Passenger auth (e2e)', () => {
       await verifyOtp('01000000005', '123456').expect(404);
     });
 
+    it('keeps the registration binding across a resend so login works after verify', async () => {
+      await register('01000000071').expect(201);
+      // Resend past the cooldown, then verify: the resend must not orphan
+      // the challenge or verification stamps nobody and login 403s.
+      await t.system.phoneVerificationChallenge.update({
+        where: { phoneNumber: '01000000071' },
+        data: { lastSentAt: new Date(Date.now() - 61_000) },
+      });
+      const resend = await sendOtp('01000000071').expect(201);
+      expect(resend.body.data).toMatchObject({ sent: true });
+      await verifyOtp('01000000071', '123456').expect(200);
+      await request(t.app.getHttpServer())
+        .post('/auth/login')
+        .send({ loginType: 'PASSENGER', phone: '01000000071', password: 'Passw0rd!123' })
+        .expect(201);
+    });
+
     it('returns an identical response when the phone is already registered (no oracle)', async () => {
       await register('01000000006').expect(201);
       const res = await register('01000000006').expect(201);
@@ -286,7 +303,13 @@ describe('Passenger auth (e2e)', () => {
         .expect(200);
       expect(res.body).toEqual({
         statusCode: 200,
-        data: { profileComplete: true, missingFields: [], phoneVerified: true },
+        data: {
+          profileComplete: true,
+          missingFields: [],
+          phoneVerified: true,
+          pendingPhoneNumber: null,
+          expiresInSeconds: null,
+        },
       });
     });
 
@@ -311,7 +334,7 @@ describe('Passenger auth (e2e)', () => {
       expect(res.body.data).toMatchObject({ name: 'New Name', phoneVerified: true });
     });
 
-    it('resets verification on phone change and restores it after verify', async () => {
+    it('holds the verified phone pending verification and swaps on verify', async () => {
       const token = await verifiedToken('01000000033');
       const changed = await request(t.app.getHttpServer())
         .patch('/me')
@@ -319,16 +342,159 @@ describe('Passenger auth (e2e)', () => {
         .send({ phoneNumber: '01000000034' })
         .expect(200);
       expect(changed.body.data).toMatchObject({
-        phoneNumber: '01000000034',
-        phoneVerified: false,
+        // Old phone stays active until the new one is verified.
+        phoneNumber: '01000000033',
+        phoneVerified: true,
         verificationRequired: true,
+        sent: true,
+        pendingPhoneNumber: '01000000034',
+        expiresInSeconds: 60,
       });
-      // The same token is now restricted: general routes reject it…
-      await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(403);
-      // …but profile routes still work, and verify restores full scope.
-      await request(t.app.getHttpServer()).get('/me/profile-status').set(authed(token)).expect(200);
-      await verifyOtp('01000000034', '123456').expect(200);
+      // The live session is NOT restricted: the verified phone still works…
       await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(200);
+      const status = await request(t.app.getHttpServer())
+        .get('/me/profile-status')
+        .set(authed(token))
+        .expect(200);
+      expect(status.body.data).toMatchObject({
+        profileComplete: true,
+        phoneVerified: true,
+        pendingPhoneNumber: '01000000034',
+      });
+      expect(status.body.data.expiresInSeconds).toEqual(expect.any(Number));
+      // …and verifying the new number swaps it in with no re-login.
+      await verifyOtp('01000000034', '123456').expect(200);
+      const user = await t.system.user.findUnique({ where: { phoneNumber: '01000000034' } });
+      expect(user?.phoneVerifiedAt).toBeInstanceOf(Date);
+      const cleared = await request(t.app.getHttpServer())
+        .get('/me/profile-status')
+        .set(authed(token))
+        .expect(200);
+      expect(cleared.body.data).toMatchObject({ pendingPhoneNumber: null });
+      await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(200);
+    });
+
+    it('send-otp inside the pending window cools down without touching the binding', async () => {
+      const token = await verifiedToken('01000000072');
+      await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000073' })
+        .expect(200);
+      // A separate send step right after the update hits the resend cooldown
+      // (the update already sent it) and leaves the pending binding intact.
+      const resend = await sendOtp('01000000073').expect(429);
+      expect(resend.body).toMatchObject({
+        statusCode: 429,
+        code: 'OTP_RATE_LIMITED',
+        details: { scope: 'resend-cooldown' },
+      });
+      await verifyOtp('01000000073', '123456').expect(200);
+      const user = await t.system.user.findUnique({ where: { phoneNumber: '01000000073' } });
+      expect(user?.phoneVerifiedAt).toBeInstanceOf(Date);
+      await request(t.app.getHttpServer())
+        .post('/auth/login')
+        .send({ loginType: 'PASSENGER', phone: '01000000073', password: 'Passw0rd!123' })
+        .expect(201);
+    });
+
+    it('rejects a second phone change while one is pending', async () => {
+      const token = await verifiedToken('01000000051');
+      await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000052' })
+        .expect(200);
+      const res = await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000053' })
+        .expect(429);
+      expect(res.body).toMatchObject({
+        statusCode: 429,
+        code: 'OTP_RATE_LIMITED',
+        details: { scope: 'phone-change' },
+      });
+      expect(res.body.retryAfter).toEqual(expect.any(Number));
+      // The first pending change is untouched and the old phone still works.
+      const status = await request(t.app.getHttpServer())
+        .get('/me/profile-status')
+        .set(authed(token))
+        .expect(200);
+      expect(status.body.data).toMatchObject({ pendingPhoneNumber: '01000000052' });
+      await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(200);
+    });
+
+    it('treats re-saving the same pending number as the send step (no separate send-otp)', async () => {
+      const token = await verifiedToken('01000000065');
+      const first = await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000066' })
+        .expect(200);
+      expect(first.body.data).toMatchObject({ sent: true, expiresInSeconds: 60 });
+      // Saving the same number again within the window re-reports the pending
+      // send (remaining window) instead of throttling — the update endpoint IS
+      // the send-otp step for this flow, so the client never calls send-otp.
+      const second = await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000066' })
+        .expect(200);
+      expect(second.body.data).toMatchObject({
+        phoneNumber: '01000000065',
+        phoneVerified: true,
+        verificationRequired: true,
+        sent: false,
+        pendingPhoneNumber: '01000000066',
+      });
+      const remaining = second.body.data.expiresInSeconds as number;
+      expect(remaining).toEqual(expect.any(Number));
+      expect(remaining).toBeLessThanOrEqual(60);
+      expect(remaining).toBeGreaterThan(0);
+      // Straight to verify — no send-otp call in between.
+      await verifyOtp('01000000066', '123456').expect(200);
+      const user = await t.system.user.findUnique({ where: { phoneNumber: '01000000066' } });
+      expect(user?.phoneVerifiedAt).toBeInstanceOf(Date);
+    });
+
+    it('drops an unverified phone change after expiry and keeps the session', async () => {
+      const token = await verifiedToken('01000000054');
+      await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000055' })
+        .expect(200);
+      // Simulate the 60s window passing without verification.
+      await t.system.phoneVerificationChallenge.update({
+        where: { phoneNumber: '01000000055' },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+      await verifyOtp('01000000055', '123456').expect(410);
+      const status = await request(t.app.getHttpServer())
+        .get('/me/profile-status')
+        .set(authed(token))
+        .expect(200);
+      expect(status.body.data).toMatchObject({
+        profileComplete: true,
+        phoneVerified: true,
+        pendingPhoneNumber: null,
+      });
+      // Old verified phone is intact, the session never dropped…
+      const user = await t.system.user.findUnique({ where: { phoneNumber: '01000000054' } });
+      expect(user?.phoneVerifiedAt).toBeInstanceOf(Date);
+      await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(200);
+      // …and a fresh change is allowed once the window has passed.
+      const retry = await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000056' })
+        .expect(200);
+      expect(retry.body.data).toMatchObject({
+        verificationRequired: true,
+        pendingPhoneNumber: '01000000056',
+        expiresInSeconds: 60,
+      });
     });
 
     it('rejects a phone taken by another account without disclosure', async () => {
@@ -344,6 +510,71 @@ describe('Passenger auth (e2e)', () => {
         code: 'PHONE_UNAVAILABLE',
         message: 'Unable to complete this update.',
       });
+      // The active phone is untouched and the session stays full.
+      const status = await request(t.app.getHttpServer())
+        .get('/me/profile-status')
+        .set(authed(token))
+        .expect(200);
+      expect(status.body.data).toMatchObject({
+        phoneVerified: true,
+        pendingPhoneNumber: null,
+      });
+      await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(200);
+    });
+
+    it('rejects verification when the pending number was taken meanwhile', async () => {
+      const token = await verifiedToken('01000000057');
+      await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: '01000000058' })
+        .expect(200);
+      // Another account grabs the number before the owner verifies it.
+      await register('01000000058').expect(201);
+      const res = await verifyOtp('01000000058', '123456').expect(409);
+      expect(res.body).toEqual({
+        statusCode: 409,
+        code: 'PHONE_UNAVAILABLE',
+        message: 'Unable to complete this update.',
+      });
+      // The owner keeps the old verified phone and a full session.
+      const status = await request(t.app.getHttpServer())
+        .get('/me/profile-status')
+        .set(authed(token))
+        .expect(200);
+      expect(status.body.data).toMatchObject({
+        phoneVerified: true,
+        pendingPhoneNumber: null,
+      });
+      await request(t.app.getHttpServer()).get('/auth/me').set(authed(token)).expect(200);
+    });
+
+    it('rate-limits phone changes per user: 3 per 10 minutes', async () => {
+      const token = await verifiedToken('01000000059');
+      const phones = ['01000000061', '01000000062', '01000000063', '01000000064'];
+      for (const phone of phones.slice(0, 3)) {
+        await request(t.app.getHttpServer())
+          .patch('/me')
+          .set(authed(token))
+          .send({ phoneNumber: phone })
+          .expect(200);
+        // Let each pending change expire so the next request is a new attempt.
+        await t.system.phoneVerificationChallenge.update({
+          where: { phoneNumber: phone },
+          data: { expiresAt: new Date(Date.now() - 1000) },
+        });
+      }
+      const res = await request(t.app.getHttpServer())
+        .patch('/me')
+        .set(authed(token))
+        .send({ phoneNumber: phones[3] })
+        .expect(429);
+      expect(res.body).toMatchObject({
+        statusCode: 429,
+        code: 'OTP_RATE_LIMITED',
+        details: { scope: 'phone-change' },
+      });
+      expect(res.body.retryAfter).toEqual(expect.any(Number));
     });
 
     it('validates profile updates with 400', async () => {

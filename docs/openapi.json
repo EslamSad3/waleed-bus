@@ -604,6 +604,9 @@
           },
           "409": {
             "description": "Phone unavailable (non-revealing)."
+          },
+          "429": {
+            "description": "Phone-change throttled: pending window still active or per-user budget exceeded (retryAfter seconds)."
           }
         },
         "security": [
@@ -611,7 +614,7 @@
             "bearer": []
           }
         ],
-        "summary": "Update name, phone, or picture. A new phone resets verification.",
+        "summary": "Update name, phone, or picture. A new phone stays pending (60s OTP window) while the verified number keeps working.",
         "tags": [
           "passenger-auth"
         ]
@@ -3803,12 +3806,24 @@
           "phoneVerified": {
             "type": "boolean",
             "example": false
+          },
+          "pendingPhoneNumber": {
+            "type": "object",
+            "example": "01000000001",
+            "nullable": true
+          },
+          "expiresInSeconds": {
+            "type": "object",
+            "example": 60,
+            "nullable": true
           }
         },
         "required": [
           "profileComplete",
           "missingFields",
-          "phoneVerified"
+          "phoneVerified",
+          "pendingPhoneNumber",
+          "expiresInSeconds"
         ]
       },
       "VerifyOtpDto": {

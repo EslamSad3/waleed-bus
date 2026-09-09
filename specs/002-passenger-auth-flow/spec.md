@@ -73,17 +73,18 @@ A passenger authenticates with a Google or Apple identity. If the app has no ver
 
 ### User Story 4 - Check profile completeness and update profile (Priority: P2)
 
-A signed-in passenger checks what is missing from the profile (e.g., phone number, phone verification) and updates name or phone. Entering a new phone resets verification until the new number is verified.
+A signed-in passenger checks what is missing from the profile (e.g., phone number, phone verification) and updates name or phone. Entering a new phone opens a 60-second verification window for the new number while the verified number keeps working and the session stays full; an unverified change expires without touching the account.
 
 **Why this priority**: This is PRD #5 — the mechanism that closes the loop for social accounts and phone changes.
 
-**Independent Test**: Can be fully tested by querying profile status, updating the phone, and confirming the phone shows unverified until the code is verified. Delivers a complete, trustworthy profile.
+**Independent Test**: Can be fully tested by querying profile status, updating the phone, and confirming the old number stays active with the new number pending until the code is verified (or the window expires, dropping the request). Delivers a complete, trustworthy profile.
 
 **Acceptance Scenarios**:
 
 1. **Given** a signed-in social passenger with unverified phone, **When** the passenger checks profile status, **Then** the status reports profile incomplete, names the missing phone field, and reports phone unverified.
 2. **Given** a signed-in passenger, **When** the passenger updates the name, **Then** the name is saved and verification state is unchanged.
-3. **Given** a signed-in passenger with a verified phone, **When** the passenger changes to a new phone number, **Then** the new phone is stored as unverified and the profile reports phone unverified until the new number is verified.
+3. **Given** a signed-in passenger with a verified phone, **When** the passenger changes to a new phone number, **Then** the verified phone stays active, the new phone is reported pending with `expiresInSeconds: 60`, the session keeps full scope, and verifying within the window swaps the new number in with no re-login.
+4. **Given** a pending phone change, **When** the 60-second window passes without verification, **Then** the request is dropped, the verified phone and the session are untouched, and a new change may be requested.
 
 ---
 
@@ -129,16 +130,16 @@ The system slows down and blocks abusive login and code-guessing traffic so atta
 - **FR-007**: System MUST accept the fixed verification code `123456` as the valid code for any active challenge until an SMS provider is selected and integrated (temporary behavior).
 - **FR-008**: System MUST mark the phone as verified only after successful code verification, and MUST record the verification event.
 - **FR-009**: Verification codes MUST be single-use; a consumed code MUST be rejected on replay.
-- **FR-010**: Verification challenges MUST expire 5 minutes after creation; expired challenges MUST be rejected and require requesting a new code.
-- **FR-011**: Code resend requests MUST be subject to a 60-second cooldown period; requests inside the cooldown MUST be rejected with retry-after guidance without creating a new challenge.
+- **FR-010**: Verification challenges MUST expire after creation — 5 minutes for registration/profile challenges, 60 seconds for phone-change (`PHONE_CHANGE`) challenges; expired challenges MUST be rejected and require requesting a new code.
+- **FR-011**: Code resend requests MUST be subject to a 60-second cooldown period; requests inside the cooldown MUST be rejected with retry-after guidance without creating a new challenge. A resend past the cooldown MUST preserve the live challenge's account binding (purpose/`userId`), so verification still stamps the right user.
 - **FR-012**: Code verification guesses MUST be limited to 5 per challenge; the 6th and subsequent guesses MUST lock or expire the challenge.
 - **FR-013**: System MUST NEVER return, echo, or otherwise disclose the verification code in any response, log, or error available to clients.
 - **FR-014**: All authentication and verification failure responses MUST be generic and MUST NOT reveal whether a phone exists, whether an account exists, the account's role/type, which credential was wrong, or whether a social identity is linked. The sole exception is the verification-needed signal for correct credentials on an unverified phone (see FR-002).
 - **FR-015**: Login attempts (phone+password and provider) MUST be rate-limited: at most 5 failed attempts per targeted phone per 15 minutes and at most 20 failed attempts per source per 15 minutes; exceeding either threshold MUST temporarily reject further login attempts with retry-after guidance.
 - **FR-016**: Code send MUST be limited to 3 sends per phone per 10 minutes and code verify to 10 requests per challenge per 10 minutes (in addition to the 5-guess lock in FR-012); exceeding either threshold MUST temporarily reject further attempts of that operation with retry-after guidance.
 - **FR-017**: System MUST expose the signed-in passenger's profile completeness status, including which fields are missing and whether the phone is verified.
-- **FR-018**: System MUST allow a signed-in passenger to update name and phone number; a newly entered phone number MUST be stored as unverified until successfully verified, and MUST trigger a new verification challenge.
-- **FR-019**: When a passenger changes the phone number, existing full sessions MUST be downgraded to the restricted scope (or ended) until the new phone is verified, so stale verified state cannot be reused.
+- **FR-018**: System MUST allow a signed-in passenger to update name and phone number; a newly entered phone number MUST stay pending — the verified number untouched and the session unrevoked — until successfully verified, MUST trigger a new verification challenge with a 60-second window reported as `expiresInSeconds`, and MUST be dropped on expiry. A further change MUST wait out the active window (`429` with `retryAfter`); phone changes are additionally rate-limited to 3 per user per 10 minutes.
+- **FR-019**: Phone-change requests MUST NOT downgrade live sessions: the verified number stays active until the new number is verified. (Never-verified accounts still hold only restricted scope per FR-022.)
 - **FR-022**: A passenger whose profile is incomplete (phone missing or unverified) MUST hold only a restricted session valid for profile-status, profile update, and OTP steps; any other passenger operation with that session MUST be rejected. The restricted session MUST be upgraded to a full session upon successful phone verification.
 - **FR-020**: Out of scope: Fleet Owner and Driver account creation/login management, bookings, trips, tracking, sharing, QR, ratings, reports, notifications, and payment flows. Only PASSENGER login types and passenger phone/profile flows are in scope.
 - **FR-021**: Phone numbers MUST be globally unique across all accounts of any type; registering or changing to a phone already tied to any other account MUST be rejected with a non-revealing error that discloses no information about the existing account.

@@ -30,7 +30,7 @@
 ## R-05 — Restricted scope derived server-side from live state (no JWT change)
 
 - **Decision**: No new JWT claims. `JwtAuthGuard` already loads the live user + session per request; it additionally attaches `profileScope: 'restricted' | 'full'` derived from `user.phoneNumber && user.phoneVerifiedAt`. A `ProfileScopeGuard`/route marker (`@AllowRestricted()`) permits only profile-status, profile update, send-otp, verify-otp for restricted sessions; every other authenticated route requires `full`.
-- **Rationale**: Derivation is automatically correct on phone change (new phone ⇒ `phoneVerifiedAt = null` ⇒ all live sessions restrict instantly — implements spec FR-019 with zero revocation logic and lets the restricted session survive to finish verification, which an `authVersion` bump would destroy). No token-shape change means existing clients/guards/tests are unaffected (constitution II/VII patterns preserved).
+- **Rationale**: Derivation stays correct without touching sessions on phone change: the verified number remains live (so all sessions stay `full`) until verification swaps the new number in — no revocation logic and no `authVersion` bump, which would destroy the session that must survive to finish verification. No token-shape change means existing clients/guards/tests are unaffected (constitution II/VII patterns preserved).
 - **Alternatives considered**: `scope` JWT claim — rejected (stale claims need revocation plumbing; derivation is always fresh). Separate short-lived profile token — rejected (second token type, second issuance/validation path, more complexity for identical security).
 
 ## R-06 — PRD error codes ride inside the platform envelope (no fork)

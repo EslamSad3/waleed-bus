@@ -40,6 +40,7 @@ export class OtpService {
     purpose: OtpPurpose,
     userId: string | null,
     now: Date = new Date(),
+    lifetimeMs: number = OTP_LIFETIME_MS,
   ): Promise<{ expiresInSeconds: number }> {
     const result = await this.system.$transaction(async (tx) => {
       const existing = await tx.phoneVerificationChallenge.findUnique({ where: { phoneNumber } });
@@ -61,12 +62,30 @@ export class OtpService {
           retryAfter,
         );
       }
+      // A public resend (send-otp passes userId null) must never orphan a
+      // live account binding: registration and phone-change challenges carry
+      // the user verification must stamp. Without this, verify-otp returns a
+      // success that stamps nobody and the next login reports
+      // PHONE_NOT_VERIFIED. Binding calls (register, profile update) always
+      // overwrite; expired/consumed rows are treated as fresh.
+      const bound =
+        existing &&
+        !existing.consumedAt &&
+        existing.expiresAt.getTime() > now.getTime() &&
+        existing.userId &&
+        userId === null
+          ? existing
+          : null;
+      // A phone-change resend keeps its 60s window (only the guess budget and
+      // the cooldown timestamp refresh); other purposes take the fresh lifetime.
+      const keepWindow = !!bound && bound.purpose === 'PHONE_CHANGE';
+      const effectiveExpiresAt = keepWindow && bound ? bound.expiresAt : new Date(now.getTime() + lifetimeMs);
       await tx.phoneVerificationChallenge.upsert({
         where: { phoneNumber },
         update: {
-          purpose,
-          userId,
-          expiresAt: new Date(now.getTime() + OTP_LIFETIME_MS),
+          purpose: bound ? bound.purpose : purpose,
+          userId: bound ? bound.userId : userId,
+          expiresAt: effectiveExpiresAt,
           attempts: 0,
           consumedAt: null,
           lastSentAt: now,
@@ -75,12 +94,17 @@ export class OtpService {
           phoneNumber,
           purpose,
           userId,
-          expiresAt: new Date(now.getTime() + OTP_LIFETIME_MS),
+          expiresAt: new Date(now.getTime() + lifetimeMs),
           attempts: 0,
           lastSentAt: now,
         },
       });
-      return { expiresInSeconds: OTP_LIFETIME_MS / 1000 };
+      return {
+        expiresInSeconds: Math.max(
+          1,
+          Math.floor((effectiveExpiresAt.getTime() - now.getTime()) / 1000),
+        ),
+      };
     });
     // Audit carries identifiers only — never the code (FR-013).
     await this.audit.log({
@@ -99,7 +123,7 @@ export class OtpService {
   ): Promise<{ userId: string | null }> {
     // Business failures are returned (not thrown) from the transaction so
     // the attempts/lockout writes commit; the coded error is raised after.
-    type Failure = { ok: false; status: number; code: 'OTP_INVALID' | 'OTP_EXPIRED'; message: string };
+    type Failure = { ok: false; status: number; code: 'OTP_INVALID' | 'OTP_EXPIRED' | 'PHONE_UNAVAILABLE'; message: string };
     type Success = { ok: true; userId: string | null };
     const outcome: Failure | Success = await this.system.$transaction(async (tx) => {
       const challenge = await tx.phoneVerificationChallenge.findUnique({ where: { phoneNumber } });
@@ -129,6 +153,18 @@ export class OtpService {
         data: { consumedAt: now },
       });
       if (challenge.userId) {
+        // Phone changes swap the number only here, at verify time. The number
+        // may have been claimed by another account since the change was
+        // requested — fail non-revealing instead of violating uniqueness.
+        if (challenge.purpose === 'PHONE_CHANGE') {
+          const owner = await tx.user.findUnique({ where: { id: challenge.userId } });
+          if (owner && owner.phoneNumber !== phoneNumber) {
+            const taken = await tx.user.findUnique({ where: { phoneNumber } });
+            if (taken && taken.id !== challenge.userId) {
+              return { ok: false, status: 409, code: 'PHONE_UNAVAILABLE', message: 'Unable to complete this update.' } as Failure;
+            }
+          }
+        }
         await tx.user.update({
           where: { id: challenge.userId },
           data: { phoneNumber, phoneVerifiedAt: now },

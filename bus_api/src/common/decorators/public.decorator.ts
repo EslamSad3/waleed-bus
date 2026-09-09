@@ -1,6 +1,0 @@
-import { SetMetadata } from '@nestjs/common';
-
-export const IS_PUBLIC_KEY = 'isPublic';
-
-/** Marks a route as intentionally unauthenticated; everything else requires a JWT. */
-export const Public = (): MethodDecorator => SetMetadata(IS_PUBLIC_KEY, true);

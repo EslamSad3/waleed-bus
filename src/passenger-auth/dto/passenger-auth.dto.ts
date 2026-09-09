@@ -82,4 +82,10 @@ export class ProfileStatusDto {
 
   @ApiProperty({ example: false })
   phoneVerified!: boolean;
+
+  @ApiProperty({ example: '01000000001', nullable: true })
+  pendingPhoneNumber!: string | null;
+
+  @ApiProperty({ example: 60, nullable: true })
+  expiresInSeconds!: number | null;
 }
