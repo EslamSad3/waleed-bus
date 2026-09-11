@@ -6,10 +6,11 @@ import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationModule } from '../authorization/authorization.module.js';
+import { FleetsModule } from '../fleets/fleets.module.js';
 import { PassengerAuthModule } from '../passenger-auth/passenger-auth.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), AuthorizationModule, AuditModule, PassengerAuthModule],
+  imports: [JwtModule.register({}), AuthorizationModule, AuditModule, PassengerAuthModule, FleetsModule],
   controllers: [AuthController],
   providers: [
     AuthService,

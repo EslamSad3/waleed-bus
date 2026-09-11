@@ -132,7 +132,7 @@
             "description": "Correct credentials but phone verification required (PHONE_NOT_VERIFIED)."
           }
         },
-        "summary": "Shared login: email platform login, or PASSENGER phone / provider login.",
+        "summary": "Shared login: email platform login, PASSENGER phone / provider login, or FLEET_OWNER / DRIVER phone login.",
         "tags": [
           "auth"
         ]
@@ -556,21 +556,447 @@
     },
     "/me": {
       "patch": {
-        "operationId": "PassengerAuthController_updateMe",
-        "parameters": [],
+        "operationId": "FleetOwnerController_updateMe",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateMeDto"
+                "$ref": "#/components/schemas/UpdateProfileDto"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Updated profile with verification state.",
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OwnerProfileDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update the caller profile (name, picture).",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "get": {
+        "operationId": "FleetOwnerController_getMe",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OwnerProfileDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Return the caller profile (owner and driver share this endpoint).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleets": {
+      "post": {
+        "operationId": "FleetsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFleetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Fleet created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "Owner role slug unknown/inactive, or the owner user cannot be linked."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a fleet (platform path; optionally grants the owner an initial membership).",
+        "tags": [
+          "fleets"
+        ]
+      },
+      "get": {
+        "operationId": "FleetsController_findAll",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of fleets (items + nextCursor).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FleetDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all fleets (platform path, cursor pagination).",
+        "tags": [
+          "fleets"
+        ]
+      }
+    },
+    "/fleets/mine": {
+      "get": {
+        "operationId": "FleetsController_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The caller's ACTIVE memberships — never another user's.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MyMembershipDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the caller's own ACTIVE fleet memberships (RLS tenant path).",
+        "tags": [
+          "fleets"
+        ]
+      }
+    },
+    "/fleets/{id}": {
+      "get": {
+        "operationId": "FleetsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The fleet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one fleet by id (platform path).",
+        "tags": [
+          "fleets"
+        ]
+      },
+      "patch": {
+        "operationId": "FleetsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFleetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated fleet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a fleet (platform path).",
+        "tags": [
+          "fleets"
+        ]
+      },
+      "delete": {
+        "operationId": "FleetsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fleet deleted; data is null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -593,20 +1019,17 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid payload or empty update."
-          },
           "401": {
             "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
           },
           "403": {
             "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
           },
-          "409": {
-            "description": "Phone unavailable (non-revealing)."
+          "404": {
+            "description": "Fleet not found."
           },
-          "429": {
-            "description": "Phone-change throttled: pending window still active or per-user budget exceeded (retryAfter seconds)."
+          "409": {
+            "description": "Fleet still referenced by buses/trips/bookings."
           }
         },
         "security": [
@@ -614,9 +1037,313 @@
             "bearer": []
           }
         ],
-        "summary": "Update name, phone, or picture. A new phone stays pending (60s OTP window) while the verified number keeps working.",
+        "summary": "Delete a fleet and its memberships (platform path, cascading).",
         "tags": [
-          "passenger-auth"
+          "fleets"
+        ]
+      }
+    },
+    "/fleets/{fleetId}/members": {
+      "post": {
+        "operationId": "MembersController_add",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Membership created (defaults to ACTIVE).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetMemberDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Target user or role not found/inactive (404)."
+          },
+          "409": {
+            "description": "The user is already a member of this fleet."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a user to the fleet with a role (members.manage required).",
+        "tags": [
+          "fleet-members"
+        ]
+      },
+      "get": {
+        "operationId": "MembersController_list",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of memberships (items + nextCursor).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FleetMemberDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the fleet memberships (cursor pagination).",
+        "tags": [
+          "fleet-members"
+        ]
+      }
+    },
+    "/fleets/{fleetId}/members/{memberId}": {
+      "patch": {
+        "operationId": "MembersController_update",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "description": "Membership id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetMemberDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Membership not found in this fleet (cross-fleet ids are also 404)."
+          },
+          "409": {
+            "description": "Role slug unknown/inactive for the resolution strategy."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a member role/status (suspension revokes sessions immediately).",
+        "tags": [
+          "fleet-members"
+        ]
+      },
+      "delete": {
+        "operationId": "MembersController_remove",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "description": "Membership id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership removed; data is null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Membership not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a membership (target sessions invalidated immediately).",
+        "tags": [
+          "fleet-members"
         ]
       }
     },
@@ -1723,677 +2450,6 @@
         ]
       }
     },
-    "/fleets": {
-      "post": {
-        "operationId": "FleetsController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFleetDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Fleet created.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 201
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/FleetDto"
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "409": {
-            "description": "Owner role slug unknown/inactive, or the owner user cannot be linked."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create a fleet (platform path; optionally grants the owner an initial membership).",
-        "tags": [
-          "fleets"
-        ]
-      },
-      "get": {
-        "operationId": "FleetsController_findAll",
-        "parameters": [
-          {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
-            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "description": "Page size (default 20, max 100).",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Cursor page of fleets (items + nextCursor).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/FleetDto"
-                      }
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List all fleets (platform path, cursor pagination).",
-        "tags": [
-          "fleets"
-        ]
-      }
-    },
-    "/fleets/mine": {
-      "get": {
-        "operationId": "FleetsController_mine",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "The caller's ACTIVE memberships — never another user's.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/MyMembershipDto"
-                      }
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List the caller's own ACTIVE fleet memberships (RLS tenant path).",
-        "tags": [
-          "fleets"
-        ]
-      }
-    },
-    "/fleets/{id}": {
-      "get": {
-        "operationId": "FleetsController_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Fleet id (uuid).",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The fleet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/FleetDto"
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "404": {
-            "description": "Fleet not found."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Fetch one fleet by id (platform path).",
-        "tags": [
-          "fleets"
-        ]
-      },
-      "patch": {
-        "operationId": "FleetsController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Fleet id (uuid).",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFleetDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated fleet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/FleetDto"
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "404": {
-            "description": "Fleet not found."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update a fleet (platform path).",
-        "tags": [
-          "fleets"
-        ]
-      },
-      "delete": {
-        "operationId": "FleetsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Fleet id (uuid).",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Fleet deleted; data is null.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "nullable": true,
-                      "example": null
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "404": {
-            "description": "Fleet not found."
-          },
-          "409": {
-            "description": "Fleet still referenced by buses/trips/bookings."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a fleet and its memberships (platform path, cascading).",
-        "tags": [
-          "fleets"
-        ]
-      }
-    },
-    "/fleets/{fleetId}/members": {
-      "post": {
-        "operationId": "MembersController_add",
-        "parameters": [
-          {
-            "name": "fleetId",
-            "required": true,
-            "in": "path",
-            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddMemberDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Membership created (defaults to ACTIVE).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 201
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/FleetMemberDto"
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "404": {
-            "description": "Target user or role not found/inactive (404)."
-          },
-          "409": {
-            "description": "The user is already a member of this fleet."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Add a user to the fleet with a role (members.manage required).",
-        "tags": [
-          "fleet-members"
-        ]
-      },
-      "get": {
-        "operationId": "MembersController_list",
-        "parameters": [
-          {
-            "name": "fleetId",
-            "required": true,
-            "in": "path",
-            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
-            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "description": "Page size (default 20, max 100).",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Cursor page of memberships (items + nextCursor).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/FleetMemberDto"
-                      }
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List the fleet memberships (cursor pagination).",
-        "tags": [
-          "fleet-members"
-        ]
-      }
-    },
-    "/fleets/{fleetId}/members/{memberId}": {
-      "patch": {
-        "operationId": "MembersController_update",
-        "parameters": [
-          {
-            "name": "fleetId",
-            "required": true,
-            "in": "path",
-            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "memberId",
-            "required": true,
-            "in": "path",
-            "description": "Membership id (uuid).",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateMemberDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated membership.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/FleetMemberDto"
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "404": {
-            "description": "Membership not found in this fleet (cross-fleet ids are also 404)."
-          },
-          "409": {
-            "description": "Role slug unknown/inactive for the resolution strategy."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Change a member role/status (suspension revokes sessions immediately).",
-        "tags": [
-          "fleet-members"
-        ]
-      },
-      "delete": {
-        "operationId": "MembersController_remove",
-        "parameters": [
-          {
-            "name": "fleetId",
-            "required": true,
-            "in": "path",
-            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "memberId",
-            "required": true,
-            "in": "path",
-            "description": "Membership id (uuid).",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Membership removed; data is null.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "data": {
-                      "nullable": true,
-                      "example": null
-                    }
-                  },
-                  "required": [
-                    "statusCode",
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
-          },
-          "403": {
-            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
-          },
-          "404": {
-            "description": "Membership not found in this fleet (cross-fleet ids are also 404)."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Remove a membership (target sessions invalidated immediately).",
-        "tags": [
-          "fleet-members"
-        ]
-      }
-    },
     "/fleets/{fleetId}/buses": {
       "post": {
         "operationId": "BusesController_create",
@@ -3494,6 +3550,2452 @@
           "bookings"
         ]
       }
+    },
+    "/bookings/{id}/rating": {
+      "post": {
+        "operationId": "PassengerRatingController_rate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{busRating, driverRating}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found (foreign bookings are also 404)."
+          },
+          "409": {
+            "description": "409 RATING_NOT_ALLOWED on ineligible state or conflicting re-rating."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rate your own booking (COMPLETED trip; one write per side).",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/fleet/buses": {
+      "get": {
+        "operationId": "FleetOwnerController_listBuses",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of owned buses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the owned fleet buses (cursor pagination).",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "post": {
+        "operationId": "FleetOwnerController_createBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFleetBusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bus created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "registrationNumber already exists in this fleet."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a bus to the owned fleet.",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/buses/{busId}": {
+      "get": {
+        "operationId": "FleetOwnerController_getBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one owned bus.",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "patch": {
+        "operationId": "FleetOwnerController_updateBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFleetBusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Modify an owned bus (plate, capacity).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/buses/{busId}/disable": {
+      "post": {
+        "operationId": "FleetOwnerController_disableBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Disabled bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 BUS_ACTION_NOT_ALLOWED while a DEPARTED trip runs on the bus."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disable an owned bus (blocked while a DEPARTED trip runs on it).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/buses/{busId}/reactivate": {
+      "post": {
+        "operationId": "FleetOwnerController_reactivateBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reactivated bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reactivate an owned bus.",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/buses/{busId}/trips": {
+      "get": {
+        "operationId": "FleetOwnerController_listBusTrips",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of trips for the bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List owned trips scheduled on one bus (cursor pagination).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/trips": {
+      "get": {
+        "operationId": "FleetOwnerController_listTrips",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of owned trips.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List owned fleet trips (cursor pagination, read-only in v1).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/trips/{tripId}": {
+      "get": {
+        "operationId": "FleetOwnerController_getTrip",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The trip.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Trip not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one owned trip.",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/drivers": {
+      "post": {
+        "operationId": "FleetOwnerController_addDriver",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Driver membership created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Target user not found (or driver role missing)."
+          },
+          "409": {
+            "description": "409 DRIVER_ASSIGNMENT_NOT_ALLOWED when the role is not driver-capable."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invite a driver (existing user or fresh phone+password account) with an ACTIVE membership.",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "get": {
+        "operationId": "FleetOwnerController_listDrivers",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of driver memberships.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List driver memberships of the owned fleet (cursor pagination).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/drivers/{driverId}": {
+      "get": {
+        "operationId": "FleetOwnerController_getDriver",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "driverId",
+            "required": true,
+            "in": "path",
+            "description": "Membership id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The driver membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Driver not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one driver membership.",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "patch": {
+        "operationId": "FleetOwnerController_updateDriver",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "driverId",
+            "required": true,
+            "in": "path",
+            "description": "Membership id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated driver membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Driver not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a driver membership (role/status); bumps authVersion and revokes sessions.",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "delete": {
+        "operationId": "FleetOwnerController_removeDriver",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "driverId",
+            "required": true,
+            "in": "path",
+            "description": "Membership id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Driver removed; data is null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Driver not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a driver (ends membership + active assignment; bumps authVersion).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/buses/{busId}/driver": {
+      "post": {
+        "operationId": "FleetOwnerController_assignDriver",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Active assignment row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 DRIVER_ASSIGNMENT_NOT_ALLOWED when the target is inactive or foreign."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign a driver to a bus (ends the prior ACTIVE row; idempotent).",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "delete": {
+        "operationId": "FleetOwnerController_unassignDriver",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Driver unassigned; data is null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus not found, or no active assignment (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unassign the active driver of a bus (row → ENDED, history kept).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/fleet/reports": {
+      "get": {
+        "operationId": "FleetOwnerController_getReports",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "passenger_reports",
+                "ratings"
+              ]
+            }
+          },
+          {
+            "name": "tripId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{reports, ratingSummary} scoped to the owned fleet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read fleet reports + rating summary (clarify Q4-A shape).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
+    "/driver/me": {
+      "patch": {
+        "operationId": "DriverOpsController_updateMe",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update the driver profile (name, picture).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/bus": {
+      "get": {
+        "operationId": "DriverOpsController_assignedBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active assignment + bus row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "404 DRIVER_NOT_ASSIGNED when the caller has no active assignment."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Return the assigned bus (404 when unassigned).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/bus/{busId}": {
+      "get": {
+        "operationId": "DriverOpsController_assignedBusById",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus is not the assigned bus (or not in this fleet)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one bus — must equal the assigned bus, else 404.",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/bus/claim": {
+      "post": {
+        "operationId": "DriverOpsController_claimBus",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimBusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Active assignment row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus not found in this fleet (cross-fleet ids are also 404)."
+          },
+          "409": {
+            "description": "403 unless the caller owns the fleet; 409 without an ACTIVE driver membership."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Claim an owned-fleet bus as your operating bus (independent drivers; fleet owners drive their own buses).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/fleet": {
+      "get": {
+        "operationId": "DriverOpsController_fleetCard",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fleet contact card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Return the fleet name + phone + owner contact (clarify Q5-B).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips": {
+      "get": {
+        "operationId": "DriverOpsController_trips",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHEDULED",
+                "DEPARTED",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of assigned trips.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "404 DRIVER_NOT_ASSIGNED when the caller has no active assignment."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List trips on the assigned bus (cursor pagination, optional status filter).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/current": {
+      "get": {
+        "operationId": "DriverOpsController_currentTrip",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current trip.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "No current trip on the assigned bus."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Nearest DEPARTED (fallback SCHEDULED-today) trip on the assigned bus.",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}": {
+      "get": {
+        "operationId": "DriverOpsController_tripById",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The trip.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "404 TRIP_ACCESS_DENIED when the trip is not on the assigned bus."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one assigned trip (assignment-guarded).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}/passengers": {
+      "get": {
+        "operationId": "DriverOpsController_manifest",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manifest rows (unpaginated: bounded by bus capacity).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "404 TRIP_ACCESS_DENIED when the trip is not on the assigned bus."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Passenger manifest (PRD §9 fields only — no bulk export).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}/passengers/{bookingId}/board": {
+      "post": {
+        "operationId": "DriverOpsController_board",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{boardingStatus, boardedAt}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 on cancelled/foreign bookings or illegal transitions."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Board a passenger (convergent — repeat returns 200 with current state).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}/passengers/{bookingId}/dropoff": {
+      "post": {
+        "operationId": "DriverOpsController_dropOff",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DropOffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{dropStatus, droppedAt}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 INVALID_DROPOFF_STATE on conflicting re-drop-off or missing station/reason."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record drop-off (terminal per booking).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}/passengers/{bookingId}/payment": {
+      "post": {
+        "operationId": "DriverOpsController_cashPayment",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{paymentStatus, paidAt}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 PAYMENT_NOT_ALLOWED when unboarded, already paid, or method mismatches."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark cash payment PAID (amount is read-only from the booking).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}/passengers/{bookingId}/rating": {
+      "post": {
+        "operationId": "DriverOpsController_ratePassenger",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassengerRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{passengerRating, ratedAt}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 RATING_NOT_ALLOWED on ineligible state or conflicting re-rating."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rate a passenger (COMPLETED trip; one write — change conflicts).",
+        "tags": [
+          "driver"
+        ]
+      }
+    },
+    "/driver/trips/{tripId}/passengers/{bookingId}/report": {
+      "post": {
+        "operationId": "DriverOpsController_reportPassenger",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": true,
+            "in": "path",
+            "description": "Trip id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassengerReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "409 REPORT_NOT_ALLOWED on foreign or cancelled-trip reports."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "File a passenger report (append-only, 1–2000 chars).",
+        "tags": [
+          "driver"
+        ]
+      }
     }
   },
   "info": {
@@ -3865,6 +6367,207 @@
           }
         }
       },
+      "FleetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Fleet A"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "ownerId",
+          "isActive",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateFleetDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Fleet A",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User id of the fleet owner (must exist and be active)."
+          },
+          "ownerRoleSlug": {
+            "type": "string",
+            "example": "fleet-owner",
+            "description": "Optional initial ACTIVE membership for the owner."
+          }
+        },
+        "required": [
+          "name",
+          "ownerId"
+        ]
+      },
+      "MyMembershipDto": {
+        "type": "object",
+        "properties": {
+          "fleetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "Fleet A"
+          },
+          "roleSlug": {
+            "type": "string",
+            "example": "fleet-operator",
+            "description": "Slug of the role held in this fleet."
+          },
+          "status": {
+            "type": "string",
+            "example": "ACTIVE"
+          }
+        },
+        "required": [
+          "fleetId",
+          "fleetName",
+          "roleSlug",
+          "status"
+        ]
+      },
+      "UpdateFleetDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Fleet A",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "FleetMemberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "REVOKED"
+            ],
+            "example": "ACTIVE"
+          },
+          "joinedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "assignedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "fleetId",
+          "roleId",
+          "status",
+          "joinedAt"
+        ]
+      },
+      "AddMemberDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Target user — must exist and be active (else 404)."
+          },
+          "roleSlug": {
+            "type": "string",
+            "example": "fleet-operator",
+            "description": "Role slug within this fleet; roleId takes precedence when both are given."
+          },
+          "roleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "REVOKED"
+            ],
+            "default": "ACTIVE"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "UpdateMemberDto": {
+        "type": "object",
+        "properties": {
+          "roleSlug": {
+            "type": "string",
+            "example": "fleet-operator"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "REVOKED"
+            ],
+            "description": "Suspending/revoking takes effect immediately (sessions invalidated)."
+          }
+        }
+      },
       "RoleDto": {
         "type": "object",
         "properties": {
@@ -4214,207 +6917,6 @@
           "roleSlugs"
         ]
       },
-      "FleetDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string",
-            "example": "Fleet A"
-          },
-          "ownerId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "isActive": {
-            "type": "boolean",
-            "example": true
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "ownerId",
-          "isActive",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "CreateFleetDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "Fleet A",
-            "minLength": 1,
-            "maxLength": 255
-          },
-          "ownerId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "User id of the fleet owner (must exist and be active)."
-          },
-          "ownerRoleSlug": {
-            "type": "string",
-            "example": "fleet-owner",
-            "description": "Optional initial ACTIVE membership for the owner."
-          }
-        },
-        "required": [
-          "name",
-          "ownerId"
-        ]
-      },
-      "MyMembershipDto": {
-        "type": "object",
-        "properties": {
-          "fleetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fleetName": {
-            "type": "string",
-            "example": "Fleet A"
-          },
-          "roleSlug": {
-            "type": "string",
-            "example": "fleet-operator",
-            "description": "Slug of the role held in this fleet."
-          },
-          "status": {
-            "type": "string",
-            "example": "ACTIVE"
-          }
-        },
-        "required": [
-          "fleetId",
-          "fleetName",
-          "roleSlug",
-          "status"
-        ]
-      },
-      "UpdateFleetDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "Fleet A",
-            "minLength": 1,
-            "maxLength": 255
-          },
-          "isActive": {
-            "type": "boolean",
-            "example": true
-          }
-        }
-      },
-      "FleetMemberDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fleetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "roleId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "ACTIVE",
-              "SUSPENDED",
-              "REVOKED"
-            ],
-            "example": "ACTIVE"
-          },
-          "joinedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "assignedBy": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "fleetId",
-          "roleId",
-          "status",
-          "joinedAt"
-        ]
-      },
-      "AddMemberDto": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Target user — must exist and be active (else 404)."
-          },
-          "roleSlug": {
-            "type": "string",
-            "example": "fleet-operator",
-            "description": "Role slug within this fleet; roleId takes precedence when both are given."
-          },
-          "roleId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "ACTIVE",
-              "SUSPENDED",
-              "REVOKED"
-            ],
-            "default": "ACTIVE"
-          }
-        },
-        "required": [
-          "userId"
-        ]
-      },
-      "UpdateMemberDto": {
-        "type": "object",
-        "properties": {
-          "roleSlug": {
-            "type": "string",
-            "example": "fleet-operator"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "ACTIVE",
-              "SUSPENDED",
-              "REVOKED"
-            ],
-            "description": "Suspending/revoking takes effect immediately (sessions invalidated)."
-          }
-        }
-      },
       "BusDto": {
         "type": "object",
         "properties": {
@@ -4755,6 +7257,276 @@
             ]
           }
         }
+      },
+      "BookingRatingDto": {
+        "type": "object",
+        "properties": {
+          "busRating": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "driverRating": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        "required": [
+          "busRating",
+          "driverRating"
+        ]
+      },
+      "OwnerProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "email": {
+            "type": "object",
+            "example": "admin@bus.local",
+            "nullable": true
+          },
+          "phoneNumber": {
+            "type": "object",
+            "example": "01001234567",
+            "nullable": true
+          },
+          "picture": {
+            "type": "object",
+            "maxLength": 1024,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Ahmed Hassan",
+            "maxLength": 255
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024,
+            "description": "Public avatar URL."
+          }
+        }
+      },
+      "CreateFleetBusDto": {
+        "type": "object",
+        "properties": {
+          "registrationNumber": {
+            "type": "string",
+            "example": "BUS-A-002",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Unique within the fleet (409 otherwise)."
+          },
+          "plateNumber": {
+            "type": "string",
+            "example": "ABC-1234",
+            "maxLength": 50
+          },
+          "capacity": {
+            "type": "number",
+            "example": 45,
+            "minimum": 1,
+            "maximum": 300
+          }
+        },
+        "required": [
+          "registrationNumber",
+          "capacity"
+        ]
+      },
+      "UpdateFleetBusDto": {
+        "type": "object",
+        "properties": {
+          "plateNumber": {
+            "type": "string",
+            "example": "ABC-1234",
+            "maxLength": 50
+          },
+          "capacity": {
+            "type": "number",
+            "example": 45,
+            "minimum": 1,
+            "maximum": 300
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "AddDriverDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Existing user id to invite (either userId or phone+name+password)."
+          },
+          "name": {
+            "type": "string",
+            "example": "Karim Driver"
+          },
+          "phone": {
+            "type": "string",
+            "example": "01001234567"
+          },
+          "password": {
+            "type": "string",
+            "example": "Passw0rd!123",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "roleSlug": {
+            "type": "string",
+            "example": "driver",
+            "description": "Role slug for the new membership (defaults to driver)."
+          }
+        }
+      },
+      "UpdateDriverDto": {
+        "type": "object",
+        "properties": {
+          "roleSlug": {
+            "type": "string",
+            "example": "driver"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "REVOKED"
+            ]
+          }
+        }
+      },
+      "AssignDriverDto": {
+        "type": "object",
+        "properties": {
+          "driverUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Driver user id (must hold an ACTIVE driver membership in the fleet)."
+          }
+        },
+        "required": [
+          "driverUserId"
+        ]
+      },
+      "UpdateDriverProfileDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Karim Driver",
+            "maxLength": 255
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      },
+      "ClaimBusDto": {
+        "type": "object",
+        "properties": {
+          "busId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Owned-fleet bus to claim as the operating bus."
+          }
+        },
+        "required": [
+          "busId"
+        ]
+      },
+      "DropOffDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "DROPPED_OFF",
+              "NOT_DROPPED_OFF"
+            ]
+          },
+          "stationId": {
+            "type": "string",
+            "description": "Station id — required when status is DROPPED_OFF."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason — required when status is NOT_DROPPED_OFF."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CashPaymentDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "CASH"
+            ],
+            "description": "Only cash is accepted on-device; the amount is read-only from the booking."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PAID"
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "status"
+        ]
+      },
+      "PassengerRatingDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        "required": [
+          "rating"
+        ]
+      },
+      "PassengerReportDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "note"
+        ]
       }
     }
   }

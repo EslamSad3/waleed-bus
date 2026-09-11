@@ -84,7 +84,7 @@ DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['buses', 'trips', 'bookings'] LOOP
+  FOREACH t IN ARRAY ARRAY['buses', 'trips', 'bookings', 'bus_assignments', 'passenger_reports'] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
     PERFORM app.__set_policy(t, 'tenant_isolation', format($ddl$
       CREATE POLICY tenant_isolation ON public.%I
@@ -192,7 +192,7 @@ GRANT USAGE ON SCHEMA public, app TO app_tenant;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO app_tenant;
 
 GRANT SELECT ON public.users TO app_tenant;
-GRANT UPDATE (name) ON public.users TO app_tenant;
+GRANT UPDATE (name, picture) ON public.users TO app_tenant;
 
 GRANT SELECT ON public.sessions, public.user_roles TO app_tenant;
 GRANT SELECT ON public.roles, public.permissions, public.role_permissions TO app_tenant;
@@ -200,6 +200,12 @@ GRANT SELECT ON public.fleets TO app_tenant;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.fleet_members TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.buses, public.trips, public.bookings TO app_tenant;
+
+-- Spec 003: assignments are written by owner assignment flows (INSERT + status
+-- updates; no service path deletes — the DELETE grant keeps the family
+-- uniform). Reports are append-only: drivers INSERT, owners SELECT.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.bus_assignments TO app_tenant;
+GRANT SELECT, INSERT ON public.passenger_reports TO app_tenant;
 
 GRANT INSERT ON public.audit_logs TO app_tenant;
 

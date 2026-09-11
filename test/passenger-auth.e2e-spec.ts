@@ -194,9 +194,11 @@ describe('Passenger auth (e2e)', () => {
       await verifyOtp('01000000013', '123456').expect(200);
       const wrong = await phoneLogin('01000000013', 'Wrongpass!123').expect(401);
       const unknown = await phoneLogin('01000000099', 'Passw0rd!123').expect(401);
+      // FLEET_OWNER never self-provisions, so it stays the mismatch probe
+      // (spec 003 US5: DRIVER logins provision a personal fleet instead).
       const badType = await request(t.app.getHttpServer())
         .post('/auth/login')
-        .send({ loginType: 'DRIVER', phone: '01000000013', password: 'Passw0rd!123' })
+        .send({ loginType: 'FLEET_OWNER', phone: '01000000013', password: 'Passw0rd!123' })
         .expect(401);
       for (const res of [wrong, unknown, badType]) {
         expect(res.body).toEqual({

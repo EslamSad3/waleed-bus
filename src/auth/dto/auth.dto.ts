@@ -28,6 +28,8 @@ export class LoginDto {
  * Shared login body (PRD #3): `loginType` selects the flow, absent means the
  * legacy email platform login. Passenger phone/provider variants are
  * validated conditionally in this single class so Nest validates the union.
+ * FLEET_OWNER/DRIVER select the phone+password fleet flows (spec 003):
+ * same phone/password fields, server-side account-type verification.
  */
 export class LoginRequestDto {
   @ApiPropertyOptional({ example: 'PASSENGER', enum: ['PASSENGER', 'FLEET_OWNER', 'DRIVER'] })
@@ -42,7 +44,9 @@ export class LoginRequestDto {
   @MaxLength(255)
   email?: string;
 
-  // Shared password field: legacy login, or passenger phone login.
+  // Shared password field: legacy login, passenger phone login, or
+  // FLEET_OWNER/DRIVER phone login (spec 003 — same field, server-side
+  // account-type verification).
   @ApiPropertyOptional({ example: 'Passw0rd!123', format: 'password', minLength: 8, maxLength: 128 })
   @ValidateIf((o: LoginRequestDto) => o.loginType === undefined || o.provider === undefined)
   @IsString()
@@ -50,7 +54,8 @@ export class LoginRequestDto {
   @MaxLength(128)
   password?: string;
 
-  // Passenger phone login (loginType present, no provider).
+  // Phone login (loginType present, no provider): PASSENGER plus the
+  // FLEET_OWNER/DRIVER fleet flows (spec 003).
   @ApiPropertyOptional({ example: '01000000000' })
   @ValidateIf((o: LoginRequestDto) => o.loginType !== undefined && o.provider === undefined)
   @IsString()

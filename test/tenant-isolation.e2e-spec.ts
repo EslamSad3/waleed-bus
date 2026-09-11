@@ -7,7 +7,9 @@ import { createTestApp } from './helpers/app.js';
 import { resetDatabase } from './helpers/db.js';
 import {
   addMember,
+  createPhoneUser,
   createUser,
+  ensureFleetDriverRoles,
   seedIsolationWorld,
   type IsolationWorld,
 } from './helpers/world.js';
@@ -299,5 +301,78 @@ describe('Tenant isolation (e2e)', () => {
       .delete(`/fleets/${world.fleetAId}/buses/${bus.body.data.id}`)
       .set('Authorization', `Bearer ${userAToken}`)
       .expect(200);
+  });
+
+  // Spec 003 matrix (quickstart Scenario C): owner/driver cross-fleet +
+  // fleet-less cross-visibility. Builders run inside the tests so the
+  // 14-test world above is untouched.
+  it('test 15: fleet-A owner cannot touch fleet-B buses (404) nor assign there', async () => {
+    await ensureFleetDriverRoles(t.system);
+    const ownerRole = await t.system.role.findUniqueOrThrow({ where: { slug: 'fleet_owner' } });
+    const ownerA = await createPhoneUser(t.system, { phone: '01009009001', password, name: 'Owner A' });
+    await addMember(t.system, { userId: ownerA.id, fleetId: world.fleetAId, roleId: ownerRole.id });
+    const ownerToken = (
+      await api().post('/auth/login').send({ loginType: 'FLEET_OWNER', phone: '01009009001', password }).expect(201)
+    ).body.data.accessToken as string;
+    const withFleet = (fleetId: string) => ({
+      get: (path: string) => api().get(path).set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId),
+      post: (path: string) => api().post(path).set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId),
+    });
+
+    await withFleet(world.fleetAId).get(`/fleet/buses/${world.busBId}`).expect(404);
+    const assign = await withFleet(world.fleetAId)
+      .post(`/fleet/buses/${world.busBId}/driver`)
+      .send({ driverUserId: ownerA.id });
+    expect(assign.status).toBe(404);
+    expect(assign.body).toMatchObject({ code: 'BUS_ACCESS_DENIED' });
+  });
+
+  it('test 16: fleet-A driver cannot operate fleet-B bookings (404, never 403)', async () => {
+    const driverRole = await t.system.role.findUniqueOrThrow({ where: { slug: 'driver' } });
+    const driverA = await createPhoneUser(t.system, { phone: '01009009002', password, name: 'Driver A' });
+    await addMember(t.system, { userId: driverA.id, fleetId: world.fleetAId, roleId: driverRole.id });
+    await t.system.busAssignment.create({
+      data: { fleetId: world.fleetAId, busId: world.busAId, driverUserId: driverA.id, status: 'ACTIVE' },
+    });
+    const driverToken = (
+      await api().post('/auth/login').send({ loginType: 'DRIVER', phone: '01009009002', password }).expect(201)
+    ).body.data.accessToken as string;
+
+    // Fleet-B booking through fleet-A scope: the guard anchors in-tx → 404.
+    const board = await api()
+      .post(`/driver/trips/${world.tripBId}/passengers/${world.bookingBId}/board`)
+      .set('Authorization', `Bearer ${driverToken}`)
+      .set('x-fleet-id', world.fleetAId);
+    expect(board.status).toBe(404);
+    expect(board.body).toMatchObject({ code: 'TRIP_ACCESS_DENIED' });
+
+    // No membership in B at all → guard rejects before any row access.
+    const noScope = await api()
+      .get(`/driver/trips/${world.tripBId}`)
+      .set('Authorization', `Bearer ${driverToken}`)
+      .set('x-fleet-id', world.fleetBId);
+    expect(noScope.status).toBe(403);
+  });
+
+  it('test 17: personal fleets are invisible across tenants in both directions', async () => {
+    const solo = await createPhoneUser(t.system, { phone: '01009009003', password, name: 'Solo' });
+    const soloToken = (
+      await api().post('/auth/login').send({ loginType: 'DRIVER', phone: '01009009003', password }).expect(201)
+    ).body.data.accessToken as string;
+    const membership = await t.system.fleetMember.findFirstOrThrow({ where: { userId: solo.id } });
+    const personalFleetId = membership.fleetId;
+
+    // Fleet-A operator has no membership in the personal fleet → 403.
+    await api()
+      .get(`/fleets/${personalFleetId}/buses`)
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(403);
+
+    // Solo driver has no membership in fleet A → 403 (never a row leak).
+    await api()
+      .get('/driver/bus')
+      .set('Authorization', `Bearer ${soloToken}`)
+      .set('x-fleet-id', world.fleetAId)
+      .expect(403);
   });
 });

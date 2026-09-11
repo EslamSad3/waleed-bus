@@ -1,5 +1,5 @@
 import { Type, applyDecorators } from '@nestjs/common';
-import { ApiExtraModels, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiExtraModels, ApiHeader, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { getSchemaPath } from '@nestjs/swagger';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../common/pagination.js';
 
@@ -68,6 +68,20 @@ export function ApiFleetIdParam(): MethodDecorator & ClassDecorator {
 /** Documented uuid path parameter for resource ids. */
 export function ApiUuidParam(name: string, description: string): MethodDecorator {
   return ApiParam({ name, required: true, description, schema: { type: 'string', format: 'uuid' } });
+}
+
+/**
+ * The fleet selector header. Used by routes without a `:fleetId` path
+ * parameter (owner/driver mobile surfaces); it selects the fleet but never
+ * proves authorization on its own — TenantContextGuard verifies membership.
+ */
+export function ApiFleetIdHeader(): MethodDecorator & ClassDecorator {
+  return ApiHeader({
+    name: 'x-fleet-id',
+    required: true,
+    description: 'Fleet selector (uuid) — a selector only; membership is verified server-side.',
+    schema: { type: 'string', format: 'uuid' },
+  });
 }
 
 /** Standard error responses for authenticated endpoints. */

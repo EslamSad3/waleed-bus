@@ -28,21 +28,21 @@ describe('AllExceptionsFilter', () => {
     const { host, captured } = makeHost();
     filter.catch(new NotFoundException('Fleet not found'), host);
     expect(captured.status).toBe(404);
-    expect(captured.body).toEqual({ statusCode: 404, message: 'Fleet not found' });
+    expect(captured.body).toEqual({ statusCode: 404, code: 'NOT_FOUND', message: 'Fleet not found' });
   });
 
   it('preserves validation error message arrays', () => {
     const { host, captured } = makeHost();
     filter.catch(new BadRequestException(['email must be an email']), host);
     expect(captured.status).toBe(400);
-    expect(captured.body).toEqual({ statusCode: 400, message: ['email must be an email'] });
+    expect(captured.body).toEqual({ statusCode: 400, code: 'BAD_REQUEST', message: ['email must be an email'] });
   });
 
   it('masks unknown errors as 500 without leaking internals', () => {
     const { host, captured } = makeHost();
     filter.catch(new Error('database password is wrong'), host);
     expect(captured.status).toBe(500);
-    expect(captured.body).toEqual({ statusCode: 500, message: 'Internal server error' });
+    expect(captured.body).toEqual({ statusCode: 500, code: 'INTERNAL_ERROR', message: 'Internal server error' });
   });
 
   it('handles non-HTTP exception objects with a status property', () => {
@@ -50,14 +50,14 @@ describe('AllExceptionsFilter', () => {
     const prismaLike = Object.assign(new Error('record not found'), { code: 'P2025' });
     filter.catch(prismaLike, host);
     expect(captured.status).toBe(404);
-    expect(captured.body).toEqual({ statusCode: 404, message: 'Resource not found' });
+    expect(captured.body).toEqual({ statusCode: 404, code: 'NOT_FOUND', message: 'Resource not found' });
   });
 
   it('still maps plain HttpException subclasses without response body objects', () => {
     const { host, captured } = makeHost();
     filter.catch(new HttpException('Forbidden resource', 403), host);
     expect(captured.status).toBe(403);
-    expect(captured.body).toEqual({ statusCode: 403, message: 'Forbidden resource' });
+    expect(captured.body).toEqual({ statusCode: 403, code: 'FORBIDDEN', message: 'Forbidden resource' });
   });
 
   it('passes through code/details/retryAfter from CodedException', () => {

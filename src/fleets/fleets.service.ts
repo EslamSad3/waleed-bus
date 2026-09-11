@@ -125,4 +125,42 @@ export class FleetsService {
       }));
     });
   }
+
+  /**
+   * Independent-driver onboarding (spec 003 US5, research R-10): provisions
+   * the driver's personal fleet — a `fleets` row owned by the driver plus
+   * an ACTIVE `independent_driver` membership — idempotently. Runs on the
+   * system path (no identity context can exist for a membership-less user),
+   * called only AFTER password verification by the DRIVER login flow.
+   * Returns the personal fleet id.
+   */
+  async ensurePersonalFleet(userId: string, displayName: string | null): Promise<string> {
+    const existing = await this.system.fleetMember.findFirst({
+      where: { userId, status: 'ACTIVE', role: { slug: 'independent_driver', isActive: true } },
+      include: { fleet: true },
+    });
+    if (existing) return existing.fleetId;
+    const role = await this.system.role.findUnique({ where: { slug: 'independent_driver' } });
+    if (!role || !role.isActive) {
+      throw new Error('independent_driver role is not seeded');
+    }
+    const name = `${displayName?.trim() || 'Driver'}'s Fleet`.slice(0, 255);
+    const fleet = await this.system.$transaction(async (tx) => {
+      const created = await tx.fleet.create({ data: { name, ownerId: userId } });
+      await tx.fleetMember.create({
+        data: { userId, fleetId: created.id, roleId: role.id, status: 'ACTIVE', assignedBy: userId },
+      });
+      return created;
+    });
+    await this.audit.log({
+      actorUserId: userId,
+      actorFleetId: fleet.id,
+      targetUserId: userId,
+      targetFleetId: fleet.id,
+      action: 'driver.fleet.provision',
+      resource: 'fleet',
+      resourceId: fleet.id,
+    });
+    return fleet.id;
+  }
 }

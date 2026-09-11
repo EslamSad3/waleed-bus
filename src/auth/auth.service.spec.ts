@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { ConfigService } from '../config/config.module.js';
 import { ProvidersService } from '../passenger-auth/providers.service.js';
 import { ThrottleService } from '../passenger-auth/throttle.service.js';
+import { FleetsService } from '../fleets/fleets.service.js';
 
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { AuthService } from './auth.service.js';
@@ -62,6 +63,7 @@ describe('AuthService', () => {
             reset: vi.fn(async () => undefined),
           },
         },
+        { provide: FleetsService, useValue: { ensurePersonalFleet: vi.fn() } },
         JwtService,
       ],
     }).compile();
