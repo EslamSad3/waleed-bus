@@ -15,6 +15,7 @@ import {
 } from '../passenger-auth/providers.service.js';
 import { ThrottleService } from '../passenger-auth/throttle.service.js';
 import { ConfigService } from '../config/config.module.js';
+import { FleetsService } from '../fleets/fleets.service.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import type { JwtPayload } from './jwt-payload.js';
 
@@ -53,6 +54,7 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly providers: ProvidersService,
     private readonly throttle: ThrottleService,
+    private readonly fleets: FleetsService,
   ) {}
 
   /** Lazily-computed dummy hash so unknown-phone logins cost ~one verify (no timing oracle). */
@@ -233,6 +235,145 @@ export class AuthService {
       userAgent: input.userAgent,
     });
     return { accessToken, refreshToken };
+  }
+
+  /**
+   * Fleet phone+password login (spec 003 FR-owner/driver). `loginType`
+   * selects the expected account shape and is verified server-side against
+   * live membership/role rows — it never grants authority by itself:
+   *   - FLEET_OWNER: owns ≥1 fleet OR holds an ACTIVE `fleet_owner` membership;
+   *   - DRIVER: holds an ACTIVE `driver`/`independent_driver` membership
+   *     (membership-free provisioning lands in US5/T050) or owns a fleet.
+   * Every mismatch shares the generic 401 (dummy-hash timing cover); a
+   * verified phone is required, like the passenger flow.
+   */
+  async loginFleetPhone(input: {
+    loginType: 'FLEET_OWNER' | 'DRIVER';
+    phone: string;
+    password: string;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<LoginResult> {
+    const method = input.loginType === 'FLEET_OWNER' ? 'fleet-owner-phone' : 'driver-phone';
+    let phone: string;
+    try {
+      phone = normalizePhone(input.phone);
+    } catch {
+      throw authenticationFailed();
+    }
+    await this.checkLoginBudget(`login:phone:${phone}`, input.ip);
+    const fail = async (targetUserId: string | undefined): Promise<void> => {
+      await this.recordLoginFailure(`login:phone:${phone}`, input.ip);
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        targetUserId,
+        metadata: { method },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+    };
+
+    const user = await this.system.user.findUnique({ where: { phoneNumber: phone } });
+    if (!user || !user.isActive || !user.passwordHash) {
+      await argon2.verify(await this.getDummyHash(), input.password).catch(() => false);
+      await fail(user?.id);
+      throw authenticationFailed();
+    }
+    const valid = await argon2.verify(user.passwordHash, input.password).catch(() => false);
+    if (!valid) {
+      await fail(user.id);
+      throw authenticationFailed();
+    }
+    if (!user.phoneVerifiedAt) {
+      await this.recordLoginFailure(`login:phone:${phone}`, input.ip);
+      await this.audit.log({
+        action: 'auth.login.failure',
+        resource: 'session',
+        targetUserId: user.id,
+        metadata: { method, code: 'PHONE_NOT_VERIFIED' },
+        ip: input.ip,
+        userAgent: input.userAgent,
+        success: false,
+      });
+      throw new CodedException(403, 'PHONE_NOT_VERIFIED', 'Phone verification is required.', {
+        phoneNumber: phone,
+      });
+    }
+    // Account-type verification against live rows (system path — no identity
+    // context exists yet). Mismatch is indistinguishable from bad credentials.
+    // US5 (research R-10): a credentialed DRIVER login with no fleet ties and
+    // no owned fleet provisions a personal fleet first — owners with fleets
+    // attempting DRIVER login still fail closed. Provisioning never leaks:
+    // any failure degrades to the generic 401 (indistinguishable from bad
+    // credentials — no setup/oracle signal).
+    let accountOk =
+      input.loginType === 'FLEET_OWNER'
+        ? await this.isFleetOwnerAccount(user.id)
+        : await this.isDriverAccount(user.id);
+    if (!accountOk && input.loginType === 'DRIVER') {
+      const owned = await this.system.fleet.findFirst({ where: { ownerId: user.id } });
+      if (!owned) {
+        try {
+          await this.fleets.ensurePersonalFleet(user.id, user.name);
+          accountOk = await this.isDriverAccount(user.id);
+        } catch {
+          accountOk = false;
+        }
+      }
+    }
+    if (!accountOk) {
+      await fail(user.id);
+      throw authenticationFailed();
+    }
+
+    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const accessToken = await this.signAccessToken({
+      sub: user.id,
+      email: user.email,
+      app_role: await this.resolveAppRole(user.id),
+      authVersion: user.authVersion,
+      sessionId: session,
+    });
+    await this.throttle.reset(`login:phone:${phone}`);
+    await this.audit.log({
+      action: 'auth.login.success',
+      resource: 'session',
+      targetUserId: user.id,
+      metadata: { method },
+      ip: input.ip,
+      userAgent: input.userAgent,
+    });
+    return { accessToken, refreshToken };
+  }
+
+  /** FLEET_OWNER account: owns ≥1 fleet or holds an ACTIVE fleet_owner membership. */
+  private async isFleetOwnerAccount(userId: string): Promise<boolean> {
+    const owned = await this.system.fleet.findFirst({ where: { ownerId: userId } });
+    if (owned) return true;
+    const membership = await this.system.fleetMember.findFirst({
+      where: { userId, status: 'ACTIVE', role: { slug: 'fleet_owner', isActive: true } },
+    });
+    return membership !== null;
+  }
+
+  /**
+   * DRIVER account: an ACTIVE `driver`/`independent_driver` membership.
+   * Fleet ownership alone does NOT qualify — `loginType` must reflect the
+   * actual account shape (research R-05). Independent drivers carry an
+   * `independent_driver` membership on their personal fleet (US5/T050), so
+   * no ownership fallback is needed here.
+   */
+  private async isDriverAccount(userId: string): Promise<boolean> {
+    const membership = await this.system.fleetMember.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        role: { slug: { in: ['driver', 'independent_driver'] }, isActive: true },
+      },
+    });
+    return membership !== null;
   }
 
   async refresh(rawToken: string, ip?: string, userAgent?: string): Promise<LoginResult> {

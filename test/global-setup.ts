@@ -31,6 +31,17 @@ async function isPostgresRunning(port: number): Promise<boolean> {
   }
 }
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Polls the port so a still-booting server is reused instead of clashing with it. */
+async function waitForPostgres(port: number, attempts = 6): Promise<boolean> {
+  for (let i = 0; i < attempts; i++) {
+    if (await isPostgresRunning(port)) return true;
+    await sleep(500);
+  }
+  return false;
+}
+
 export default async function globalSetup(): Promise<() => Promise<void>> {
   const useEmbedded = process.env.TEST_USE_EMBEDDED !== '0';
   const port = Number(process.env.TEST_PG_PORT ?? 5433);
@@ -40,7 +51,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   let embedded: InstanceType<typeof EmbeddedPostgres> | undefined;
 
   if (useEmbedded) {
-    const alreadyRunning = await isPostgresRunning(port);
+    const alreadyRunning = await waitForPostgres(port);
     embedded = alreadyRunning
       ? undefined
       : new EmbeddedPostgres({
@@ -54,7 +65,15 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       if (!existsSync(join(DATA_DIR, 'PG_VERSION'))) {
         await embedded.initialise();
       }
-      await embedded.start();
+      try {
+        await embedded.start();
+      } catch (error) {
+        throw new Error(
+          `Embedded PostgreSQL failed to start on port ${port} (${error instanceof Error ? error.message : String(error)}). ` +
+            `If this environment cannot run the embedded server, point e2e at an external local PostgreSQL: ` +
+            `TEST_USE_EMBEDDED=0 with localhost TEST_DATABASE_URL/TEST_DIRECT_URL.`,
+        );
+      }
     }
     for (const db of ['bus', 'bus_test']) {
       const client = new pg.Client({

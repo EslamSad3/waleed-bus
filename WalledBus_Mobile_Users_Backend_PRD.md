@@ -360,6 +360,10 @@ APPLE
 | Password | Yes |
 | Picture | No |
 | National ID | No |
+| Drivers | No |  // one to many
+| Trips | No |  one to many
+| Buss | NO |  one to many
+| Reports | NO | one to many
 
 Fleet Owners are created from the existing Admin Dashboard.
 
@@ -389,19 +393,20 @@ PATCH /me
 
 GET /fleet/buses
 GET /fleet/buses/{busId}
+POST /fleet/buses // add new bus
+PATCH /fleet/buses/{busId}
+POST /fleet/buses/{busId}/disable
+POST /fleet/buses/{busId}/reactivate
+POST /fleet/buses/{busId}/driver // assign driver to bus
+DELETE /fleet/buses/{busId}/driver // de-assign driver from bus
 
 GET /fleet/trips
 GET /fleet/trips/{tripId}
 
 GET /fleet/reports
 
-POST /fleet/buses
-PATCH /fleet/buses/{busId}
-POST /fleet/buses/{busId}/disable
-POST /fleet/buses/{busId}/reactivate
-
-POST /fleet/buses/{busId}/driver
-DELETE /fleet/buses/{busId}/driver
+POST /fleet/drivers // add driver to fleet
+GET/PATCH/DELETE /fleet/drivers/{driverId}
 ```
 
 ### Future Request-Oriented Design
@@ -436,6 +441,9 @@ Fleet Owner → API → Business Service → Request → Approval → Apply Chan
 | Password | Yes |
 | Picture | No |
 | National ID | No |
+| Fleet | No | one to one OR indpentent driver with its own bus
+| Bus | NO | one to one 
+| Reports | No | one to many
 
 Drivers are created from the existing Admin Dashboard.
 
@@ -469,6 +477,7 @@ GET /me
 PATCH /me
 
 GET /driver/bus
+GET /driver/fleet // get fleet data (name,phone )
 GET /driver/bus/{busId}
 
 GET /driver/trips

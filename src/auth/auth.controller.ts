@@ -16,7 +16,7 @@ export class AuthController {
   /** Response carries tokens only — authorization claims live inside the JWT. */
   @Public()
   @Post('login')
-  @ApiOperation({ summary: 'Shared login: email platform login, or PASSENGER phone / provider login.' })
+  @ApiOperation({ summary: 'Shared login: email platform login, PASSENGER phone / provider login, or FLEET_OWNER / DRIVER phone login.' })
   @ApiEnvelopeResponse(
     201,
     'Token pair issued. No role data is duplicated in the body — authorization claims live inside the JWT.',
@@ -33,8 +33,23 @@ export class AuthController {
     if (dto.loginType === undefined) {
       return this.authService.login({ email: dto.email as string, password: dto.password as string, ...context });
     }
-    // Only the passenger slice is in scope (spec 002); any other account
-    // type gets the same generic failure as wrong credentials (no oracle).
+    // Fleet flows (spec 003): phone+password with server-side account-type
+    // verification; mismatches share the generic failure (no oracle).
+    if (dto.loginType === 'FLEET_OWNER' || dto.loginType === 'DRIVER') {
+      if (dto.provider !== undefined) {
+        throw new CodedException(
+          401,
+          'AUTHENTICATION_FAILED',
+          'Unable to authenticate with the provided credentials.',
+        );
+      }
+      return this.authService.loginFleetPhone({
+        loginType: dto.loginType,
+        phone: dto.phone as string,
+        password: dto.password as string,
+        ...context,
+      });
+    }
     if (dto.loginType !== 'PASSENGER') {
       throw new CodedException(
         401,

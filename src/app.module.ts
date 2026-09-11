@@ -9,7 +9,9 @@ import { BookingsModule } from './bookings/bookings.module.js';
 import { BusesModule } from './buses/buses.module.js';
 import { resolveObserveCredentials } from './config/configuration.js';
 import { ConfigModule } from './config/config.module.js';
+import { DriverOpsModule } from './driver-ops/driver-ops.module.js';
 import { FleetsModule } from './fleets/fleets.module.js';
+import { FleetOwnerModule } from './fleet-owner/fleet-owner.module.js';
 import { HealthController, RootController } from './health.controller.js';
 import { PassengerAuthModule } from './passenger-auth/passenger-auth.module.js';
 import { PermissionsModule } from './permissions/permissions.module.js';
@@ -49,6 +51,8 @@ const observeCredentials = resolveObserveCredentials();
     TripsModule,
     BookingsModule,
     PassengerAuthModule,
+    FleetOwnerModule,
+    DriverOpsModule,
   ],
   controllers: [HealthController, RootController],
   providers: [

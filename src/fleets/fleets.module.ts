@@ -10,6 +10,6 @@ import { MembersService } from './members.service.js';
   imports: [AuditModule, AuthorizationModule],
   controllers: [FleetsController, MembersController],
   providers: [FleetsService, MembersService],
-  exports: [FleetsService],
+  exports: [FleetsService, MembersService],
 })
 export class FleetsModule {}

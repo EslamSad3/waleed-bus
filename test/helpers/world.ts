@@ -142,6 +142,62 @@ export async function createBooking(
   });
 }
 
+/** Phone+password user (spec 003 fleet flows): verified phone unless stated. */
+export async function createPhoneUser(
+  system: SystemPrismaService,
+  input: { phone: string; password: string; name?: string; verified?: boolean; isActive?: boolean },
+) {
+  return system.user.create({
+    data: {
+      phoneNumber: input.phone,
+      passwordHash: await hashPassword(input.password),
+      name: input.name ?? 'Fleet User',
+      phoneVerifiedAt: input.verified === false ? null : new Date(),
+      isActive: input.isActive ?? true,
+    },
+  });
+}
+
+export async function setTripStatus(
+  system: SystemPrismaService,
+  tripId: string,
+  status: string,
+) {
+  return system.trip.update({ where: { id: tripId }, data: { status } });
+}
+
+/**
+ * Canonical spec-003 roles (mirrors the fleet_owner_driver migration seeds).
+ * E2E suites truncate roles/permissions on reset, so every suite ensures its
+ * own world via this helper instead of relying on migration seeds.
+ */
+export async function ensureFleetDriverRoles(system: SystemPrismaService): Promise<void> {
+  await createRole(system, {
+    name: 'Fleet Owner',
+    slug: 'fleet_owner',
+    permissions: [
+      'fleet.buses.read', 'fleet.buses.create', 'fleet.buses.update',
+      'fleet.trips.read',
+      'fleet.drivers.read', 'fleet.drivers.create', 'fleet.drivers.update', 'fleet.drivers.delete',
+      'fleet.reports.read',
+    ],
+  });
+  await createRole(system, {
+    name: 'Driver',
+    slug: 'driver',
+    permissions: ['driver.context.read', 'driver.passengers.read', 'driver.trips.operate'],
+  });
+  await createRole(system, {
+    name: 'Independent Driver',
+    slug: 'independent_driver',
+    permissions: [
+      'fleet.buses.read', 'fleet.buses.create', 'fleet.buses.update',
+      'fleet.trips.read', 'fleet.reports.read',
+      'driver.context.read', 'driver.passengers.read', 'driver.trips.operate',
+    ],
+  });
+}
+
 export interface IsolationWorld {
   fleetAId: string;
   fleetBId: string;

@@ -16,12 +16,14 @@ interface JsonResponseType {
 }
 
 /**
- * Single error response shape: `{ statusCode, message }`, extended with
- * `code` / `details` / `retryAfter` when the thrown HttpException carries
- * them (see CodedException — PRD error catalog for mobile clients).
- * Unknown errors are masked as 500 so internals (stacks, connection strings)
- * never reach the client. Prisma P2025 (record not found) maps to 404 — the
- * standard answer for cross-tenant misses.
+ * Single error response shape: `{ statusCode, code, message, details? }`
+ * (PRD §26 catalog for mobile clients — see CodedException), extended with
+ * `retryAfter` on 429s. Plain framework exceptions (thrown without a code by
+ * guards/pipes) receive a stable default code per status so clients can rely
+ * on `code` always being present. Unknown errors are masked as 500 so
+ * internals (stacks, connection strings) never reach the client. Prisma
+ * P2025 (record not found) maps to 404 — the standard answer for
+ * cross-tenant misses.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -42,6 +44,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         if (coded.details !== undefined) out.details = coded.details;
         if (typeof coded.retryAfter === 'number') out.retryAfter = coded.retryAfter;
       }
+      if (typeof out.code !== 'string') out.code = defaultCodeFor(status);
       response.status(status).json(out);
       return;
     }
@@ -49,6 +52,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if ((exception as ErrorWithCode)?.code === 'P2025') {
       response.status(HttpStatus.NOT_FOUND).json({
         statusCode: HttpStatus.NOT_FOUND,
+        code: 'NOT_FOUND',
         message: 'Resource not found',
       });
       return;
@@ -60,7 +64,30 @@ export class AllExceptionsFilter implements ExceptionFilter {
     );
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      code: 'INTERNAL_ERROR',
       message: 'Internal server error',
     });
+  }
+}
+
+/** Stable fallback codes for framework exceptions thrown without a PRD code. */
+function defaultCodeFor(status: number): string {
+  switch (status) {
+    case HttpStatus.BAD_REQUEST:
+      return 'BAD_REQUEST';
+    case HttpStatus.UNAUTHORIZED:
+      return 'AUTHENTICATION_FAILED';
+    case HttpStatus.FORBIDDEN:
+      return 'FORBIDDEN';
+    case HttpStatus.NOT_FOUND:
+      return 'NOT_FOUND';
+    case HttpStatus.CONFLICT:
+      return 'CONFLICT';
+    case HttpStatus.UNPROCESSABLE_ENTITY:
+      return 'VALIDATION_FAILED';
+    case HttpStatus.TOO_MANY_REQUESTS:
+      return 'RATE_LIMITED';
+    default:
+      return status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_FAILED';
   }
 }
