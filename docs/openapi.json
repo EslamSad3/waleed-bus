@@ -4062,6 +4062,98 @@
         ]
       }
     },
+    "/fleet/buses/{busId}/trips": {
+      "get": {
+        "operationId": "FleetOwnerController_listBusTrips",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "description": "Bus id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of trips for the bus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Bus not found in this fleet (cross-fleet ids are also 404)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List owned trips scheduled on one bus (cursor pagination).",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
     "/fleet/trips": {
       "get": {
         "operationId": "FleetOwnerController_listTrips",

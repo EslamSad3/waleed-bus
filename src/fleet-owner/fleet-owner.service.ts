@@ -163,6 +163,29 @@ export class FleetOwnerService {
     return trip;
   }
 
+  async listBusTrips(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    busId: string,
+    query: { cursor?: string; limit?: string },
+  ): Promise<CursorPage<Trip>> {
+    // Ownership check first: cross-fleet bus ids 404 (never 403).
+    await this.getBus(actor, fleetContext, busId);
+    const { pageSize, ...args } = buildCursorArgs(query);
+    const run = async (tx: Prisma.TransactionClient): Promise<Trip[]> =>
+      tx.trip.findMany({
+        where: {
+          busId,
+          ...(fleetContext.membershipId === null ? { fleetId: fleetContext.fleetId } : {}),
+        },
+        ...args,
+        orderBy: { departAt: 'desc' },
+      });
+    return this.fleetPath
+      .run(actor, fleetContext, run, run)
+      .then((trips) => toCursorPage(trips, pageSize));
+  }
+
   getReports(
     actor: RequestUser,
     fleetContext: FleetContext,

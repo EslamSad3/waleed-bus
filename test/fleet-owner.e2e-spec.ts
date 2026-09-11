@@ -182,6 +182,44 @@ describe('Fleet owner (e2e)', () => {
     expect(rejected.body).toMatchObject({ statusCode: 401, code: 'AUTHENTICATION_FAILED' });
   });
 
+  it('GET /fleet/buses/:busId/trips returns only that bus trips; foreign bus 404', async () => {
+    const busA = (
+      await api()
+        .post('/fleet/buses')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .set('x-fleet-id', fleetId)
+        .send({ registrationNumber: 'OWN-TRIPS-A', capacity: 40 })
+    ).body.data.id as string;
+    const busB = (
+      await api()
+        .post('/fleet/buses')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .set('x-fleet-id', fleetId)
+        .send({ registrationNumber: 'OWN-TRIPS-B', capacity: 40 })
+    ).body.data.id as string;
+
+    const tripA1 = await createTrip(t.system, { fleetId, busId: busA, origin: 'Cairo', destination: 'Giza' });
+    const tripA2 = await createTrip(t.system, { fleetId, busId: busA, origin: 'Cairo', destination: 'Suez' });
+    await createTrip(t.system, { fleetId, busId: busB, origin: 'Cairo', destination: 'Luxor' });
+
+    const page = await api()
+      .get(`/fleet/buses/${busA}/trips`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
+    expect(page.status).toBe(200);
+    expect(page.body.data).toHaveProperty('nextCursor');
+    const ids = (page.body.data.items as Array<{ id: string }>).map((row) => row.id);
+    expect(ids).toContain(tripA1.id);
+    expect(ids).toContain(tripA2.id);
+    expect(page.body.data.items.every((row: { busId: string }) => row.busId === busA)).toBe(true);
+
+    const foreign = await api()
+      .get(`/fleet/buses/${otherBusId}/trips`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
+    expect(foreign.status).toBe(404);
+  });
+
   it('driver roster: invite by phone → list → get → update revokes sessions → remove', async () => {
     const added = await api()
       .post('/fleet/drivers')

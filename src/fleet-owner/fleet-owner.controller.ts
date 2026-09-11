@@ -145,6 +145,22 @@ export class FleetOwnerController {
     return this.lifecycle.reactivate(actor, fleetContext, busId);
   }
 
+  @Get('fleet/buses/:busId/trips')
+  @RequirePermission('fleet.trips.read')
+  @ApiOperation({ summary: 'List owned trips scheduled on one bus (cursor pagination).' })
+  @ApiUuidParam('busId', 'Bus id (uuid).')
+  @ApiCursorPagination()
+  @ApiEnvelopeResponse(200, 'Cursor page of trips for the bus.')
+  @ApiNotFound('Bus not found in this fleet (cross-fleet ids are also 404).')
+  listBusTrips(
+    @CurrentUser() actor: RequestUser,
+    @CurrentFleet() fleetContext: FleetContext,
+    @Param('busId', ParseUUIDPipe) busId: string,
+    @Query() query: { cursor?: string; limit?: string },
+  ) {
+    return this.fleetOwner.listBusTrips(actor, fleetContext, busId, query);
+  }
+
   @Get('fleet/trips')
   @RequirePermission('fleet.trips.read')
   @ApiOperation({ summary: 'List owned fleet trips (cursor pagination, read-only in v1).' })

@@ -32,6 +32,7 @@ DELETE /fleet/buses/{busId}/driver # unassign (row → ENDED)
 ```http
 GET /fleet/trips
 GET /fleet/trips/{tripId}
+GET /fleet/buses/{busId}/trips   # trips scheduled on one bus (cursor page; cross-fleet busId → 404)
 ```
 
 Read-only in v1 (trip creation stays with the existing platform flow).
