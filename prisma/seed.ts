@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 
   const exampleRoles = [
     {
-      slug: 'fleet-owner',
+      slug: 'fleet_owner',
       name: 'Fleet Owner',
       permissions: [
         'fleets.read', 'fleets.update', 'users.read', 'users.create', 'users.update',

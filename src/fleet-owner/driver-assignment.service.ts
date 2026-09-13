@@ -49,6 +49,13 @@ export class DriverAssignmentService {
       if (!bus) {
         throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
       }
+      if (bus.isActive === false) {
+        throw new CodedException(
+          409,
+          'DRIVER_ASSIGNMENT_NOT_ALLOWED',
+          'An inactive bus cannot receive a driver assignment.',
+        );
+      }
       const membership = await tx.fleetMember.findFirst({
         where: {
           userId: driverUserId,

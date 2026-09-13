@@ -15,8 +15,11 @@ import type { FleetMember, Prisma } from '../generated/prisma/client.js';
 export interface AddDriverInput {
   userId?: string;
   name?: string;
+  nickname?: string;
   phone?: string;
   password?: string;
+  picture?: string;
+  nationalId?: string;
   roleSlug?: string;
 }
 
@@ -31,7 +34,18 @@ export interface RosterEntry extends Record<string, unknown> {
   roleSlug: string;
   status: string;
   name: string | null;
+  nickname: string | null;
   phoneNumber: string | null;
+  picture: string | null;
+  nationalId: string | null;
+  assignments: {
+    id: string;
+    busId: string;
+    registrationNumber: string;
+    status: string;
+    createdAt: Date;
+    endedAt: Date | null;
+  }[];
 }
 
 /**
@@ -58,10 +72,13 @@ export class DriverRosterService {
     fleetContext: FleetContext,
     input: AddDriverInput,
   ): Promise<RosterEntry> {
-    const userId = await this.resolveTargetUser(input);
-    const run = async (tx: Prisma.TransactionClient): Promise<FleetMember> => {
+    // Cross-boundary onboarding must create the global user and tenant
+    // membership together. The controller guards have already authorized the
+    // actor; this privileged transaction always filters by the verified fleet.
+    const { membership, userId } = await this.system.$transaction(async (tx) => {
       const role = await this.resolveDriverRole(tx, input.roleSlug);
-      return tx.fleetMember
+      const userId = await this.resolveTargetUser(tx, input);
+      const membership = await tx.fleetMember
         .create({
           data: {
             userId,
@@ -74,8 +91,8 @@ export class DriverRosterService {
         .catch((error) => {
           throw translatePrismaError(error, 'Membership');
         });
-    };
-    const membership = await this.fleetPath.run(actor, fleetContext, run, run);
+      return { membership, userId };
+    });
     await this.invalidateUserSessions(userId);
     await this.audit.log({
       actorUserId: actor.id,
@@ -199,17 +216,17 @@ export class DriverRosterService {
   // --- helpers ---------------------------------------------------------------
 
   /** Existing user by id, or a fresh phone+password account (owner vouches the phone). */
-  private async resolveTargetUser(input: AddDriverInput): Promise<string> {
+  private async resolveTargetUser(tx: Prisma.TransactionClient, input: AddDriverInput): Promise<string> {
     if (input.userId) {
-      const target = await this.system.user.findUnique({ where: { id: input.userId } });
+      const target = await tx.user.findUnique({ where: { id: input.userId } });
       if (!target || !target.isActive) {
         throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Target user not found or inactive.');
       }
       return target.id;
     }
-    if (!input.phone || !input.password) {
-      throw new CodedException(422, 'VALIDATION_FAILED', 'Provide userId or phone+name+password.', {
-        fields: { userId: 'either userId or phone+password is required' },
+    if (!input.name || !input.nickname || !input.phone || !input.password) {
+      throw new CodedException(422, 'VALIDATION_FAILED', 'Provide userId or complete driver details.', {
+        fields: { userId: 'either userId or name+nickname+phone+password is required' },
       });
     }
     let phone: string;
@@ -225,12 +242,15 @@ export class DriverRosterService {
         fields: { password: 'password must be 8–128 characters' },
       });
     }
-    const created = await this.system.user.create({
+    const created = await tx.user.create({
       data: {
-        name: input.name ?? null,
+        name: input.name.trim(),
+        nickname: input.nickname.trim(),
         phoneNumber: phone,
         phoneVerifiedAt: new Date(),
         passwordHash: await argon2.hash(input.password),
+        picture: input.picture?.trim() || null,
+        nationalId: input.nationalId?.trim() || null,
       },
     }).catch((error) => {
       throw translatePrismaError(error, 'User');
@@ -273,8 +293,22 @@ export class DriverRosterService {
             where: { id: { in: [...new Set(memberships.map((m) => m.roleId))] } },
           })
         : [];
+    const assignments =
+      ids.length > 0
+        ? await this.system.busAssignment.findMany({
+            where: { driverUserId: { in: ids }, fleetId: memberships[0]?.fleetId },
+            include: { bus: { select: { registrationNumber: true } } },
+            orderBy: { createdAt: 'desc' },
+          })
+        : [];
     const byUser = new Map(users.map((u) => [u.id, u]));
     const byRole = new Map(roles.map((r) => [r.id, r]));
+    const byDriver = new Map<string, typeof assignments>();
+    for (const assignment of assignments) {
+      const rows = byDriver.get(assignment.driverUserId) ?? [];
+      rows.push(assignment);
+      byDriver.set(assignment.driverUserId, rows);
+    }
     return memberships.map((m) => ({
       id: m.id,
       userId: m.userId,
@@ -283,7 +317,18 @@ export class DriverRosterService {
       roleSlug: byRole.get(m.roleId)?.slug ?? '',
       status: m.status,
       name: byUser.get(m.userId)?.name ?? null,
+      nickname: byUser.get(m.userId)?.nickname ?? null,
       phoneNumber: byUser.get(m.userId)?.phoneNumber ?? null,
+      picture: byUser.get(m.userId)?.picture ?? null,
+      nationalId: byUser.get(m.userId)?.nationalId ?? null,
+      assignments: (byDriver.get(m.userId) ?? []).map((assignment) => ({
+        id: assignment.id,
+        busId: assignment.busId,
+        registrationNumber: assignment.bus.registrationNumber,
+        status: assignment.status,
+        createdAt: assignment.createdAt,
+        endedAt: assignment.endedAt,
+      })),
     }));
   }
 

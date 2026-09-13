@@ -86,6 +86,17 @@ describe('DriverAssignmentService', () => {
     expect(tx.busAssignment.create).not.toHaveBeenCalled();
   });
 
+  it('assign rejects an inactive bus', async () => {
+    const { service, tx } = makeService({
+      bus: { id: 'bus-1', fleetId: 'fleet-1', isActive: false },
+      membership: { id: 'mem-1', status: 'ACTIVE' },
+    });
+    const error = await service.assign(ACTOR, FLEET, 'bus-1', 'driver-1').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CodedException);
+    expect((error as CodedException).getStatus()).toBe(409);
+    expect(tx.busAssignment.create).not.toHaveBeenCalled();
+  });
+
   it('unassign ends the live row; unassign with none active is 404', async () => {
     const withRow = makeService({
       bus: { id: 'bus-1', fleetId: 'fleet-1' },

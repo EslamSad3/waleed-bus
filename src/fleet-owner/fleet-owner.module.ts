@@ -6,12 +6,14 @@ import { BusLifecycleService } from './bus-lifecycle.service.js';
 import { DriverAssignmentService } from './driver-assignment.service.js';
 import { DriverRosterService } from './driver-roster.service.js';
 import { FleetOwnerController } from './fleet-owner.controller.js';
+import { FleetOwnerAdminController } from './fleet-owner-admin.controller.js';
+import { FleetOwnerAdminService } from './fleet-owner-admin.service.js';
 import { FleetOwnerService } from './fleet-owner.service.js';
 
 @Module({
   imports: [PrismaModule, AuthorizationModule, AuditModule],
-  controllers: [FleetOwnerController],
-  providers: [FleetOwnerService, BusLifecycleService, DriverRosterService, DriverAssignmentService],
-  exports: [FleetOwnerService, BusLifecycleService, DriverRosterService, DriverAssignmentService],
+  controllers: [FleetOwnerController, FleetOwnerAdminController],
+  providers: [FleetOwnerService, FleetOwnerAdminService, BusLifecycleService, DriverRosterService, DriverAssignmentService],
+  exports: [FleetOwnerService, FleetOwnerAdminService, BusLifecycleService, DriverRosterService, DriverAssignmentService],
 })
 export class FleetOwnerModule {}

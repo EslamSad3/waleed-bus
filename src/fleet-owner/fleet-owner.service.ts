@@ -47,6 +47,7 @@ export class FleetOwnerService {
       return {
         id: user.id,
         name: user.name,
+        nickname: user.nickname,
         email: user.email,
         phoneNumber: user.phoneNumber,
         picture: user.picture,
@@ -54,12 +55,13 @@ export class FleetOwnerService {
     });
   }
 
-  updateProfile(userId: string, input: { name?: string; picture?: string }): Promise<Record<string, unknown>> {
+  updateProfile(userId: string, input: { name?: string; nickname?: string; picture?: string }): Promise<Record<string, unknown>> {
     return this.tenantContext.withUserContext(userId, async (tx) => {
       const user = await tx.user.update({ where: { id: userId }, data: input });
       return {
         id: user.id,
         name: user.name,
+        nickname: user.nickname,
         email: user.email,
         phoneNumber: user.phoneNumber,
         picture: user.picture,

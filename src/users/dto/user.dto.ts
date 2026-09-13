@@ -117,7 +117,7 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({
     type: [String],
-    example: ['fleet-owner'],
+    example: ['fleet_owner'],
     description: 'Global role slugs assigned at creation (unknown/inactive slugs → 409).',
   })
   @IsOptional()
@@ -149,7 +149,7 @@ export class UpdateUserDto {
 export class SetUserRolesDto {
   @ApiProperty({
     type: [String],
-    example: ['fleet-owner'],
+    example: ['fleet_owner'],
     description: 'Full replacement set of global role slugs. Removing the last active super admin → 409.',
   })
   @IsArray()
@@ -207,7 +207,7 @@ export class CreateFleetDto {
   @Matches(/^[0-9a-fA-F-]{36}$/)
   ownerId!: string;
 
-  @ApiPropertyOptional({ example: 'fleet-owner', description: 'Optional initial ACTIVE membership for the owner.' })
+  @ApiPropertyOptional({ example: 'fleet_owner', description: 'Optional initial ACTIVE membership for the owner.' })
   @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)

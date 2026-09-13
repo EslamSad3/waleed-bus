@@ -4921,6 +4921,265 @@
         ]
       }
     },
+    "/fleet-owners": {
+      "post": {
+        "operationId": "FleetOwnerAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFleetOwnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Fleet owner and initial fleet created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetOwnerAccountDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "Phone or national ID is already registered."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atomically create a fleet-owner account, first fleet, and ACTIVE membership.",
+        "tags": [
+          "fleet-owner-admin"
+        ]
+      },
+      "get": {
+        "operationId": "FleetOwnerAdminController_findAll",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of fleet owners.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FleetOwnerAccountDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List fleet owners and their owned fleets.",
+        "tags": [
+          "fleet-owner-admin"
+        ]
+      }
+    },
+    "/fleet-owners/{id}": {
+      "patch": {
+        "operationId": "FleetOwnerAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet-owner user id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFleetOwnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fleet owner updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetOwnerAccountDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet owner not found."
+          },
+          "409": {
+            "description": "Phone or national ID is already registered."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a fleet-owner account. Deactivation revokes active sessions.",
+        "tags": [
+          "fleet-owner-admin"
+        ]
+      },
+      "get": {
+        "operationId": "FleetOwnerAdminController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet-owner user id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fleet owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FleetOwnerAccountDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet owner not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch one fleet owner and owned fleets.",
+        "tags": [
+          "fleet-owner-admin"
+        ]
+      }
+    },
     "/driver/me": {
       "patch": {
         "operationId": "DriverOpsController_updateMe",
@@ -6219,7 +6478,7 @@
             "description": "Structured, secret-free context (emails, slugs, permission keys…).",
             "example": {
               "roleSlugs": [
-                "fleet-owner"
+                "fleet_owner"
               ]
             },
             "nullable": true,
@@ -6420,7 +6679,7 @@
           },
           "ownerRoleSlug": {
             "type": "string",
-            "example": "fleet-owner",
+            "example": "fleet_owner",
             "description": "Optional initial ACTIVE membership for the owner."
           }
         },
@@ -6863,7 +7122,7 @@
           },
           "globalRoleSlugs": {
             "example": [
-              "fleet-owner"
+              "fleet_owner"
             ],
             "description": "Global role slugs assigned at creation (unknown/inactive slugs → 409).",
             "type": "array",
@@ -6904,7 +7163,7 @@
         "properties": {
           "roleSlugs": {
             "example": [
-              "fleet-owner"
+              "fleet_owner"
             ],
             "description": "Full replacement set of global role slugs. Removing the last active super admin → 409.",
             "type": "array",
@@ -7288,6 +7547,10 @@
             "type": "string",
             "example": "Ahmed Hassan"
           },
+          "nickname": {
+            "type": "string",
+            "example": "Ahmed"
+          },
           "email": {
             "type": "object",
             "example": "admin@bus.local",
@@ -7315,6 +7578,11 @@
             "type": "string",
             "example": "Ahmed Hassan",
             "maxLength": 255
+          },
+          "nickname": {
+            "type": "string",
+            "example": "Ahmed",
+            "maxLength": 100
           },
           "picture": {
             "type": "string",
@@ -7380,18 +7648,34 @@
           },
           "name": {
             "type": "string",
-            "example": "Karim Driver"
+            "example": "Karim Driver",
+            "description": "Required when userId is omitted."
+          },
+          "nickname": {
+            "type": "string",
+            "example": "Karim",
+            "description": "Required when userId is omitted."
           },
           "phone": {
             "type": "string",
-            "example": "01001234567"
+            "example": "01001234567",
+            "description": "Required when userId is omitted."
           },
           "password": {
             "type": "string",
             "example": "Passw0rd!123",
             "format": "password",
             "minLength": 8,
-            "maxLength": 128
+            "maxLength": 128,
+            "description": "Required when userId is omitted."
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "nationalId": {
+            "type": "string",
+            "example": "29801011234567"
           },
           "roleSlug": {
             "type": "string",
@@ -7429,6 +7713,167 @@
         "required": [
           "driverUserId"
         ]
+      },
+      "FleetOwnerFleetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ahmed Transport"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isActive"
+        ]
+      },
+      "FleetOwnerAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "nickname": {
+            "type": "string",
+            "example": "Ahmed"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "01001234567"
+          },
+          "picture": {
+            "type": "object",
+            "nullable": true
+          },
+          "nationalId": {
+            "type": "object",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "fleets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FleetOwnerFleetDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "nickname",
+          "phoneNumber",
+          "isActive",
+          "fleets",
+          "createdAt"
+        ]
+      },
+      "CreateFleetOwnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Ahmed Hassan",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "nickname": {
+            "type": "string",
+            "example": "Ahmed",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "phone": {
+            "type": "string",
+            "example": "01001234567"
+          },
+          "password": {
+            "type": "string",
+            "example": "Passw0rd!123",
+            "format": "password",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024,
+            "nullable": true
+          },
+          "nationalId": {
+            "type": "string",
+            "example": "29801011234567",
+            "nullable": true
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "Ahmed Transport",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "name",
+          "nickname",
+          "phone",
+          "password",
+          "fleetName"
+        ]
+      },
+      "UpdateFleetOwnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Ahmed Hassan",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "nickname": {
+            "type": "string",
+            "example": "Ahmed",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "phone": {
+            "type": "string",
+            "example": "01001234567"
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024,
+            "nullable": true
+          },
+          "nationalId": {
+            "type": "string",
+            "example": "29801011234567",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true,
+            "description": "Deactivating revokes active sessions."
+          }
+        }
       },
       "UpdateDriverProfileDto": {
         "type": "object",

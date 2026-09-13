@@ -22,6 +22,7 @@ import {
  */
 describe('Fleet owner (e2e)', () => {
   let t: TestApp;
+  let adminToken: string;
   let ownerToken: string;
   let fleetId: string;
   let otherFleetId: string;
@@ -38,6 +39,19 @@ describe('Fleet owner (e2e)', () => {
     const system = t.system;
     await resetDatabase(loadConfig(process.env).database.systemUrl);
     await ensureFleetDriverRoles(system);
+
+    await createRole(system, {
+      name: 'Super Admin',
+      slug: 'super_admin',
+      isSystem: true,
+      permissions: ['users.create', 'users.read', 'fleets.create', 'fleets.read'],
+    });
+    await createUser(system, {
+      email: 'fleet-admin@example.com',
+      password,
+      globalRoleSlug: 'super_admin',
+    });
+    adminToken = (await api().post('/auth/login').send({ email: 'fleet-admin@example.com', password }).expect(201)).body.data.accessToken;
 
     const ownerRole = await system.role.findUniqueOrThrow({ where: { slug: 'fleet_owner' } });
     const owner = await createPhoneUser(system, { phone: ownerPhone, password, name: 'Owner Ahmed' });
@@ -67,6 +81,45 @@ describe('Fleet owner (e2e)', () => {
 
     const mismatch = await login('DRIVER', ownerPhone);
     expect(mismatch.body).toMatchObject({ statusCode: 401, code: 'AUTHENTICATION_FAILED' });
+  });
+
+  it('super admin atomically creates a login-ready fleet owner and initial fleet', async () => {
+    const phone = '01001001022';
+    const created = await api()
+      .post('/fleet-owners')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'New Owner',
+        nickname: 'Owner',
+        phone,
+        password,
+        nationalId: '29801011234567',
+        fleetName: 'New Owner Fleet',
+      })
+      .expect(201);
+
+    expect(created.body).toMatchObject({
+      statusCode: 201,
+      data: {
+        name: 'New Owner',
+        nickname: 'Owner',
+        phoneNumber: phone,
+        fleets: [{ name: 'New Owner Fleet', isActive: true }],
+      },
+    });
+    const membership = await t.system.fleetMember.findFirst({
+      where: { userId: created.body.data.id, role: { slug: 'fleet_owner' }, status: 'ACTIVE' },
+    });
+    expect(membership).not.toBeNull();
+
+    const loginResult = await login('FLEET_OWNER', phone).expect(201);
+    expect(loginResult.body.data.accessToken).toBeTypeOf('string');
+
+    const duplicate = await api()
+      .post('/fleet-owners')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Duplicate', nickname: 'Dup', phone, password, fleetName: 'No Fleet' });
+    expect(duplicate.body).toMatchObject({ statusCode: 409, code: 'ACCOUNT_ALREADY_EXISTS' });
   });
 
   it('GET /me returns the caller profile', async () => {
@@ -225,7 +278,7 @@ describe('Fleet owner (e2e)', () => {
       .post('/fleet/drivers')
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId)
-      .send({ name: 'Driver Karim', phone: '01002002001', password });
+      .send({ name: 'Driver Karim', nickname: 'Karim', phone: '01002002001', password });
     expect(added.status).toBe(201);
     const memberId = added.body.data.id as string;
     const driverUserId = added.body.data.userId as string;
@@ -273,14 +326,14 @@ describe('Fleet owner (e2e)', () => {
         .post('/fleet/drivers')
         .set('Authorization', `Bearer ${ownerToken}`)
         .set('x-fleet-id', fleetId)
-        .send({ name: 'Driver One', phone: '01002002002', password })
+        .send({ name: 'Driver One', nickname: 'One', phone: '01002002002', password })
     ).body.data;
     const d2 = (
       await api()
         .post('/fleet/drivers')
         .set('Authorization', `Bearer ${ownerToken}`)
         .set('x-fleet-id', fleetId)
-        .send({ name: 'Driver Two', phone: '01002002003', password })
+        .send({ name: 'Driver Two', nickname: 'Two', phone: '01002002003', password })
     ).body.data;
 
     const assign = (driverUserId: string) =>

@@ -28,7 +28,7 @@ export class AuditLogDto {
 
   @ApiPropertyOptional({
     description: 'Structured, secret-free context (emails, slugs, permission keys…).',
-    example: { roleSlugs: ['fleet-owner'] },
+    example: { roleSlugs: ['fleet_owner'] },
     nullable: true,
     additionalProperties: true,
   })

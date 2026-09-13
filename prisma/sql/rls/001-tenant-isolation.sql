@@ -186,6 +186,35 @@ CREATE POLICY insert_own ON public.audit_logs
   WITH CHECK (actor_user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
 
 -- ---------------------------------------------------------------------------
+-- 6a. Authentication infrastructure: system path only.
+--
+-- These tables contain provider identities, one-time verification material,
+-- and global throttle counters. Passenger-auth services deliberately use the
+-- privileged system connection for them, so tenant requests must never read
+-- or mutate their rows directly. A deny-all policy keeps the RLS invariant
+-- explicit while the table owner retains the required system-path access.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'user_auth_providers',
+    'phone_verification_challenges',
+    'throttle_counters'
+  ] LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    PERFORM app.__set_policy(t, 'system_only', format($ddl$
+      CREATE POLICY system_only ON public.%I
+        FOR ALL
+        USING (false)
+        WITH CHECK (false)
+    $ddl$, t));
+    EXECUTE format('REVOKE ALL ON TABLE public.%I FROM app_tenant', t);
+  END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------------
 -- 7. Grants for app_tenant (least privilege; owner keeps full control)
 -- ---------------------------------------------------------------------------
 GRANT USAGE ON SCHEMA public, app TO app_tenant;

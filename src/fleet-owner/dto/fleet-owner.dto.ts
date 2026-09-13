@@ -7,10 +7,12 @@ import {
   IsString,
   IsUUID,
   Length,
+  Matches,
   Max,
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 /** Documentation-only response model for the caller's own profile. */
@@ -20,6 +22,9 @@ export class OwnerProfileDto {
 
   @ApiPropertyOptional({ example: 'Ahmed Hassan' })
   name?: string;
+
+  @ApiPropertyOptional({ example: 'Ahmed' })
+  nickname?: string;
 
   @ApiPropertyOptional({ example: 'admin@bus.local', nullable: true })
   email?: string | null;
@@ -37,6 +42,12 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(255)
   name?: string;
+
+  @ApiPropertyOptional({ example: 'Ahmed', maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  nickname?: string;
 
   @ApiPropertyOptional({ maxLength: 1024, description: 'Public avatar URL.' })
   @IsOptional()
@@ -97,24 +108,44 @@ export class AddDriverDto {
   @IsUUID()
   userId?: string;
 
-  @ApiPropertyOptional({ example: 'Karim Driver' })
-  @IsOptional()
+  @ApiPropertyOptional({ example: 'Karim Driver', description: 'Required when userId is omitted.' })
+  @ValidateIf((o: AddDriverDto) => !o.userId)
   @IsString()
-  @MaxLength(255)
+  @Length(1, 255)
   name?: string;
 
-  @ApiPropertyOptional({ example: '01001234567' })
-  @IsOptional()
+  @ApiPropertyOptional({ example: 'Karim', description: 'Required when userId is omitted.' })
+  @ValidateIf((o: AddDriverDto) => !o.userId)
   @IsString()
-  @MaxLength(20)
+  @Length(1, 100)
+  nickname?: string;
+
+  @ApiPropertyOptional({ example: '01001234567', description: 'Required when userId is omitted.' })
+  @ValidateIf((o: AddDriverDto) => !o.userId)
+  @IsString()
+  @Matches(/^(?:\+20|0020|0)?1\d{9}$/, {
+    message: 'phone must be a valid Egyptian mobile number',
+  })
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'Passw0rd!123', format: 'password', minLength: 8, maxLength: 128 })
-  @IsOptional()
+  @ApiPropertyOptional({ example: 'Passw0rd!123', format: 'password', minLength: 8, maxLength: 128, description: 'Required when userId is omitted.' })
+  @ValidateIf((o: AddDriverDto) => !o.userId)
   @IsString()
   @MinLength(8)
   @MaxLength(128)
   password?: string;
+
+  @ApiPropertyOptional({ maxLength: 1024 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  picture?: string;
+
+  @ApiPropertyOptional({ example: '29801011234567' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{14}$/, { message: 'nationalId must be exactly 14 digits' })
+  nationalId?: string;
 
   @ApiPropertyOptional({ example: 'driver', description: 'Role slug for the new membership (defaults to driver).' })
   @IsOptional()
