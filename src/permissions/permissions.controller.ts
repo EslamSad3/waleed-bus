@@ -1,11 +1,35 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
+import {
+  Platform,
+  RequirePermission,
+} from '../authorization/decorators/permissions.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { ApiAuthErrors, ApiConflict, ApiCursorPagination, ApiEnvelopeResponse, ApiNotFound, ApiUuidParam } from '../openapi/api-helpers.js';
+import {
+  ApiAuthErrors,
+  ApiConflict,
+  ApiCursorPagination,
+  ApiEnvelopeResponse,
+  ApiNotFound,
+  ApiUuidParam,
+} from '../openapi/api-helpers.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import { PermissionsService } from './permissions.service.js';
-import { CreatePermissionDto, PermissionDto, UpdatePermissionDto } from './dto/permission.dto.js';
+import {
+  CreatePermissionDto,
+  PermissionDto,
+  UpdatePermissionDto,
+} from './dto/permission.dto.js';
 
 @ApiTags('permissions')
 @ApiSecurity('bearer')
@@ -28,7 +52,12 @@ export class PermissionsController {
   @RequirePermission('permissions.read')
   @ApiOperation({ summary: 'List the permission catalog (cursor pagination).' })
   @ApiCursorPagination()
-  @ApiEnvelopeResponse(200, 'Cursor page of permissions (items + nextCursor).', PermissionDto, true)
+  @ApiEnvelopeResponse(
+    200,
+    'Cursor page of permissions (items + nextCursor).',
+    PermissionDto,
+    true,
+  )
   findAll(@Query() query: { cursor?: string; limit?: string }) {
     return this.permissionsService.findAll(query);
   }
@@ -49,7 +78,11 @@ export class PermissionsController {
   @ApiUuidParam('id', 'Permission id (uuid).')
   @ApiEnvelopeResponse(200, 'Updated permission.', PermissionDto)
   @ApiNotFound('Permission not found.')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePermissionDto, @CurrentUser() actor: RequestUser) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdatePermissionDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
     return this.permissionsService.update(id, dto, actor.id);
   }
 
@@ -59,7 +92,10 @@ export class PermissionsController {
   @ApiUuidParam('id', 'Permission id (uuid).')
   @ApiEnvelopeResponse(200, 'Permission deleted; data is null.')
   @ApiNotFound('Permission not found.')
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: RequestUser) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
     return this.permissionsService.remove(id, actor.id);
   }
 }

@@ -3,7 +3,11 @@ import { FleetPathService } from '../authorization/services/fleet-path.service.j
 import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
-import { buildCursorArgs, toCursorPage, type CursorPage } from '../common/pagination.js';
+import {
+  buildCursorArgs,
+  toCursorPage,
+  type CursorPage,
+} from '../common/pagination.js';
 import type { Bus } from '../generated/prisma/client.js';
 
 export interface CreateBusInput {
@@ -23,7 +27,11 @@ export interface UpdateBusInput {
 export class BusesService {
   constructor(private readonly fleetPath: FleetPathService) {}
 
-  create(actor: RequestUser, fleetContext: FleetContext, input: CreateBusInput): Promise<Bus> {
+  create(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    input: CreateBusInput,
+  ): Promise<Bus> {
     return this.fleetPath.run(
       actor,
       fleetContext,
@@ -51,7 +59,8 @@ export class BusesService {
     const buses = await this.fleetPath.run(
       actor,
       fleetContext,
-      (tx) => tx.bus.findMany({ ...args, orderBy: { createdAt: 'desc' as const } }),
+      (tx) =>
+        tx.bus.findMany({ ...args, orderBy: { createdAt: 'desc' as const } }),
       (tx) =>
         tx.bus.findMany({
           where: { fleetId: fleetContext.fleetId },
@@ -62,7 +71,11 @@ export class BusesService {
     return toCursorPage(buses, pageSize);
   }
 
-  async findOne(actor: RequestUser, fleetContext: FleetContext, id: string): Promise<Bus> {
+  async findOne(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    id: string,
+  ): Promise<Bus> {
     const bus = await this.findOwned(actor, fleetContext, id);
     if (!bus) throw new NotFoundException('Bus not found');
     return bus;
@@ -83,7 +96,11 @@ export class BusesService {
     );
   }
 
-  async remove(actor: RequestUser, fleetContext: FleetContext, id: string): Promise<void> {
+  async remove(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    id: string,
+  ): Promise<void> {
     await this.findOne(actor, fleetContext, id);
     await this.fleetPath.run(
       actor,
@@ -94,12 +111,17 @@ export class BusesService {
   }
 
   /** Cross-fleet rows are invisible on the tenant path (RLS) and filtered on the platform path. */
-  private findOwned(actor: RequestUser, fleetContext: FleetContext, id: string) {
+  private findOwned(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    id: string,
+  ) {
     return this.fleetPath.run(
       actor,
       fleetContext,
       (tx) => tx.bus.findUnique({ where: { id } }),
-      (tx) => tx.bus.findFirst({ where: { id, fleetId: fleetContext.fleetId } }),
+      (tx) =>
+        tx.bus.findFirst({ where: { id, fleetId: fleetContext.fleetId } }),
     );
   }
 }

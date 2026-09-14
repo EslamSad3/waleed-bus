@@ -15,25 +15,44 @@ export async function ensurePermissions(
     await system.permission.upsert({
       where: { key },
       update: {},
-      create: { key, resource, action, isSystem: true, description: `System permission ${key}` },
+      create: {
+        key,
+        resource,
+        action,
+        isSystem: true,
+        description: `System permission ${key}`,
+      },
     });
   }
 }
 
 export async function createRole(
   system: SystemPrismaService,
-  input: { name: string; slug: string; isSystem?: boolean; permissions?: string[] },
+  input: {
+    name: string;
+    slug: string;
+    isSystem?: boolean;
+    permissions?: string[];
+  },
 ) {
   await ensurePermissions(system, input.permissions ?? []);
   const role = await system.role.upsert({
     where: { slug: input.slug },
     update: {},
-    create: { name: input.name, slug: input.slug, isSystem: input.isSystem ?? false },
+    create: {
+      name: input.name,
+      slug: input.slug,
+      isSystem: input.isSystem ?? false,
+    },
   });
   for (const key of input.permissions ?? []) {
-    const permission = await system.permission.findUniqueOrThrow({ where: { key } });
+    const permission = await system.permission.findUniqueOrThrow({
+      where: { key },
+    });
     await system.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
+      where: {
+        roleId_permissionId: { roleId: role.id, permissionId: permission.id },
+      },
       update: {},
       create: { roleId: role.id, permissionId: permission.id },
     });
@@ -62,7 +81,9 @@ export async function createUser(
     },
   });
   if (input.globalRoleSlug) {
-    const role = await system.role.findUniqueOrThrow({ where: { slug: input.globalRoleSlug } });
+    const role = await system.role.findUniqueOrThrow({
+      where: { slug: input.globalRoleSlug },
+    });
     await system.userRole.upsert({
       where: { userId_roleId: { userId: user.id, roleId: role.id } },
       update: {},
@@ -76,7 +97,9 @@ export async function createFleet(
   system: SystemPrismaService,
   input: { name: string; ownerId: string },
 ) {
-  return system.fleet.create({ data: { name: input.name, ownerId: input.ownerId } });
+  return system.fleet.create({
+    data: { name: input.name, ownerId: input.ownerId },
+  });
 }
 
 export async function addMember(
@@ -145,7 +168,13 @@ export async function createBooking(
 /** Phone+password user (spec 003 fleet flows): verified phone unless stated. */
 export async function createPhoneUser(
   system: SystemPrismaService,
-  input: { phone: string; password: string; name?: string; verified?: boolean; isActive?: boolean },
+  input: {
+    phone: string;
+    password: string;
+    name?: string;
+    verified?: boolean;
+    isActive?: boolean;
+  },
 ) {
   return system.user.create({
     data: {
@@ -171,29 +200,45 @@ export async function setTripStatus(
  * E2E suites truncate roles/permissions on reset, so every suite ensures its
  * own world via this helper instead of relying on migration seeds.
  */
-export async function ensureFleetDriverRoles(system: SystemPrismaService): Promise<void> {
+export async function ensureFleetDriverRoles(
+  system: SystemPrismaService,
+): Promise<void> {
   await createRole(system, {
     name: 'Fleet Owner',
     slug: 'fleet_owner',
     permissions: [
-      'fleet.buses.read', 'fleet.buses.create', 'fleet.buses.update',
+      'fleet.buses.read',
+      'fleet.buses.create',
+      'fleet.buses.update',
       'fleet.trips.read',
-      'fleet.drivers.read', 'fleet.drivers.create', 'fleet.drivers.update', 'fleet.drivers.delete',
+      'fleet.drivers.read',
+      'fleet.drivers.create',
+      'fleet.drivers.update',
+      'fleet.drivers.delete',
       'fleet.reports.read',
     ],
   });
   await createRole(system, {
     name: 'Driver',
     slug: 'driver',
-    permissions: ['driver.context.read', 'driver.passengers.read', 'driver.trips.operate'],
+    permissions: [
+      'driver.context.read',
+      'driver.passengers.read',
+      'driver.trips.operate',
+    ],
   });
   await createRole(system, {
     name: 'Independent Driver',
     slug: 'independent_driver',
     permissions: [
-      'fleet.buses.read', 'fleet.buses.create', 'fleet.buses.update',
-      'fleet.trips.read', 'fleet.reports.read',
-      'driver.context.read', 'driver.passengers.read', 'driver.trips.operate',
+      'fleet.buses.read',
+      'fleet.buses.create',
+      'fleet.buses.update',
+      'fleet.trips.read',
+      'fleet.reports.read',
+      'driver.context.read',
+      'driver.passengers.read',
+      'driver.trips.operate',
     ],
   });
 }
@@ -228,10 +273,20 @@ export async function seedIsolationWorld(
     name: 'Fleet Operator',
     slug: `fleet-operator-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     permissions: [
-      'buses.read', 'buses.create', 'buses.update', 'buses.delete',
-      'trips.read', 'trips.create', 'trips.update', 'trips.delete',
-      'bookings.read', 'bookings.create', 'bookings.update', 'bookings.delete',
-      'members.read', 'members.manage',
+      'buses.read',
+      'buses.create',
+      'buses.update',
+      'buses.delete',
+      'trips.read',
+      'trips.create',
+      'trips.update',
+      'trips.delete',
+      'bookings.read',
+      'bookings.create',
+      'bookings.update',
+      'bookings.delete',
+      'members.read',
+      'members.manage',
     ],
   });
   const roleReadOnly = await createRole(system, {
@@ -246,27 +301,61 @@ export async function seedIsolationWorld(
     permissions: [],
   });
 
-  const userA = await createUser(system, { email: 'usera@example.com', password });
-  const userB = await createUser(system, { email: 'userb@example.com', password });
+  const userA = await createUser(system, {
+    email: 'usera@example.com',
+    password,
+  });
+  const userB = await createUser(system, {
+    email: 'userb@example.com',
+    password,
+  });
 
-  const fleetA = await createFleet(system, { name: 'Fleet A', ownerId: userA.id });
-  const fleetB = await createFleet(system, { name: 'Fleet B', ownerId: userB.id });
+  const fleetA = await createFleet(system, {
+    name: 'Fleet A',
+    ownerId: userA.id,
+  });
+  const fleetB = await createFleet(system, {
+    name: 'Fleet B',
+    ownerId: userB.id,
+  });
 
-  await addMember(system, { userId: userA.id, fleetId: fleetA.id, roleId: roleFull.id });
-  await addMember(system, { userId: userB.id, fleetId: fleetB.id, roleId: roleFull.id });
+  await addMember(system, {
+    userId: userA.id,
+    fleetId: fleetA.id,
+    roleId: roleFull.id,
+  });
+  await addMember(system, {
+    userId: userB.id,
+    fleetId: fleetB.id,
+    roleId: roleFull.id,
+  });
 
-  const busA = await createBus(system, { fleetId: fleetA.id, registrationNumber: 'BUS-A-001' });
-  const busB = await createBus(system, { fleetId: fleetB.id, registrationNumber: 'BUS-B-001' });
+  const busA = await createBus(system, {
+    fleetId: fleetA.id,
+    registrationNumber: 'BUS-A-001',
+  });
+  const busB = await createBus(system, {
+    fleetId: fleetB.id,
+    registrationNumber: 'BUS-B-001',
+  });
 
   const tripA = await createTrip(system, {
-    fleetId: fleetA.id, busId: busA.id, origin: 'Cairo', destination: 'Alexandria',
+    fleetId: fleetA.id,
+    busId: busA.id,
+    origin: 'Cairo',
+    destination: 'Alexandria',
   });
   const tripB = await createTrip(system, {
-    fleetId: fleetB.id, busId: busB.id, origin: 'Giza', destination: 'Mansoura',
+    fleetId: fleetB.id,
+    busId: busB.id,
+    origin: 'Giza',
+    destination: 'Mansoura',
   });
 
   const bookingB = await createBooking(system, {
-    fleetId: fleetB.id, tripId: tripB.id, passengerName: 'Passenger B',
+    fleetId: fleetB.id,
+    tripId: tripB.id,
+    passengerName: 'Passenger B',
   });
 
   return {

@@ -10,7 +10,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { RequireAnyPermission, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
@@ -38,7 +41,9 @@ export class TripsController {
   @RequirePermission('trips.create')
   @ApiOperation({ summary: 'Schedule a trip with one of the fleet buses.' })
   @ApiEnvelopeResponse(201, 'Trip created (defaults to SCHEDULED).', TripDto)
-  @ApiNotFound('Bus not found in this fleet (cross-fleet bus ids are also 404).')
+  @ApiNotFound(
+    'Bus not found in this fleet (cross-fleet bus ids are also 404).',
+  )
   create(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -52,7 +57,12 @@ export class TripsController {
   @RequireAnyPermission('trips.read', 'trips.create')
   @ApiOperation({ summary: 'List the fleet trips (cursor pagination).' })
   @ApiCursorPagination()
-  @ApiEnvelopeResponse(200, 'Cursor page of trips (items + nextCursor).', TripDto, true)
+  @ApiEnvelopeResponse(
+    200,
+    'Cursor page of trips (items + nextCursor).',
+    TripDto,
+    true,
+  )
   list(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,

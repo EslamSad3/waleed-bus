@@ -6,11 +6,16 @@ interface PrismaError extends Error {
 }
 
 /** Translates well-known Prisma errors into stable HTTP semantics. */
-export function translatePrismaError(error: unknown, resource = 'Resource'): Error {
+export function translatePrismaError(
+  error: unknown,
+  resource = 'Resource',
+): Error {
   const prismaError = error as PrismaError;
   if (prismaError?.code === 'P2002') {
     const target = prismaError.meta?.target;
-    const fields = Array.isArray(target) ? target.join(', ') : (target ?? 'field');
+    const fields = Array.isArray(target)
+      ? target.join(', ')
+      : (target ?? 'field');
     return new ConflictException(`${resource} already exists (${fields})`);
   }
   if (prismaError?.code === 'P2003') {

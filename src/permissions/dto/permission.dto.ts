@@ -1,12 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, Length, Matches } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 
 /** Documentation-only response model for a permission row. */
 export class PermissionDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ example: 'buses.read', description: 'resource.action key consumed by @RequirePermission.' })
+  @ApiProperty({
+    example: 'buses.read',
+    description: 'resource.action key consumed by @RequirePermission.',
+  })
   key!: string;
 
   @ApiProperty({ example: 'buses' })
@@ -15,7 +24,10 @@ export class PermissionDto {
   @ApiProperty({ example: 'read' })
   action!: string;
 
-  @ApiPropertyOptional({ example: 'List/read buses in the fleet', nullable: true })
+  @ApiPropertyOptional({
+    example: 'List/read buses in the fleet',
+    nullable: true,
+  })
   description?: string;
 
   @ApiProperty({ example: true })
@@ -32,9 +44,16 @@ export class PermissionDto {
 }
 
 export class CreatePermissionDto {
-  @ApiProperty({ example: 'buses.read', pattern: '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$', minLength: 3, maxLength: 100 })
+  @ApiProperty({
+    example: 'buses.read',
+    pattern: '^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$',
+    minLength: 3,
+    maxLength: 100,
+  })
   @IsString()
-  @Matches(/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/, { message: 'key must be resource.action (kebab/snake case)' })
+  @Matches(/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/, {
+    message: 'key must be resource.action (kebab/snake case)',
+  })
   @Length(3, 100)
   key!: string;
 
@@ -48,7 +67,10 @@ export class CreatePermissionDto {
   @Length(1, 100)
   action!: string;
 
-  @ApiPropertyOptional({ example: 'List/read buses in the fleet', maxLength: 500 })
+  @ApiPropertyOptional({
+    example: 'List/read buses in the fleet',
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
   @Length(0, 500)
@@ -56,7 +78,10 @@ export class CreatePermissionDto {
 }
 
 export class UpdatePermissionDto {
-  @ApiPropertyOptional({ example: 'List/read buses in the fleet', maxLength: 500 })
+  @ApiPropertyOptional({
+    example: 'List/read buses in the fleet',
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
   @Length(0, 500)

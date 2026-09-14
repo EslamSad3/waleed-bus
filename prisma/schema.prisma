@@ -251,6 +251,10 @@ model Booking {
   paymentStatus  String?   @map("payment_status") @db.VarChar(20)
   paidAt         DateTime? @map("paid_at")
   paymentMarkedBy String?  @map("payment_marked_by") @db.Uuid
+  paymentReference String? @map("payment_reference") @db.VarChar(100)
+  refundedAmount Decimal   @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  refundReference String?  @map("refund_reference") @db.VarChar(100)
+  paymentNotes   String?   @map("payment_notes") @db.VarChar(500)
   /// 1–5, one write per side (validated app-layer)
   busRating      Int?      @map("bus_rating")
   driverRating   Int?      @map("driver_rating")
@@ -268,6 +272,8 @@ model Booking {
   @@index([fleetId])
   @@index([tripId])
   @@index([passengerUserId])
+  @@index([status])
+  @@index([paymentStatus])
   @@map("bookings")
 }
 
@@ -345,7 +351,13 @@ model PassengerReport {
   passengerId String?  @map("passenger_id") @db.Uuid
   driverId    String   @map("driver_id") @db.Uuid
   note        String   @db.VarChar(2000)
+  /// PENDING | RESOLVED | DISMISSED (validated app-layer)
+  status         String    @default("PENDING") @db.VarChar(20)
+  resolutionNote String?   @map("resolution_note") @db.VarChar(2000)
+  resolvedAt     DateTime? @map("resolved_at")
+  resolvedBy     String?   @map("resolved_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   fleet   Fleet   @relation(fields: [fleetId], references: [id])
   trip    Trip    @relation(fields: [tripId], references: [id])
@@ -355,6 +367,7 @@ model PassengerReport {
   @@index([fleetId])
   @@index([tripId])
   @@index([bookingId])
+  @@index([status])
   @@map("passenger_reports")
 }
 

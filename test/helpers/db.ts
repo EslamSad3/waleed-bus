@@ -6,7 +6,9 @@ export function redactUrl(url: string): string {
 
 export function assertLocalDatabase(url: string, label = 'database URL'): void {
   if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
-    throw new Error(`${label} must point at localhost, refusing: ${redactUrl(url)}`);
+    throw new Error(
+      `${label} must point at localhost, refusing: ${redactUrl(url)}`,
+    );
   }
 }
 

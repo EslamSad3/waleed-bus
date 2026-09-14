@@ -37,7 +37,10 @@ describe('RootController', () => {
       controllers: [RootController],
     }).compile();
     expect(
-      reflector.get<boolean>(IS_PUBLIC_KEY, RootController.prototype.serviceInfo),
+      reflector.get<boolean>(
+        IS_PUBLIC_KEY,
+        RootController.prototype.serviceInfo,
+      ),
       '@Public() metadata on serviceInfo',
     ).toBe(true);
   });

@@ -1,5 +1,11 @@
 import { Type, applyDecorators } from '@nestjs/common';
-import { ApiExtraModels, ApiHeader, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiHeader,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { getSchemaPath } from '@nestjs/swagger';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../common/pagination.js';
 
@@ -40,14 +46,20 @@ export function ApiCursorPagination(): MethodDecorator & ClassDecorator {
     ApiQuery({
       name: 'cursor',
       required: false,
-      description: 'Opaque nextCursor from the previous page (base64url of the last item id).',
+      description:
+        'Opaque nextCursor from the previous page (base64url of the last item id).',
       schema: { type: 'string' },
     }),
     ApiQuery({
       name: 'limit',
       required: false,
       description: `Page size (default ${DEFAULT_PAGE_SIZE}, max ${MAX_PAGE_SIZE}).`,
-      schema: { type: 'integer', minimum: 1, maximum: MAX_PAGE_SIZE, default: DEFAULT_PAGE_SIZE },
+      schema: {
+        type: 'integer',
+        minimum: 1,
+        maximum: MAX_PAGE_SIZE,
+        default: DEFAULT_PAGE_SIZE,
+      },
     }),
   );
 }
@@ -60,14 +72,23 @@ export function ApiFleetIdParam(): MethodDecorator & ClassDecorator {
   return ApiParam({
     name: 'fleetId',
     required: true,
-    description: 'Fleet selector (uuid) — a selector only; membership is verified server-side.',
+    description:
+      'Fleet selector (uuid) — a selector only; membership is verified server-side.',
     schema: { type: 'string', format: 'uuid' },
   });
 }
 
 /** Documented uuid path parameter for resource ids. */
-export function ApiUuidParam(name: string, description: string): MethodDecorator {
-  return ApiParam({ name, required: true, description, schema: { type: 'string', format: 'uuid' } });
+export function ApiUuidParam(
+  name: string,
+  description: string,
+): MethodDecorator {
+  return ApiParam({
+    name,
+    required: true,
+    description,
+    schema: { type: 'string', format: 'uuid' },
+  });
 }
 
 /**
@@ -79,7 +100,8 @@ export function ApiFleetIdHeader(): MethodDecorator & ClassDecorator {
   return ApiHeader({
     name: 'x-fleet-id',
     required: true,
-    description: 'Fleet selector (uuid) — a selector only; membership is verified server-side.',
+    description:
+      'Fleet selector (uuid) — a selector only; membership is verified server-side.',
     schema: { type: 'string', format: 'uuid' },
   });
 }
@@ -94,17 +116,22 @@ export function ApiAuthErrors(): MethodDecorator & ClassDecorator {
     }),
     ApiResponse({
       status: 403,
-      description: 'Authenticated but lacking the required permission (or no ACTIVE membership).',
+      description:
+        'Authenticated but lacking the required permission (or no ACTIVE membership).',
     }),
   );
 }
 
 /** Resource misses — including cross-tenant lookups — surface as 404. */
-export function ApiNotFound(description: string): MethodDecorator & ClassDecorator {
+export function ApiNotFound(
+  description: string,
+): MethodDecorator & ClassDecorator {
   return ApiResponse({ status: 404, description });
 }
 
 /** Uniqueness violations map to 409. */
-export function ApiConflict(description: string): MethodDecorator & ClassDecorator {
+export function ApiConflict(
+  description: string,
+): MethodDecorator & ClassDecorator {
   return ApiResponse({ status: 409, description });
 }

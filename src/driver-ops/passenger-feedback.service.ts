@@ -4,7 +4,11 @@ import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
-import type { Booking, PassengerReport, Prisma } from '../generated/prisma/client.js';
+import type {
+  Booking,
+  PassengerReport,
+  Prisma,
+} from '../generated/prisma/client.js';
 import { DriverOpsService } from './driver-ops.service.js';
 
 /**
@@ -38,13 +42,24 @@ export class PassengerFeedbackService {
       });
       const row = booking as Booking;
       if (trip.status !== 'COMPLETED') {
-        throw new CodedException(409, 'RATING_NOT_ALLOWED', 'Ratings require a COMPLETED trip.');
+        throw new CodedException(
+          409,
+          'RATING_NOT_ALLOWED',
+          'Ratings require a COMPLETED trip.',
+        );
       }
       if (row.passengerRating !== null && row.passengerRating !== undefined) {
         if (row.passengerRating !== rating) {
-          throw new CodedException(409, 'RATING_NOT_ALLOWED', 'Passenger already rated with a different value.');
+          throw new CodedException(
+            409,
+            'RATING_NOT_ALLOWED',
+            'Passenger already rated with a different value.',
+          );
         }
-        return { passengerRating: row.passengerRating, ratedAt: row.passengerRatedAt as Date };
+        return {
+          passengerRating: row.passengerRating,
+          ratedAt: row.passengerRatedAt as Date,
+        };
       }
       const now = new Date();
       const updated = await tx.booking.updateMany({
@@ -52,11 +67,20 @@ export class PassengerFeedbackService {
         data: { passengerRating: rating, passengerRatedAt: now },
       });
       if (updated.count === 0) {
-        const current = await tx.booking.findUniqueOrThrow({ where: { id: row.id } });
+        const current = await tx.booking.findUniqueOrThrow({
+          where: { id: row.id },
+        });
         if (current.passengerRating !== rating) {
-          throw new CodedException(409, 'RATING_NOT_ALLOWED', 'Passenger already rated with a different value.');
+          throw new CodedException(
+            409,
+            'RATING_NOT_ALLOWED',
+            'Passenger already rated with a different value.',
+          );
         }
-        return { passengerRating: current.passengerRating as number, ratedAt: current.passengerRatedAt as Date };
+        return {
+          passengerRating: current.passengerRating as number,
+          ratedAt: current.passengerRatedAt as Date,
+        };
       }
       return { passengerRating: rating, ratedAt: now };
     };
@@ -80,7 +104,9 @@ export class PassengerFeedbackService {
     bookingId: string,
     note: string,
   ): Promise<PassengerReport> {
-    const run = async (tx: Prisma.TransactionClient): Promise<PassengerReport> => {
+    const run = async (
+      tx: Prisma.TransactionClient,
+    ): Promise<PassengerReport> => {
       const { trip, booking } = await this.driverOps.assertAssignment(tx, {
         driverId: actor.id,
         fleetId: fleetContext.fleetId,
@@ -88,7 +114,11 @@ export class PassengerFeedbackService {
         bookingId,
       });
       if (trip.status === 'CANCELLED') {
-        throw new CodedException(409, 'REPORT_NOT_ALLOWED', 'Reports are not allowed on cancelled trips.');
+        throw new CodedException(
+          409,
+          'REPORT_NOT_ALLOWED',
+          'Reports are not allowed on cancelled trips.',
+        );
       }
       const row = booking as Booking;
       return tx.passengerReport.create({

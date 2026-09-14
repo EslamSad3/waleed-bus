@@ -12,12 +12,16 @@ describe('normalizePhone', () => {
     expect(normalizePhone(input)).toBe(expected);
   });
 
-  it.each([[''], ['123'], ['020123456789'], ['011234567890'], ['abcdefghijk'], ['+101001234567']])(
-    'rejects %s',
-    (input) => {
-      expect(() => normalizePhone(input)).toThrow('Invalid phone number');
-    },
-  );
+  it.each([
+    [''],
+    ['123'],
+    ['020123456789'],
+    ['011234567890'],
+    ['abcdefghijk'],
+    ['+101001234567'],
+  ])('rejects %s', (input) => {
+    expect(() => normalizePhone(input)).toThrow('Invalid phone number');
+  });
 
   it('isPhoneLike mirrors normalizePhone validity without throwing', () => {
     expect(isPhoneLike('01001234567')).toBe(true);

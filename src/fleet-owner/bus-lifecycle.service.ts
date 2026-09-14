@@ -20,20 +20,34 @@ export class BusLifecycleService {
     private readonly audit: AuditService,
   ) {}
 
-  async disable(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<Bus> {
+  async disable(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    busId: string,
+  ): Promise<Bus> {
     const run = async (tx: Prisma.TransactionClient): Promise<Bus> => {
       const bus = await tx.bus.findUnique({ where: { id: busId } });
       if (!bus) {
-        throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
+        throw new CodedException(
+          404,
+          'BUS_ACCESS_DENIED',
+          'Bus not found in this fleet.',
+        );
       }
       if (!bus.isActive) {
-        throw new CodedException(409, 'BUS_ACTION_NOT_ALLOWED', 'Bus is already inactive.');
+        throw new CodedException(
+          409,
+          'BUS_ACTION_NOT_ALLOWED',
+          'Bus is already inactive.',
+        );
       }
       const departed = await tx.trip.findFirst({
         where: {
           busId,
           status: 'DEPARTED',
-          ...(fleetContext.membershipId === null ? { fleetId: fleetContext.fleetId } : {}),
+          ...(fleetContext.membershipId === null
+            ? { fleetId: fleetContext.fleetId }
+            : {}),
         },
         select: { id: true },
       });
@@ -45,9 +59,11 @@ export class BusLifecycleService {
           { tripId: departed.id },
         );
       }
-      return tx.bus.update({ where: { id: busId }, data: { isActive: false } }).catch((error) => {
-        throw translatePrismaError(error, 'Bus');
-      });
+      return tx.bus
+        .update({ where: { id: busId }, data: { isActive: false } })
+        .catch((error) => {
+          throw translatePrismaError(error, 'Bus');
+        });
     };
     // Platform path filters explicitly (no RLS on the owner connection);
     // tenant path relies on RLS invisibility for cross-fleet ids.
@@ -63,18 +79,32 @@ export class BusLifecycleService {
     return bus;
   }
 
-  async reactivate(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<Bus> {
+  async reactivate(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    busId: string,
+  ): Promise<Bus> {
     const run = async (tx: Prisma.TransactionClient): Promise<Bus> => {
       const bus = await tx.bus.findUnique({ where: { id: busId } });
       if (!bus) {
-        throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
+        throw new CodedException(
+          404,
+          'BUS_ACCESS_DENIED',
+          'Bus not found in this fleet.',
+        );
       }
       if (bus.isActive) {
-        throw new CodedException(409, 'BUS_ACTION_NOT_ALLOWED', 'Bus is already active.');
+        throw new CodedException(
+          409,
+          'BUS_ACTION_NOT_ALLOWED',
+          'Bus is already active.',
+        );
       }
-      return tx.bus.update({ where: { id: busId }, data: { isActive: true } }).catch((error) => {
-        throw translatePrismaError(error, 'Bus');
-      });
+      return tx.bus
+        .update({ where: { id: busId }, data: { isActive: true } })
+        .catch((error) => {
+          throw translatePrismaError(error, 'Bus');
+        });
     };
     const bus = await this.fleetPath.run(actor, fleetContext, run, run);
     await this.audit.log({
