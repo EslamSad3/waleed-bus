@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 
+export type AuditClassification = 'OBSERVABILITY' | 'SECURITY' | 'GOVERNANCE';
+
 export interface AuditInput {
   actorUserId?: string;
   actorFleetId?: string;
@@ -13,6 +15,45 @@ export interface AuditInput {
   ip?: string;
   userAgent?: string;
   success?: boolean;
+  /**
+   * Classification determines audit failure guarantees:
+   * - OBSERVABILITY: best-effort telemetry, logged on failure without interruption.
+   * - SECURITY: auth/permission/session modifications requiring heightened alert logging.
+   * - GOVERNANCE: regulatory/compliance overrides and financial lifecycle transitions.
+   */
+  classification?: AuditClassification;
+}
+
+/** Actions classified by default as SECURITY or GOVERNANCE when not explicitly tagged */
+const SECURITY_PATTERNS = [
+  'auth.',
+  'login',
+  'logout',
+  'session',
+  'token',
+  'password',
+  'role',
+  'permission',
+];
+
+const GOVERNANCE_PATTERNS = [
+  'payment',
+  'refund',
+  'force_cancel',
+  'reinstate',
+  'override',
+  'report.resolve',
+];
+
+export function deriveClassification(action: string): AuditClassification {
+  const lower = action.toLowerCase();
+  if (SECURITY_PATTERNS.some((p) => lower.includes(p))) {
+    return 'SECURITY';
+  }
+  if (GOVERNANCE_PATTERNS.some((p) => lower.includes(p))) {
+    return 'GOVERNANCE';
+  }
+  return 'OBSERVABILITY';
 }
 
 /**
@@ -27,6 +68,9 @@ export class AuditService {
   constructor(private readonly system: SystemPrismaService) {}
 
   async log(input: AuditInput): Promise<void> {
+    const classification =
+      input.classification ?? deriveClassification(input.action);
+
     try {
       await this.system.auditLog.create({
         data: {
@@ -39,19 +83,24 @@ export class AuditService {
           resourceId: input.resourceId,
           metadata:
             input.metadata === undefined
-              ? undefined
-              : (input.metadata as object),
+              ? { classification }
+              : ({ ...input.metadata, classification } as object),
           ip: input.ip,
           userAgent: input.userAgent,
           success: input.success ?? true,
         },
       });
     } catch (error) {
-      // Audit failures must never take down the request path, but they must
-      // be loud.
-      this.logger.error(
-        `audit write failed for ${input.action}: ${String(error)}`,
-      );
+      // Differentiate audit failure handling based on classification
+      if (classification === 'SECURITY' || classification === 'GOVERNANCE') {
+        this.logger.error(
+          `[CRITICAL_AUDIT_FAILURE] ${classification} audit failed for action "${input.action}" on resource "${input.resource}/${input.resourceId}": ${String(error)}`,
+        );
+      } else {
+        this.logger.warn(
+          `[OBSERVABILITY_AUDIT_WARNING] audit write failed for ${input.action}: ${String(error)}`,
+        );
+      }
     }
   }
 

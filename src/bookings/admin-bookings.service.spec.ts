@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { AdminBookingsService } from './admin-bookings.service.js';
+import { AdminBookingsQueryService } from './admin-bookings-query.service.js';
+import { AdminPaymentService } from './admin-payment.service.js';
+import { AdminBookingLifecycleService } from './admin-booking-lifecycle.service.js';
+import { AdminReportService } from './admin-report.service.js';
 
 describe('AdminBookingsService', () => {
   const actorUserId = 'admin-user-uuid-1';
@@ -69,9 +73,25 @@ describe('AdminBookingsService', () => {
       log: vi.fn(async () => undefined),
     };
 
-    const service = new AdminBookingsService(
+    const queryService = new AdminBookingsQueryService(mockSystem as never);
+    const paymentService = new AdminPaymentService(
       mockSystem as never,
       mockAudit as never,
+    );
+    const lifecycleService = new AdminBookingLifecycleService(
+      mockSystem as never,
+      mockAudit as never,
+    );
+    const reportService = new AdminReportService(
+      mockSystem as never,
+      mockAudit as never,
+    );
+
+    const service = new AdminBookingsService(
+      queryService,
+      paymentService,
+      lifecycleService,
+      reportService,
     );
 
     return { service, mockSystem, mockTx, mockAudit };
@@ -218,7 +238,7 @@ describe('AdminBookingsService', () => {
         ],
       });
 
-      const res = (await service.findOne('booking-1')) as Record<
+      const res = (await service.findOne('booking-1')) as unknown as Record<
         string,
         unknown
       >;
@@ -251,7 +271,7 @@ describe('AdminBookingsService', () => {
       const res = (await service.verifyPayment('booking-1', actorUserId, {
         reference: 'VF-9999',
         amount: 100.0,
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.paymentStatus).toBe('PAID');
       expect(res.paymentReference).toBe('VF-9999');
@@ -314,7 +334,7 @@ describe('AdminBookingsService', () => {
 
       const res = (await service.failPayment('booking-1', actorUserId, {
         reason: 'Reference not found in wallet statement',
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.paymentStatus).toBe('FAILED');
       expect(mockAudit.log).toHaveBeenCalledWith(
@@ -359,7 +379,7 @@ describe('AdminBookingsService', () => {
         refundReference: 'REF-1',
         refundAmount: 40.0,
         reason: 'Passenger cancelled 1 of 2 seats',
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.paymentStatus).toBe('PARTIALLY_REFUNDED');
       expect(res.remainingRefundableBalance).toBe('60.00');
@@ -385,7 +405,7 @@ describe('AdminBookingsService', () => {
         refundReference: 'REF-2',
         refundAmount: 40.0,
         reason: 'Remaining seat refund',
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.paymentStatus).toBe('REFUNDED');
       expect(res.remainingRefundableBalance).toBe('0.00');
@@ -455,7 +475,7 @@ describe('AdminBookingsService', () => {
       const res = (await service.forceCancel('booking-1', actorUserId, {
         reason: 'Emergency route maintenance',
         releaseSeats: true,
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.status).toBe('CANCELLED');
       expect(res.paymentStatus).toBe('REFUND_PENDING');
@@ -501,7 +521,7 @@ describe('AdminBookingsService', () => {
 
       const res = (await service.reinstate('booking-1', actorUserId, {
         reason: 'Passenger confirmed travel after mistake',
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.status).toBe('CONFIRMED');
       expect(mockAudit.log).toHaveBeenCalledWith(
@@ -555,7 +575,7 @@ describe('AdminBookingsService', () => {
         dropStatus: 'DROPPED_OFF',
         dropStationId: 'station-auc',
         justification: 'Driver app crashed during trip',
-      })) as Record<string, unknown>;
+      })) as unknown as Record<string, unknown>;
 
       expect(res.dropStatus).toBe('DROPPED_OFF');
       expect(res.dropStationId).toBe('station-auc');
@@ -602,7 +622,7 @@ describe('AdminBookingsService', () => {
           status: 'RESOLVED',
           resolutionNote: 'Clarified terms of carriage with passenger',
         },
-      )) as Record<string, unknown>;
+      )) as unknown as Record<string, unknown>;
 
       expect(res.status).toBe('RESOLVED');
       expect(res.resolutionNote).toBe(

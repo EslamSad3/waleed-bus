@@ -192,6 +192,8 @@ export class PassengerBookingItemDto {
   trip!: BookingTripSummaryDto;
 }
 
+export class PassengerBookingDetailDto extends PassengerBookingItemDto {}
+
 export class CancelledBookingResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;

@@ -33,6 +33,17 @@ import {
   AdminVerifyPaymentDto,
 } from './dto/admin-payment.dto.js';
 import { AdminResolveReportDto } from './dto/admin-report.dto.js';
+import {
+  AdminBookingDetailDto,
+  AdminBookingListItemDto,
+  AdminFailPaymentResponseDto,
+  AdminForceCancelResponseDto,
+  AdminOperationalOverrideResponseDto,
+  AdminRefundPaymentResponseDto,
+  AdminReinstateResponseDto,
+  AdminResolveReportResponseDto,
+  AdminVerifyPaymentResponseDto,
+} from './dto/admin-booking-response.dto.js';
 
 @ApiTags('admin-bookings')
 @ApiSecurity('bearer')
@@ -48,7 +59,12 @@ export class AdminBookingsController {
       'List all bookings across all fleets with multi-criteria filtering (super_admin platform path).',
   })
   @ApiCursorPagination()
-  @ApiEnvelopeResponse(200, 'Cursor page of bookings (items + nextCursor).')
+  @ApiEnvelopeResponse(
+    200,
+    'Cursor page of bookings (items + nextCursor).',
+    AdminBookingListItemDto,
+    true,
+  )
   list(@Query() query: AdminBookingQueryDto) {
     return this.service.findAll(query);
   }
@@ -62,6 +78,7 @@ export class AdminBookingsController {
   @ApiEnvelopeResponse(
     200,
     'The full booking details including passenger, trip, driver, bus, reports, and audit trail.',
+    AdminBookingDetailDto,
   )
   @ApiNotFound('Booking not found.')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -74,7 +91,11 @@ export class AdminBookingsController {
       'Verify offline/wallet payment enforcing exact-match against totalAmount.',
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
-  @ApiEnvelopeResponse(200, 'Payment verified and marked PAID.')
+  @ApiEnvelopeResponse(
+    200,
+    'Payment verified and marked PAID.',
+    AdminVerifyPaymentResponseDto,
+  )
   @ApiNotFound('Booking not found.')
   @ApiConflict('Payment already settled.')
   verifyPayment(
@@ -90,7 +111,11 @@ export class AdminBookingsController {
     summary: 'Mark an offline payment attempt as FAILED with an explanation.',
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
-  @ApiEnvelopeResponse(200, 'Payment marked FAILED.')
+  @ApiEnvelopeResponse(
+    200,
+    'Payment marked FAILED.',
+    AdminFailPaymentResponseDto,
+  )
   @ApiNotFound('Booking not found.')
   @ApiConflict('Cannot fail a payment that is already settled as PAID.')
   failPayment(
@@ -107,7 +132,11 @@ export class AdminBookingsController {
       'Process a full or partial refund with cumulative balance tracking.',
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
-  @ApiEnvelopeResponse(200, 'Refund recorded with updated balance.')
+  @ApiEnvelopeResponse(
+    200,
+    'Refund recorded with updated balance.',
+    AdminRefundPaymentResponseDto,
+  )
   @ApiNotFound('Booking not found.')
   refundPayment(
     @Param('id', ParseUUIDPipe) id: string,
@@ -122,7 +151,7 @@ export class AdminBookingsController {
     summary: 'Force-cancel a booking with seat inventory restoration control.',
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
-  @ApiEnvelopeResponse(200, 'Booking cancelled.')
+  @ApiEnvelopeResponse(200, 'Booking cancelled.', AdminForceCancelResponseDto)
   @ApiNotFound('Booking not found.')
   @ApiConflict('Booking is already cancelled.')
   forceCancel(
@@ -139,7 +168,11 @@ export class AdminBookingsController {
       'Reinstate a mistakenly cancelled booking with strict trip capacity validation.',
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
-  @ApiEnvelopeResponse(200, 'Booking reinstated to CONFIRMED.')
+  @ApiEnvelopeResponse(
+    200,
+    'Booking reinstated to CONFIRMED.',
+    AdminReinstateResponseDto,
+  )
   @ApiNotFound('Booking not found.')
   @ApiConflict(
     'Trip has reached full capacity (SEATS_UNAVAILABLE) or booking was not cancelled.',
@@ -158,7 +191,11 @@ export class AdminBookingsController {
       'Override driver operational states (boarded, drop-off) with administrative justification.',
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
-  @ApiEnvelopeResponse(200, 'Operational status updated.')
+  @ApiEnvelopeResponse(
+    200,
+    'Operational status updated.',
+    AdminOperationalOverrideResponseDto,
+  )
   @ApiNotFound('Booking not found.')
   overrideOperational(
     @Param('id', ParseUUIDPipe) id: string,
@@ -175,7 +212,11 @@ export class AdminBookingsController {
   })
   @ApiUuidParam('id', 'Booking id (uuid).')
   @ApiUuidParam('reportId', 'Passenger report id (uuid).')
-  @ApiEnvelopeResponse(200, 'Incident report resolved.')
+  @ApiEnvelopeResponse(
+    200,
+    'Incident report resolved.',
+    AdminResolveReportResponseDto,
+  )
   @ApiNotFound('Booking or report not found.')
   resolveReport(
     @Param('id', ParseUUIDPipe) id: string,
