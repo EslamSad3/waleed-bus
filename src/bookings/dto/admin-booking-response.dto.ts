@@ -16,10 +16,10 @@ export class AdminBookingListItemDto {
   @ApiProperty({ example: 'Ahmed Hassan' })
   passengerName!: string;
 
-  @ApiPropertyOptional({ example: '+201000000000', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '+201000000000', nullable: true })
   passengerPhone!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   passengerUserId!: string | null;
 
   @ApiProperty({ example: 2 })
@@ -28,25 +28,25 @@ export class AdminBookingListItemDto {
   @ApiProperty({ example: 'CONFIRMED' })
   status!: string;
 
-  @ApiPropertyOptional({ example: '100.00', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;
 
   @ApiProperty({ example: '0.00' })
   refundedAmount!: string;
 
-  @ApiPropertyOptional({ example: 'CASH', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'CASH', nullable: true })
   paymentMethod!: string | null;
 
-  @ApiPropertyOptional({ example: 'PAID', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'PAID', nullable: true })
   paymentStatus!: string | null;
 
-  @ApiPropertyOptional({ example: 'REF-12345', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'REF-12345', nullable: true })
   paymentReference!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   boardedAt!: Date | null;
 
-  @ApiPropertyOptional({ example: 'DROPPED_OFF', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'DROPPED_OFF', nullable: true })
   dropStatus!: string | null;
 
   @ApiProperty({ example: false })
@@ -61,11 +61,19 @@ export class AdminBookingListItemDto {
   @ApiProperty({ example: 'Alexandria' })
   destinationName!: string;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   confirmedAt!: Date | null;
 
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;
+}
+
+export class AdminBookingListResponseDto {
+  @ApiProperty({ type: () => [AdminBookingListItemDto] })
+  items!: AdminBookingListItemDto[];
+
+  @ApiPropertyOptional({ type: String, example: 'eyJpZCI6IjEyMyJ9', nullable: true })
+  nextCursor!: string | null;
 }
 
 export class AdminBookingAuditTrailItemDto {
@@ -75,7 +83,7 @@ export class AdminBookingAuditTrailItemDto {
   @ApiProperty({ example: 'booking.verify_payment' })
   action!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   actorUserId!: string | null;
 
   @ApiPropertyOptional()
@@ -89,10 +97,10 @@ export class AdminBookingDetailTripDriverDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ example: 'Mohamed Ibrahim', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Mohamed Ibrahim', nullable: true })
   name!: string | null;
 
-  @ApiPropertyOptional({ example: '+201100000000', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '+201100000000', nullable: true })
   phoneNumber!: string | null;
 }
 
@@ -100,7 +108,7 @@ export class AdminBookingDetailTripBusDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ example: 'BUS-001', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'BUS-001', nullable: true })
   registrationNumber!: string | null;
 
   @ApiProperty({ example: 14 })
@@ -140,13 +148,13 @@ export class AdminBookingDetailTripDto {
 }
 
 export class AdminBookingRatingsDto {
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   busRating!: number | null;
 
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   driverRating!: number | null;
 
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   passengerRating!: number | null;
 }
 
@@ -166,55 +174,55 @@ export class AdminBookingDetailDto {
   @ApiProperty({ example: 2 })
   seats!: number;
 
-  @ApiPropertyOptional({ example: '100.00', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;
 
   @ApiProperty({ example: '0.00' })
   refundedAmount!: string;
 
-  @ApiPropertyOptional({ example: 'CASH', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'CASH', nullable: true })
   paymentMethod!: string | null;
 
-  @ApiPropertyOptional({ example: 'PAID', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'PAID', nullable: true })
   paymentStatus!: string | null;
 
-  @ApiPropertyOptional({ example: 'REF-12345', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'REF-12345', nullable: true })
   paymentReference!: string | null;
 
-  @ApiPropertyOptional({ example: 'Customer paid at station', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Customer paid at station', nullable: true })
   paymentNotes!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   paidAt!: Date | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   paymentMarkedBy!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   confirmedAt!: Date | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   cancelledAt!: Date | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   cancelledBy!: string | null;
 
-  @ApiPropertyOptional({ example: 'Customer cancelled', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Customer cancelled', nullable: true })
   cancellationReason!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   boardedAt!: Date | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   boardedBy!: string | null;
 
-  @ApiPropertyOptional({ example: 'DROPPED_OFF', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'DROPPED_OFF', nullable: true })
   dropStatus!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   dropStationId!: string | null;
 
-  @ApiPropertyOptional({ example: 'Scheduled stop', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Scheduled stop', nullable: true })
   dropReason!: string | null;
 
   @ApiPropertyOptional()
@@ -237,19 +245,19 @@ export class AdminVerifyPaymentResponseDto {
   @ApiProperty({ format: 'uuid' })
   bookingId!: string;
 
-  @ApiPropertyOptional({ example: 'PAID', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'PAID', nullable: true })
   paymentStatus!: string | null;
 
-  @ApiPropertyOptional({ example: 'CASH', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'CASH', nullable: true })
   paymentMethod!: string | null;
 
-  @ApiPropertyOptional({ example: 'REF-12345', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'REF-12345', nullable: true })
   paymentReference!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   paidAt!: Date | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   paymentMarkedBy!: string | null;
 }
 
@@ -257,7 +265,7 @@ export class AdminFailPaymentResponseDto {
   @ApiProperty({ format: 'uuid' })
   bookingId!: string;
 
-  @ApiPropertyOptional({ example: 'FAILED', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'FAILED', nullable: true })
   paymentStatus!: string | null;
 
   @ApiProperty({ format: 'date-time' })
@@ -268,10 +276,10 @@ export class AdminRefundPaymentResponseDto {
   @ApiProperty({ format: 'uuid' })
   bookingId!: string;
 
-  @ApiPropertyOptional({ example: 'REFUNDED', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'REFUNDED', nullable: true })
   paymentStatus!: string | null;
 
-  @ApiPropertyOptional({ example: '100.00', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;
 
   @ApiProperty({ example: '100.00' })
@@ -280,7 +288,7 @@ export class AdminRefundPaymentResponseDto {
   @ApiProperty({ example: '0.00' })
   remainingRefundableBalance!: string;
 
-  @ApiPropertyOptional({ example: 'REFUND-12345', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'REFUND-12345', nullable: true })
   refundReference!: string | null;
 
   @ApiProperty({ format: 'date-time' })
@@ -294,13 +302,13 @@ export class AdminForceCancelResponseDto {
   @ApiProperty({ example: 'CANCELLED' })
   status!: string;
 
-  @ApiPropertyOptional({ example: 'Administrative cancellation', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Administrative cancellation', nullable: true })
   cancellationReason!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   cancelledAt!: Date | null;
 
-  @ApiPropertyOptional({ example: 'REFUND_PENDING', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'REFUND_PENDING', nullable: true })
   paymentStatus!: string | null;
 
   @ApiProperty({ example: true })
@@ -322,13 +330,13 @@ export class AdminOperationalOverrideResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   boardedAt!: Date | null;
 
-  @ApiPropertyOptional({ example: 'DROPPED_OFF', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'DROPPED_OFF', nullable: true })
   dropStatus!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   dropStationId!: string | null;
 
   @ApiProperty({ format: 'date-time' })
@@ -345,7 +353,7 @@ export class AdminResolveReportResponseDto {
   @ApiProperty({ format: 'uuid' })
   driverId!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   passengerId!: string | null;
 
   @ApiProperty({ example: 'Luggage issue resolved' })
@@ -354,13 +362,13 @@ export class AdminResolveReportResponseDto {
   @ApiProperty({ example: 'RESOLVED' })
   status!: string;
 
-  @ApiPropertyOptional({ example: 'Investigated and resolved with passenger', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Investigated and resolved with passenger', nullable: true })
   resolutionNote!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   resolvedBy!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   resolvedAt!: Date | null;
 
   @ApiProperty({ format: 'date-time' })

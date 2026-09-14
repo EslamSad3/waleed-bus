@@ -30,6 +30,9 @@ describe('AdminBookingsService', () => {
                 status: b.status,
                 paymentStatus: b.paymentStatus ?? 'PENDING',
                 paymentMethod: b.paymentMethod ?? 'CASH',
+                paymentNotes: b.paymentNotes ?? null,
+                totalAmount: b.totalAmount !== undefined ? b.totalAmount : 100,
+                refundedAmount: b.refundedAmount !== undefined ? b.refundedAmount : 0,
                 departAt: b.trip?.departAt ?? new Date(Date.now() + 86400000),
               },
             ];

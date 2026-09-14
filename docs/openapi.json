@@ -4430,10 +4430,7 @@
                       "example": 200
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/AdminBookingListItemDto"
-                      }
+                      "$ref": "#/components/schemas/AdminBookingListResponseDto"
                     }
                   },
                   "required": [
@@ -9613,12 +9610,12 @@
             "example": "Ahmed Hassan"
           },
           "passengerPhone": {
-            "type": "object",
+            "type": "string",
             "example": "+201000000000",
             "nullable": true
           },
           "passengerUserId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -9631,7 +9628,7 @@
             "example": "CONFIRMED"
           },
           "totalAmount": {
-            "type": "object",
+            "type": "string",
             "example": "100.00",
             "nullable": true
           },
@@ -9640,27 +9637,27 @@
             "example": "0.00"
           },
           "paymentMethod": {
-            "type": "object",
+            "type": "string",
             "example": "CASH",
             "nullable": true
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
             "example": "PAID",
             "nullable": true
           },
           "paymentReference": {
-            "type": "object",
+            "type": "string",
             "example": "REF-12345",
             "nullable": true
           },
           "boardedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "dropStatus": {
-            "type": "object",
+            "type": "string",
             "example": "DROPPED_OFF",
             "nullable": true
           },
@@ -9681,8 +9678,8 @@
             "example": "Alexandria"
           },
           "confirmedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "createdAt": {
@@ -9706,6 +9703,25 @@
           "createdAt"
         ]
       },
+      "AdminBookingListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminBookingListItemDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "example": "eyJpZCI6IjEyMyJ9",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "AdminBookingDetailTripBusDto": {
         "type": "object",
         "properties": {
@@ -9714,7 +9730,7 @@
             "format": "uuid"
           },
           "registrationNumber": {
-            "type": "object",
+            "type": "string",
             "example": "BUS-001",
             "nullable": true
           },
@@ -9736,12 +9752,12 @@
             "format": "uuid"
           },
           "name": {
-            "type": "object",
+            "type": "string",
             "example": "Mohamed Ibrahim",
             "nullable": true
           },
           "phoneNumber": {
-            "type": "object",
+            "type": "string",
             "example": "+201100000000",
             "nullable": true
           }
@@ -9812,17 +9828,17 @@
         "type": "object",
         "properties": {
           "busRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           },
           "driverRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           },
           "passengerRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           }
@@ -9840,7 +9856,7 @@
             "example": "booking.verify_payment"
           },
           "actorUserId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -9882,7 +9898,7 @@
             "example": 2
           },
           "totalAmount": {
-            "type": "object",
+            "type": "string",
             "example": "100.00",
             "nullable": true
           },
@@ -9891,77 +9907,77 @@
             "example": "0.00"
           },
           "paymentMethod": {
-            "type": "object",
+            "type": "string",
             "example": "CASH",
             "nullable": true
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
             "example": "PAID",
             "nullable": true
           },
           "paymentReference": {
-            "type": "object",
+            "type": "string",
             "example": "REF-12345",
             "nullable": true
           },
           "paymentNotes": {
-            "type": "object",
+            "type": "string",
             "example": "Customer paid at station",
             "nullable": true
           },
           "paidAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "paymentMarkedBy": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "confirmedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "cancelledAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "cancelledBy": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "cancellationReason": {
-            "type": "object",
+            "type": "string",
             "example": "Customer cancelled",
             "nullable": true
           },
           "boardedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "boardedBy": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "dropStatus": {
-            "type": "object",
+            "type": "string",
             "example": "DROPPED_OFF",
             "nullable": true
           },
           "dropStationId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "dropReason": {
-            "type": "object",
+            "type": "string",
             "example": "Scheduled stop",
             "nullable": true
           },
@@ -10007,27 +10023,27 @@
             "format": "uuid"
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
             "example": "PAID",
             "nullable": true
           },
           "paymentMethod": {
-            "type": "object",
+            "type": "string",
             "example": "CASH",
             "nullable": true
           },
           "paymentReference": {
-            "type": "object",
+            "type": "string",
             "example": "REF-12345",
             "nullable": true
           },
           "paidAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "paymentMarkedBy": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           }
@@ -10076,7 +10092,7 @@
             "format": "uuid"
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
             "example": "FAILED",
             "nullable": true
           },
@@ -10118,12 +10134,12 @@
             "format": "uuid"
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
             "example": "REFUNDED",
             "nullable": true
           },
           "totalAmount": {
-            "type": "object",
+            "type": "string",
             "example": "100.00",
             "nullable": true
           },
@@ -10136,7 +10152,7 @@
             "example": "0.00"
           },
           "refundReference": {
-            "type": "object",
+            "type": "string",
             "example": "REFUND-12345",
             "nullable": true
           },
@@ -10197,17 +10213,17 @@
             "example": "CANCELLED"
           },
           "cancellationReason": {
-            "type": "object",
+            "type": "string",
             "example": "Administrative cancellation",
             "nullable": true
           },
           "cancelledAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
             "example": "REFUND_PENDING",
             "nullable": true
           },
@@ -10278,17 +10294,17 @@
             "format": "uuid"
           },
           "boardedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "dropStatus": {
-            "type": "object",
+            "type": "string",
             "example": "DROPPED_OFF",
             "nullable": true
           },
           "dropStationId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -10355,7 +10371,7 @@
             "format": "uuid"
           },
           "passengerId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -10368,18 +10384,18 @@
             "example": "RESOLVED"
           },
           "resolutionNote": {
-            "type": "object",
+            "type": "string",
             "example": "Investigated and resolved with passenger",
             "nullable": true
           },
           "resolvedBy": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "resolvedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "updatedAt": {

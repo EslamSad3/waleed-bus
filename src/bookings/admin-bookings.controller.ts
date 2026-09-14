@@ -36,6 +36,7 @@ import { AdminResolveReportDto } from './dto/admin-report.dto.js';
 import {
   AdminBookingDetailDto,
   AdminBookingListItemDto,
+  AdminBookingListResponseDto,
   AdminFailPaymentResponseDto,
   AdminForceCancelResponseDto,
   AdminOperationalOverrideResponseDto,
@@ -62,8 +63,7 @@ export class AdminBookingsController {
   @ApiEnvelopeResponse(
     200,
     'Cursor page of bookings (items + nextCursor).',
-    AdminBookingListItemDto,
-    true,
+    AdminBookingListResponseDto,
   )
   list(@Query() query: AdminBookingQueryDto) {
     return this.service.findAll(query);

@@ -26,9 +26,25 @@ export class AdminPaymentService {
     dto: AdminVerifyPaymentDto,
   ): Promise<AdminVerifyPaymentResponseDto> {
     return this.system.$transaction(async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id } });
-      if (!booking)
+      // Concurrency lock: serialize payment verification to prevent duplicate/conflicting updates
+      const bookingRows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          paymentStatus: string;
+          paymentMethod: string | null;
+          paymentNotes: string | null;
+          totalAmount: unknown;
+        }>
+      >`
+        SELECT id, payment_status as "paymentStatus", payment_method as "paymentMethod",
+               payment_notes as "paymentNotes", total_amount as "totalAmount"
+        FROM bookings
+        WHERE id = ${id}::uuid
+        FOR UPDATE
+      `;
+      if (bookingRows.length === 0)
         throw new CodedException(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      const booking = bookingRows[0];
 
       if (
         booking.paymentStatus === 'PAID' ||
@@ -93,9 +109,21 @@ export class AdminPaymentService {
     dto: AdminFailPaymentDto,
   ): Promise<AdminFailPaymentResponseDto> {
     return this.system.$transaction(async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id } });
-      if (!booking)
+      // Concurrency lock: serialize payment failure state transition
+      const bookingRows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          paymentStatus: string;
+        }>
+      >`
+        SELECT id, payment_status as "paymentStatus"
+        FROM bookings
+        WHERE id = ${id}::uuid
+        FOR UPDATE
+      `;
+      if (bookingRows.length === 0)
         throw new CodedException(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      const booking = bookingRows[0];
 
       if (booking.paymentStatus === 'PAID') {
         throw new CodedException(
@@ -141,9 +169,25 @@ export class AdminPaymentService {
     dto: AdminRefundPaymentDto,
   ): Promise<AdminRefundPaymentResponseDto> {
     return this.system.$transaction(async (tx) => {
-      const booking = await tx.booking.findUnique({ where: { id } });
-      if (!booking)
+      // Concurrency lock: serialize refund operations to eliminate over-refunding races
+      const bookingRows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          paymentMethod: string | null;
+          paymentStatus: string;
+          totalAmount: unknown;
+          refundedAmount: unknown;
+        }>
+      >`
+        SELECT id, payment_method as "paymentMethod", payment_status as "paymentStatus",
+               total_amount as "totalAmount", refunded_amount as "refundedAmount"
+        FROM bookings
+        WHERE id = ${id}::uuid
+        FOR UPDATE
+      `;
+      if (bookingRows.length === 0)
         throw new CodedException(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      const booking = bookingRows[0];
 
       if (
         booking.paymentMethod === 'CASH' &&
