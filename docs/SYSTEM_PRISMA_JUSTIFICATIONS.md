@@ -87,3 +87,5 @@ Any direct injection or usage of `SystemPrismaService` outside of `FleetPathServ
 ### 6. Platform Audit Trail (`audit.service.ts`)
 - **Operations**: `AuditService.log()`, `AuditService.findMany()`.
 - **Justification**: The audit trail records security, governance, and observability events across all tenants. Writing via the system path ensures audit records cannot be tampered with or suppressed by tenant-level RLS restrictions. Reading audit logs is restricted to platform administration.
+- **Operational & Durability Semantics**: Audit logging is explicitly designed as non-blocking, non-transactional observability and governance logging. Audit writes occur over an independent database connection outside the business mutation transactions so that audit persistence failures never roll back user business transactions or compromise platform availability.
+
