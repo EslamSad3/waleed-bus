@@ -33,7 +33,9 @@ export class DriverAssignmentService {
     busId: string,
     driverUserId: string,
   ): Promise<BusAssignment> {
-    const target = await this.system.user.findUnique({ where: { id: driverUserId } });
+    const target = await this.system.user.findUnique({
+      where: { id: driverUserId },
+    });
     if (!target || !target.isActive) {
       throw new CodedException(
         409,
@@ -41,20 +43,31 @@ export class DriverAssignmentService {
         'Target driver not found or inactive.',
       );
     }
-    const run = async (tx: Prisma.TransactionClient): Promise<BusAssignment> => {
+    const run = async (
+      tx: Prisma.TransactionClient,
+    ): Promise<BusAssignment> => {
       const bus =
         fleetContext.membershipId === null
-          ? await tx.bus.findFirst({ where: { id: busId, fleetId: fleetContext.fleetId } })
+          ? await tx.bus.findFirst({
+              where: { id: busId, fleetId: fleetContext.fleetId },
+            })
           : await tx.bus.findUnique({ where: { id: busId } });
       if (!bus) {
-        throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
+        throw new CodedException(
+          404,
+          'BUS_ACCESS_DENIED',
+          'Bus not found in this fleet.',
+        );
       }
       const membership = await tx.fleetMember.findFirst({
         where: {
           userId: driverUserId,
           fleetId: fleetContext.fleetId,
           status: 'ACTIVE',
-          role: { slug: { in: ['driver', 'independent_driver'] }, isActive: true },
+          role: {
+            slug: { in: ['driver', 'independent_driver'] },
+            isActive: true,
+          },
         },
       });
       if (!membership) {
@@ -102,16 +115,30 @@ export class DriverAssignmentService {
     return assignment;
   }
 
-  async unassign(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<void> {
-    const run = async (tx: Prisma.TransactionClient): Promise<BusAssignment> => {
+  async unassign(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    busId: string,
+  ): Promise<void> {
+    const run = async (
+      tx: Prisma.TransactionClient,
+    ): Promise<BusAssignment> => {
       const bus =
         fleetContext.membershipId === null
-          ? await tx.bus.findFirst({ where: { id: busId, fleetId: fleetContext.fleetId } })
+          ? await tx.bus.findFirst({
+              where: { id: busId, fleetId: fleetContext.fleetId },
+            })
           : await tx.bus.findUnique({ where: { id: busId } });
       if (!bus) {
-        throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
+        throw new CodedException(
+          404,
+          'BUS_ACCESS_DENIED',
+          'Bus not found in this fleet.',
+        );
       }
-      const live = await tx.busAssignment.findFirst({ where: { busId, status: 'ACTIVE' } });
+      const live = await tx.busAssignment.findFirst({
+        where: { busId, status: 'ACTIVE' },
+      });
       if (!live) {
         throw new CodedException(
           404,
@@ -142,7 +169,10 @@ export class DriverAssignmentService {
   /** Assignment changes authorization: stale driver tokens must die (R-08). */
   private async invalidateDriverSessions(userId: string): Promise<void> {
     await this.system.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: userId }, data: { authVersion: { increment: 1 } } });
+      await tx.user.update({
+        where: { id: userId },
+        data: { authVersion: { increment: 1 } },
+      });
       await tx.session.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },

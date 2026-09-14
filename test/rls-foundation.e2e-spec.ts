@@ -20,7 +20,9 @@ describe('RLS foundation (app_tenant role)', () => {
     t = await createTestApp();
     await resetDatabase(loadConfig(process.env).database.systemUrl);
     world = await seedIsolationWorld(t.system);
-    tenant = new pg.Client({ connectionString: loadConfig(process.env).database.tenantUrl });
+    tenant = new pg.Client({
+      connectionString: loadConfig(process.env).database.tenantUrl,
+    });
     await tenant.connect();
   });
 
@@ -37,8 +39,12 @@ describe('RLS foundation (app_tenant role)', () => {
   }
 
   it('sees zero rows without tenant context (fail closed)', async () => {
-    await tenant.query(`SELECT set_config('app.user_id', '', false), set_config('app.fleet_id', '', false)`);
-    const res = await tenant.query<{ c: number }>('SELECT count(*)::int AS c FROM public.buses');
+    await tenant.query(
+      `SELECT set_config('app.user_id', '', false), set_config('app.fleet_id', '', false)`,
+    );
+    const res = await tenant.query<{ c: number }>(
+      'SELECT count(*)::int AS c FROM public.buses',
+    );
     expect(res.rows[0].c).toBe(0);
   });
 
@@ -55,21 +61,27 @@ describe('RLS foundation (app_tenant role)', () => {
     // user A claims fleet B context: fleet_id matches fleet B rows, but user A
     // is not a member of fleet B -> still zero rows.
     await setContext(world.userAId, world.fleetBId);
-    const res = await tenant.query<{ c: number }>('SELECT count(*)::int AS c FROM public.buses');
+    const res = await tenant.query<{ c: number }>(
+      'SELECT count(*)::int AS c FROM public.buses',
+    );
     expect(res.rows[0].c).toBe(0);
   });
 
   it('cannot update another fleet row even with known ids', async () => {
     await setContext(world.userAId, world.fleetAId);
-    const res = await tenant.query('UPDATE public.buses SET capacity = 1 WHERE id = $1', [
-      world.busBId,
-    ]);
+    const res = await tenant.query(
+      'UPDATE public.buses SET capacity = 1 WHERE id = $1',
+      [world.busBId],
+    );
     expect(res.rowCount).toBe(0);
   });
 
   it('cannot delete another fleet booking even with known ids', async () => {
     await setContext(world.userAId, world.fleetAId);
-    const res = await tenant.query('DELETE FROM public.bookings WHERE id = $1', [world.bookingBId]);
+    const res = await tenant.query(
+      'DELETE FROM public.bookings WHERE id = $1',
+      [world.bookingBId],
+    );
     expect(res.rowCount).toBe(0);
   });
 
@@ -81,16 +93,24 @@ describe('RLS foundation (app_tenant role)', () => {
   it('suspended membership loses visibility immediately', async () => {
     await setContext(world.userAId, world.fleetAId);
     await t.system.fleetMember.update({
-      where: { userId_fleetId: { userId: world.userAId, fleetId: world.fleetAId } },
+      where: {
+        userId_fleetId: { userId: world.userAId, fleetId: world.fleetAId },
+      },
       data: { status: 'SUSPENDED' },
     });
-    const suspended = await tenant.query<{ c: number }>('SELECT count(*)::int AS c FROM public.buses');
+    const suspended = await tenant.query<{ c: number }>(
+      'SELECT count(*)::int AS c FROM public.buses',
+    );
     expect(suspended.rows[0].c).toBe(0);
     await t.system.fleetMember.update({
-      where: { userId_fleetId: { userId: world.userAId, fleetId: world.fleetAId } },
+      where: {
+        userId_fleetId: { userId: world.userAId, fleetId: world.fleetAId },
+      },
       data: { status: 'ACTIVE' },
     });
-    const restored = await tenant.query<{ c: number }>('SELECT count(*)::int AS c FROM public.buses');
+    const restored = await tenant.query<{ c: number }>(
+      'SELECT count(*)::int AS c FROM public.buses',
+    );
     expect(restored.rows[0].c).toBe(1);
   });
 });

@@ -4257,6 +4257,789 @@
         ]
       }
     },
+    "/admin/bookings": {
+      "get": {
+        "operationId": "AdminBookingsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "fleetId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by fleet id.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tripId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by trip id.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "passengerUserId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by passenger user id.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "passengerPhone",
+            "required": false,
+            "in": "query",
+            "description": "Filter by passenger phone number (case-insensitive substring).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "passengerName",
+            "required": false,
+            "in": "query",
+            "description": "Filter by passenger name (case-insensitive substring).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by booking status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CONFIRMED",
+                "CANCELLED",
+                "COMPLETED"
+              ]
+            }
+          },
+          {
+            "name": "paymentStatus",
+            "required": false,
+            "in": "query",
+            "description": "Filter by payment status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PAID",
+                "REFUND_PENDING",
+                "PARTIALLY_REFUNDED",
+                "REFUNDED",
+                "FAILED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "paymentMethod",
+            "required": false,
+            "in": "query",
+            "description": "Filter by payment method (e.g. CASH, VODAFONE_CASH).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "createdFrom",
+            "required": false,
+            "in": "query",
+            "description": "Filter bookings created on or after date (ISO8601).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "createdTo",
+            "required": false,
+            "in": "query",
+            "description": "Filter bookings created on or before date (ISO8601).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "departureFrom",
+            "required": false,
+            "in": "query",
+            "description": "Filter trips departing on or after date (ISO8601).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "departureTo",
+            "required": false,
+            "in": "query",
+            "description": "Filter trips departing on or before date (ISO8601).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasReports",
+            "required": false,
+            "in": "query",
+            "description": "If true, filter only bookings with driver incident reports.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of bookings (items + nextCursor).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all bookings across all fleets with multi-criteria filtering (super_admin platform path).",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}": {
+      "get": {
+        "operationId": "AdminBookingsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The full booking details including passenger, trip, driver, bus, reports, and audit trail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Inspect full single booking relational hierarchy with inline recent audit trail.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/payment/verify": {
+      "post": {
+        "operationId": "AdminBookingsController_verifyPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminVerifyPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment verified and marked PAID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          },
+          "409": {
+            "description": "Payment already settled."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify offline/wallet payment enforcing exact-match against totalAmount.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/payment/fail": {
+      "post": {
+        "operationId": "AdminBookingsController_failPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminFailPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment marked FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          },
+          "409": {
+            "description": "Cannot fail a payment that is already settled as PAID."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark an offline payment attempt as FAILED with an explanation.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/payment/refund": {
+      "post": {
+        "operationId": "AdminBookingsController_refundPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRefundPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Refund recorded with updated balance.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Process a full or partial refund with cumulative balance tracking.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/cancel": {
+      "post": {
+        "operationId": "AdminBookingsController_forceCancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminForceCancelBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking cancelled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          },
+          "409": {
+            "description": "Booking is already cancelled."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force-cancel a booking with seat inventory restoration control.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/reinstate": {
+      "post": {
+        "operationId": "AdminBookingsController_reinstate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReinstateBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking reinstated to CONFIRMED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          },
+          "409": {
+            "description": "Trip has reached full capacity (SEATS_UNAVAILABLE) or booking was not cancelled."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reinstate a mistakenly cancelled booking with strict trip capacity validation.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/operational": {
+      "patch": {
+        "operationId": "AdminBookingsController_overrideOperational",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminOperationalOverrideDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operational status updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Override driver operational states (boarded, drop-off) with administrative justification.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
+    "/admin/bookings/{id}/reports/{reportId}": {
+      "patch": {
+        "operationId": "AdminBookingsController_resolveReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reportId",
+            "required": true,
+            "in": "path",
+            "description": "Passenger report id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminResolveReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Incident report resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking or report not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolve or dismiss a driver passenger incident report with a resolution note.",
+        "tags": [
+          "admin-bookings"
+        ]
+      }
+    },
     "/fleet/buses": {
       "get": {
         "operationId": "FleetOwnerController_listBuses",
@@ -8810,6 +9593,185 @@
         },
         "required": [
           "verificationCode"
+        ]
+      },
+      "AdminVerifyPaymentDto": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "example": "VF-9021849",
+            "maxLength": 100,
+            "description": "External transaction reference (e.g. Vodafone Cash / InstaPay transaction ID)."
+          },
+          "amount": {
+            "type": "number",
+            "example": 100,
+            "description": "Verified amount received. Must strictly equal the booking totalAmount."
+          },
+          "paymentMethod": {
+            "type": "string",
+            "example": "VODAFONE_CASH",
+            "maxLength": 20,
+            "description": "Payment method override or confirmation."
+          },
+          "notes": {
+            "type": "string",
+            "example": "Verified in Vodafone Cash business account statement",
+            "maxLength": 500,
+            "description": "Reconciliation notes."
+          }
+        },
+        "required": [
+          "reference",
+          "amount"
+        ]
+      },
+      "AdminFailPaymentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Transaction reference not found in merchant statement after 24 hours",
+            "maxLength": 500,
+            "description": "Reason for marking payment as failed."
+          },
+          "notes": {
+            "type": "string",
+            "example": "Attempted to contact passenger twice with no reply",
+            "maxLength": 500,
+            "description": "Additional notes."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AdminRefundPaymentDto": {
+        "type": "object",
+        "properties": {
+          "refundReference": {
+            "type": "string",
+            "example": "REF-VF-10928",
+            "maxLength": 100,
+            "description": "External refund transfer reference."
+          },
+          "refundAmount": {
+            "type": "number",
+            "example": 50,
+            "description": "Refund amount. Must not exceed the remaining unrefunded booking balance."
+          },
+          "reason": {
+            "type": "string",
+            "example": "Passenger cancelled 1 seat before departure",
+            "maxLength": 500,
+            "description": "Reason for refund."
+          },
+          "notes": {
+            "type": "string",
+            "example": "Transferred via wallet to passenger mobile number",
+            "maxLength": 500,
+            "description": "Additional refund notes."
+          }
+        },
+        "required": [
+          "refundReference",
+          "refundAmount",
+          "reason"
+        ]
+      },
+      "AdminForceCancelBookingDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Emergency route reroute",
+            "description": "Administrative reason for cancellation."
+          },
+          "releaseSeats": {
+            "type": "boolean",
+            "example": true,
+            "default": true,
+            "description": "Whether to restore reserved seats to trip available inventory."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AdminReinstateBookingDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Cancellation was performed in error",
+            "description": "Administrative reason for reinstatement."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AdminOperationalOverrideDto": {
+        "type": "object",
+        "properties": {
+          "boarded": {
+            "type": "boolean",
+            "example": true,
+            "description": "Override boarding status."
+          },
+          "dropStatus": {
+            "type": "string",
+            "enum": [
+              "DROPPED_OFF",
+              "NOT_DROPPED_OFF"
+            ],
+            "example": "DROPPED_OFF",
+            "description": "Override drop status."
+          },
+          "dropStationId": {
+            "type": "string",
+            "example": "station-123",
+            "description": "Drop-off station id."
+          },
+          "dropReason": {
+            "type": "string",
+            "example": "Passenger exited normally",
+            "description": "Operational drop-off note or reason."
+          },
+          "justification": {
+            "type": "string",
+            "example": "Driver mobile battery died during trip",
+            "description": "Administrative reason for operational override."
+          }
+        },
+        "required": [
+          "justification"
+        ]
+      },
+      "AdminResolveReportDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "RESOLVED",
+              "DISMISSED"
+            ],
+            "example": "RESOLVED",
+            "description": "Target report status."
+          },
+          "resolutionNote": {
+            "type": "string",
+            "example": "Contacted passenger and clarified station pickup punctuality rule; incident resolved.",
+            "minLength": 5,
+            "maxLength": 2000,
+            "description": "Mandatory resolution explanation."
+          }
+        },
+        "required": [
+          "status",
+          "resolutionNote"
         ]
       },
       "OwnerProfileDto": {

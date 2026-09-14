@@ -1,4 +1,16 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
@@ -45,7 +57,10 @@ export class DriverOpsController {
   @Patch('me')
   @ApiOperation({ summary: 'Update the driver profile (name, picture).' })
   @ApiEnvelopeResponse(200, 'The updated profile.')
-  updateMe(@CurrentUser() actor: RequestUser, @Body() dto: UpdateDriverProfileDto) {
+  updateMe(
+    @CurrentUser() actor: RequestUser,
+    @Body() dto: UpdateDriverProfileDto,
+  ) {
     return this.driverOps.updateProfile(actor, dto);
   }
 
@@ -53,14 +68,21 @@ export class DriverOpsController {
   @RequirePermission('driver.context.read')
   @ApiOperation({ summary: 'Return the assigned bus (404 when unassigned).' })
   @ApiEnvelopeResponse(200, 'Active assignment + bus row.')
-  @ApiNotFound('404 DRIVER_NOT_ASSIGNED when the caller has no active assignment.')
-  assignedBus(@CurrentUser() actor: RequestUser, @CurrentFleet() fleetContext: FleetContext) {
+  @ApiNotFound(
+    '404 DRIVER_NOT_ASSIGNED when the caller has no active assignment.',
+  )
+  assignedBus(
+    @CurrentUser() actor: RequestUser,
+    @CurrentFleet() fleetContext: FleetContext,
+  ) {
     return this.driverOps.assignedBus(actor, fleetContext);
   }
 
   @Get('bus/:busId')
   @RequirePermission('driver.context.read')
-  @ApiOperation({ summary: 'Fetch one bus — must equal the assigned bus, else 404.' })
+  @ApiOperation({
+    summary: 'Fetch one bus — must equal the assigned bus, else 404.',
+  })
   @ApiUuidParam('busId', 'Bus id (uuid).')
   @ApiEnvelopeResponse(200, 'The bus.')
   @ApiNotFound('Bus is not the assigned bus (or not in this fleet).')
@@ -75,10 +97,15 @@ export class DriverOpsController {
   @Post('bus/claim')
   @RequirePermission('driver.trips.operate')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Claim an owned-fleet bus as your operating bus (independent drivers; fleet owners drive their own buses).' })
+  @ApiOperation({
+    summary:
+      'Claim an owned-fleet bus as your operating bus (independent drivers; fleet owners drive their own buses).',
+  })
   @ApiEnvelopeResponse(200, 'Active assignment row.')
   @ApiNotFound('Bus not found in this fleet (cross-fleet ids are also 404).')
-  @ApiConflict('403 unless the caller owns the fleet; 409 without an ACTIVE driver membership.')
+  @ApiConflict(
+    '403 unless the caller owns the fleet; 409 without an ACTIVE driver membership.',
+  )
   claimBus(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -89,7 +116,9 @@ export class DriverOpsController {
 
   @Get('fleet')
   @RequirePermission('driver.context.read')
-  @ApiOperation({ summary: 'Return the fleet name + phone + owner contact (clarify Q5-B).' })
+  @ApiOperation({
+    summary: 'Return the fleet name + phone + owner contact (clarify Q5-B).',
+  })
   @ApiEnvelopeResponse(200, 'Fleet contact card.')
   fleetCard(
     @CurrentUser() actor: RequestUser,
@@ -100,10 +129,15 @@ export class DriverOpsController {
 
   @Get('trips')
   @RequirePermission('driver.context.read')
-  @ApiOperation({ summary: 'List trips on the assigned bus (cursor pagination, optional status filter).' })
+  @ApiOperation({
+    summary:
+      'List trips on the assigned bus (cursor pagination, optional status filter).',
+  })
   @ApiCursorPagination()
   @ApiEnvelopeResponse(200, 'Cursor page of assigned trips.')
-  @ApiNotFound('404 DRIVER_NOT_ASSIGNED when the caller has no active assignment.')
+  @ApiNotFound(
+    '404 DRIVER_NOT_ASSIGNED when the caller has no active assignment.',
+  )
   trips(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -114,7 +148,10 @@ export class DriverOpsController {
 
   @Get('trips/current')
   @RequirePermission('driver.context.read')
-  @ApiOperation({ summary: 'Nearest DEPARTED (fallback SCHEDULED-today) trip on the assigned bus.' })
+  @ApiOperation({
+    summary:
+      'Nearest DEPARTED (fallback SCHEDULED-today) trip on the assigned bus.',
+  })
   @ApiEnvelopeResponse(200, 'The current trip.')
   @ApiNotFound('No current trip on the assigned bus.')
   currentTrip(
@@ -130,7 +167,9 @@ export class DriverOpsController {
   @ApiUuidParam('tripId', 'Trip id (uuid).')
   @ApiEnvelopeResponse(200, 'The trip.')
   @UseGuards(DriverTripGuard)
-  @ApiNotFound('404 TRIP_ACCESS_DENIED when the trip is not on the assigned bus.')
+  @ApiNotFound(
+    '404 TRIP_ACCESS_DENIED when the trip is not on the assigned bus.',
+  )
   tripById(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -141,11 +180,18 @@ export class DriverOpsController {
 
   @Get('trips/:tripId/passengers')
   @RequirePermission('driver.passengers.read')
-  @ApiOperation({ summary: 'Passenger manifest (PRD §9 fields only — no bulk export).' })
+  @ApiOperation({
+    summary: 'Passenger manifest (PRD §9 fields only — no bulk export).',
+  })
   @ApiUuidParam('tripId', 'Trip id (uuid).')
-  @ApiEnvelopeResponse(200, 'Manifest rows (unpaginated: bounded by bus capacity).')
+  @ApiEnvelopeResponse(
+    200,
+    'Manifest rows (unpaginated: bounded by bus capacity).',
+  )
   @UseGuards(DriverTripGuard)
-  @ApiNotFound('404 TRIP_ACCESS_DENIED when the trip is not on the assigned bus.')
+  @ApiNotFound(
+    '404 TRIP_ACCESS_DENIED when the trip is not on the assigned bus.',
+  )
   manifest(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -157,7 +203,10 @@ export class DriverOpsController {
   @Post('trips/:tripId/passengers/:bookingId/board')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('driver.trips.operate')
-  @ApiOperation({ summary: 'Board a passenger (convergent — repeat returns 200 with current state).' })
+  @ApiOperation({
+    summary:
+      'Board a passenger (convergent — repeat returns 200 with current state).',
+  })
   @ApiUuidParam('tripId', 'Trip id (uuid).')
   @ApiUuidParam('bookingId', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, '{boardingStatus, boardedAt}.')
@@ -180,7 +229,9 @@ export class DriverOpsController {
   @ApiUuidParam('bookingId', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, '{dropStatus, droppedAt}.')
   @UseGuards(DriverTripGuard)
-  @ApiConflict('409 INVALID_DROPOFF_STATE on conflicting re-drop-off or missing station/reason.')
+  @ApiConflict(
+    '409 INVALID_DROPOFF_STATE on conflicting re-drop-off or missing station/reason.',
+  )
   dropOff(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -194,12 +245,16 @@ export class DriverOpsController {
   @Post('trips/:tripId/passengers/:bookingId/payment')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('driver.trips.operate')
-  @ApiOperation({ summary: 'Mark cash payment PAID (amount is read-only from the booking).' })
+  @ApiOperation({
+    summary: 'Mark cash payment PAID (amount is read-only from the booking).',
+  })
   @ApiUuidParam('tripId', 'Trip id (uuid).')
   @ApiUuidParam('bookingId', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, '{paymentStatus, paidAt}.')
   @UseGuards(DriverTripGuard)
-  @ApiConflict('409 PAYMENT_NOT_ALLOWED when unboarded, already paid, or method mismatches.')
+  @ApiConflict(
+    '409 PAYMENT_NOT_ALLOWED when unboarded, already paid, or method mismatches.',
+  )
   cashPayment(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -207,18 +262,28 @@ export class DriverOpsController {
     @Param('bookingId', ParseUUIDPipe) bookingId: string,
     @Body() dto: CashPaymentDto,
   ) {
-    return this.driverOps.cashPayment(actor, fleetContext, tripId, bookingId, dto);
+    return this.driverOps.cashPayment(
+      actor,
+      fleetContext,
+      tripId,
+      bookingId,
+      dto,
+    );
   }
 
   @Post('trips/:tripId/passengers/:bookingId/rating')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('driver.trips.operate')
-  @ApiOperation({ summary: 'Rate a passenger (COMPLETED trip; one write — change conflicts).' })
+  @ApiOperation({
+    summary: 'Rate a passenger (COMPLETED trip; one write — change conflicts).',
+  })
   @ApiUuidParam('tripId', 'Trip id (uuid).')
   @ApiUuidParam('bookingId', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, '{passengerRating, ratedAt}.')
   @UseGuards(DriverTripGuard)
-  @ApiConflict('409 RATING_NOT_ALLOWED on ineligible state or conflicting re-rating.')
+  @ApiConflict(
+    '409 RATING_NOT_ALLOWED on ineligible state or conflicting re-rating.',
+  )
   ratePassenger(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -226,12 +291,20 @@ export class DriverOpsController {
     @Param('bookingId', ParseUUIDPipe) bookingId: string,
     @Body() dto: PassengerRatingDto,
   ) {
-    return this.feedback.ratePassenger(actor, fleetContext, tripId, bookingId, dto.rating);
+    return this.feedback.ratePassenger(
+      actor,
+      fleetContext,
+      tripId,
+      bookingId,
+      dto.rating,
+    );
   }
 
   @Post('trips/:tripId/passengers/:bookingId/report')
   @RequirePermission('driver.trips.operate')
-  @ApiOperation({ summary: 'File a passenger report (append-only, 1–2000 chars).' })
+  @ApiOperation({
+    summary: 'File a passenger report (append-only, 1–2000 chars).',
+  })
   @ApiUuidParam('tripId', 'Trip id (uuid).')
   @ApiUuidParam('bookingId', 'Booking id (uuid).')
   @ApiEnvelopeResponse(201, 'The created report.')
@@ -244,6 +317,12 @@ export class DriverOpsController {
     @Param('bookingId', ParseUUIDPipe) bookingId: string,
     @Body() dto: PassengerReportDto,
   ) {
-    return this.feedback.reportPassenger(actor, fleetContext, tripId, bookingId, dto.note);
+    return this.feedback.reportPassenger(
+      actor,
+      fleetContext,
+      tripId,
+      bookingId,
+      dto.note,
+    );
   }
 }

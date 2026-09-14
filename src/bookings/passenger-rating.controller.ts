@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
@@ -26,11 +34,15 @@ export class PassengerRatingController {
 
   @Post(':id/rating')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Rate your own booking (COMPLETED trip; one write per side).' })
+  @ApiOperation({
+    summary: 'Rate your own booking (COMPLETED trip; one write per side).',
+  })
   @ApiUuidParam('id', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, '{busRating, driverRating}.')
   @ApiNotFound('Booking not found (foreign bookings are also 404).')
-  @ApiConflict('409 RATING_NOT_ALLOWED on ineligible state or conflicting re-rating.')
+  @ApiConflict(
+    '409 RATING_NOT_ALLOWED on ineligible state or conflicting re-rating.',
+  )
   rate(
     @CurrentUser() actor: RequestUser,
     @Param('id', ParseUUIDPipe) id: string,

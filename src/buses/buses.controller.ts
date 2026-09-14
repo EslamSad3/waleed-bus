@@ -10,7 +10,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { RequireAnyPermission, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
@@ -38,7 +41,11 @@ export class BusesController {
   @Post()
   @RequirePermission('buses.create')
   @ApiOperation({ summary: 'Register a bus in the fleet.' })
-  @ApiEnvelopeResponse(201, 'Bus created. The fleetId always comes from the verified context, never from the body.', BusDto)
+  @ApiEnvelopeResponse(
+    201,
+    'Bus created. The fleetId always comes from the verified context, never from the body.',
+    BusDto,
+  )
   @ApiConflict('registrationNumber already exists in this fleet.')
   create(
     @CurrentUser() actor: RequestUser,
@@ -53,7 +60,12 @@ export class BusesController {
   @RequireAnyPermission('buses.read', 'buses.create')
   @ApiOperation({ summary: 'List the fleet buses (cursor pagination).' })
   @ApiCursorPagination()
-  @ApiEnvelopeResponse(200, 'Cursor page of buses (items + nextCursor).', BusDto, true)
+  @ApiEnvelopeResponse(
+    200,
+    'Cursor page of buses (items + nextCursor).',
+    BusDto,
+    true,
+  )
   list(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,

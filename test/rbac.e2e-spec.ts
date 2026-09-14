@@ -4,7 +4,11 @@ import { loadConfig } from '../src/config/configuration.js';
 import type { TestApp } from './helpers/app.js';
 import { createTestApp } from './helpers/app.js';
 import { resetDatabase } from './helpers/db.js';
-import { createUser, seedIsolationWorld, type IsolationWorld } from './helpers/world.js';
+import {
+  createUser,
+  seedIsolationWorld,
+  type IsolationWorld,
+} from './helpers/world.js';
 
 const password = 'Passw0rd!123';
 
@@ -20,7 +24,10 @@ describe('RBAC administration (e2e)', () => {
   async function login(email: string): Promise<string> {
     const cached = userTokens.get(email);
     if (cached) return cached;
-    const res = await api().post('/auth/login').send({ email, password }).expect(201);
+    const res = await api()
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(201);
     userTokens.set(email, res.body.data.accessToken);
     return res.body.data.accessToken;
   }
@@ -44,14 +51,21 @@ describe('RBAC administration (e2e)', () => {
 
   it('blocks platform administration from anonymous and non-admin users', async () => {
     await api().get('/roles').expect(401);
-    await api().get('/roles').set('Authorization', `Bearer ${userAToken}`).expect(403);
+    await api()
+      .get('/roles')
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(403);
   });
 
   it('creates dynamic roles with permissions; duplicate slugs are rejected', async () => {
     const created = await api()
       .post('/roles')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Dispatcher', slug: 'dispatcher', permissionKeys: ['buses.read', 'trips.read'] })
+      .send({
+        name: 'Dispatcher',
+        slug: 'dispatcher',
+        permissionKeys: ['buses.read', 'trips.read'],
+      })
       .expect(201);
     expect(created.body.data.slug).toBe('dispatcher');
 
@@ -80,8 +94,12 @@ describe('RBAC administration (e2e)', () => {
   });
 
   it('protects the system role: no delete, disable, or permission change', async () => {
-    const roles = await api().get('/roles?limit=100').set('Authorization', `Bearer ${adminToken}`);
-    const superAdmin = roles.body.data.items.find((r: { slug: string }) => r.slug === 'super_admin');
+    const roles = await api()
+      .get('/roles?limit=100')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const superAdmin = roles.body.data.items.find(
+      (r: { slug: string }) => r.slug === 'super_admin',
+    );
     expect(superAdmin).toBeDefined();
     await api()
       .delete(`/roles/${superAdmin.id}`)
@@ -100,8 +118,12 @@ describe('RBAC administration (e2e)', () => {
   });
 
   it('replaces a role permission set atomically and validates keys', async () => {
-    const roles = await api().get('/roles?limit=100').set('Authorization', `Bearer ${adminToken}`);
-    const dispatcher = roles.body.data.items.find((r: { slug: string }) => r.slug === 'dispatcher');
+    const roles = await api()
+      .get('/roles?limit=100')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const dispatcher = roles.body.data.items.find(
+      (r: { slug: string }) => r.slug === 'dispatcher',
+    );
     await api()
       .put(`/roles/${dispatcher.id}/permissions`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -111,7 +133,9 @@ describe('RBAC administration (e2e)', () => {
       .get(`/roles/${dispatcher.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const keys = detail.body.data.rolePermissions.map((rp: { permission: { key: string } }) => rp.permission.key);
+    const keys = detail.body.data.rolePermissions.map(
+      (rp: { permission: { key: string } }) => rp.permission.key,
+    );
     expect(keys).toEqual(['buses.read']);
 
     await api()
@@ -139,7 +163,11 @@ describe('RBAC administration (e2e)', () => {
     const secondAdmin = await api()
       .post('/users')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ email: 'second-admin@example.com', password, globalRoleSlugs: ['super_admin'] })
+      .send({
+        email: 'second-admin@example.com',
+        password,
+        globalRoleSlugs: ['super_admin'],
+      })
       .expect(201);
 
     // demoting the last remaining super admin is rejected while the actor is one of two? No:
@@ -155,7 +183,9 @@ describe('RBAC administration (e2e)', () => {
       .get('/users')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const adminRecord = actorUser.body.data.items.find((u: { email: string }) => u.email === 'admin@example.com');
+    const adminRecord = actorUser.body.data.items.find(
+      (u: { email: string }) => u.email === 'admin@example.com',
+    );
     await api()
       .put(`/users/${adminRecord.id}/roles`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -164,8 +194,12 @@ describe('RBAC administration (e2e)', () => {
   });
 
   it('blocks deactivating the last active super admin', async () => {
-    const list = await api().get('/users?limit=100').set('Authorization', `Bearer ${adminToken}`);
-    const adminRecord = list.body.data.items.find((u: { email: string }) => u.email === 'admin@example.com');
+    const list = await api()
+      .get('/users?limit=100')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const adminRecord = list.body.data.items.find(
+      (u: { email: string }) => u.email === 'admin@example.com',
+    );
     await api()
       .patch(`/users/${adminRecord.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -183,7 +217,10 @@ describe('RBAC administration (e2e)', () => {
     expect(addRes.body.data.fleetId).toBe(world.fleetBId);
 
     // the membership change invalidated userA's outstanding token
-    await api().get('/auth/me').set('Authorization', `Bearer ${userAToken}`).expect(401);
+    await api()
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(401);
     userTokens.delete('usera@example.com');
     userAToken = await login('usera@example.com');
   });
@@ -211,7 +248,9 @@ describe('RBAC administration (e2e)', () => {
       .get(`/fleets/${world.fleetBId}/members?limit=100`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const membership = members.body.data.items.find((m: { userId: string }) => m.userId === world.userAId);
+    const membership = members.body.data.items.find(
+      (m: { userId: string }) => m.userId === world.userAId,
+    );
     expect(membership).toBeDefined();
 
     await api()
@@ -236,12 +275,17 @@ describe('RBAC administration (e2e)', () => {
   });
 
   it('exposes own fleet memberships only', async () => {
-    const mine = await api().get('/fleets/mine').set('Authorization', `Bearer ${userAToken}`).expect(200);
+    const mine = await api()
+      .get('/fleets/mine')
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(200);
     const fleetIds = mine.body.data.map((m: { fleetId: string }) => m.fleetId);
     expect(fleetIds).toContain(world.fleetAId);
     expect(fleetIds).toContain(world.fleetBId);
 
-    const fleetBOnly = mine.body.data.filter((m: { fleetId: string }) => m.fleetId === world.fleetBId);
+    const fleetBOnly = mine.body.data.filter(
+      (m: { fleetId: string }) => m.fleetId === world.fleetBId,
+    );
     expect(fleetBOnly).toHaveLength(1);
   });
 });

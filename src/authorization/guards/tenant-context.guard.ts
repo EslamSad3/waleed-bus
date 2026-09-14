@@ -1,4 +1,8 @@
-import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  type CanActivate,
+  type ExecutionContext,
+} from '@nestjs/common';
 import { AuthorizationService } from '../services/authorization.service.js';
 import type { RequestUser } from '../../auth/jwt-payload.js';
 import type { FleetContext } from '../services/authorization.service.js';
@@ -28,7 +32,8 @@ export class TenantContextGuard implements CanActivate {
     const user = request.user;
     if (!user) return true; // public route — JwtAuthGuard already handled
 
-    const fleetId = request.params?.fleetId ?? this.headerFleetId(request.headers);
+    const fleetId =
+      request.params?.fleetId ?? this.headerFleetId(request.headers);
     if (!fleetId) return true;
 
     if (user.appRole === 'super_admin') {
@@ -41,11 +46,16 @@ export class TenantContextGuard implements CanActivate {
       return true;
     }
 
-    request.fleetContext = await this.authorization.resolveFleetContext(user.id, fleetId);
+    request.fleetContext = await this.authorization.resolveFleetContext(
+      user.id,
+      fleetId,
+    );
     return true;
   }
 
-  private headerFleetId(headers: Record<string, string | string[] | undefined>): string | undefined {
+  private headerFleetId(
+    headers: Record<string, string | string[] | undefined>,
+  ): string | undefined {
     const value = headers['x-fleet-id'];
     return typeof value === 'string' && value.length > 0 ? value : undefined;
   }

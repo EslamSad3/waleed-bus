@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SWAGGER_UI_CDN_BASE, SWAGGER_UI_STATIC_ASSETS, swaggerUiCdnRedirect } from './swagger-ui-assets.js';
+import {
+  SWAGGER_UI_CDN_BASE,
+  SWAGGER_UI_STATIC_ASSETS,
+  swaggerUiCdnRedirect,
+} from './swagger-ui-assets.js';
 
 describe('swaggerUiCdnRedirect', () => {
   it('redirects every static asset the Swagger UI template requests', () => {
@@ -14,12 +18,16 @@ describe('swaggerUiCdnRedirect', () => {
       ]),
     );
     for (const asset of SWAGGER_UI_STATIC_ASSETS) {
-      expect(swaggerUiCdnRedirect(asset)).toBe(`${SWAGGER_UI_CDN_BASE}/${asset}`);
+      expect(swaggerUiCdnRedirect(asset)).toBe(
+        `${SWAGGER_UI_CDN_BASE}/${asset}`,
+      );
     }
   });
 
   it('tolerates mount-relative paths with a leading slash', () => {
-    expect(swaggerUiCdnRedirect('/swagger-ui.css')).toBe(`${SWAGGER_UI_CDN_BASE}/swagger-ui.css`);
+    expect(swaggerUiCdnRedirect('/swagger-ui.css')).toBe(
+      `${SWAGGER_UI_CDN_BASE}/swagger-ui.css`,
+    );
   });
 
   it('never redirects generated or unknown routes', () => {

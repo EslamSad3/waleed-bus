@@ -10,7 +10,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { RequireAnyPermission, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
@@ -24,7 +27,11 @@ import {
 import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
 import { BookingsService } from './bookings.service.js';
-import { BookingDto, CreateBookingDto, UpdateBookingDto } from '../trips/dto/trip.dto.js';
+import {
+  BookingDto,
+  CreateBookingDto,
+  UpdateBookingDto,
+} from '../trips/dto/trip.dto.js';
 
 @ApiTags('bookings')
 @ApiSecurity('bearer')
@@ -37,8 +44,14 @@ export class BookingsController {
   @Post()
   @RequirePermission('bookings.create')
   @ApiOperation({ summary: 'Create a booking for one of the fleet trips.' })
-  @ApiEnvelopeResponse(201, 'Booking created (defaults to CONFIRMED).', BookingDto)
-  @ApiNotFound('Trip not found in this fleet (cross-fleet trip ids are also 404).')
+  @ApiEnvelopeResponse(
+    201,
+    'Booking created (defaults to CONFIRMED).',
+    BookingDto,
+  )
+  @ApiNotFound(
+    'Trip not found in this fleet (cross-fleet trip ids are also 404).',
+  )
   create(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -52,7 +65,12 @@ export class BookingsController {
   @RequireAnyPermission('bookings.read', 'bookings.create')
   @ApiOperation({ summary: 'List the fleet bookings (cursor pagination).' })
   @ApiCursorPagination()
-  @ApiEnvelopeResponse(200, 'Cursor page of bookings (items + nextCursor).', BookingDto, true)
+  @ApiEnvelopeResponse(
+    200,
+    'Cursor page of bookings (items + nextCursor).',
+    BookingDto,
+    true,
+  )
   list(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -67,7 +85,9 @@ export class BookingsController {
   @ApiOperation({ summary: 'Fetch one booking.' })
   @ApiUuidParam('id', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, 'The booking.', BookingDto)
-  @ApiNotFound('Booking not found in this fleet (cross-fleet ids are also 404).')
+  @ApiNotFound(
+    'Booking not found in this fleet (cross-fleet ids are also 404).',
+  )
   findOne(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -82,7 +102,9 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update a booking (passenger/phone/status).' })
   @ApiUuidParam('id', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, 'Updated booking.', BookingDto)
-  @ApiNotFound('Booking not found in this fleet (cross-fleet ids are also 404).')
+  @ApiNotFound(
+    'Booking not found in this fleet (cross-fleet ids are also 404).',
+  )
   update(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -98,7 +120,9 @@ export class BookingsController {
   @ApiOperation({ summary: 'Delete a booking.' })
   @ApiUuidParam('id', 'Booking id (uuid).')
   @ApiEnvelopeResponse(200, 'Booking deleted; data is null.')
-  @ApiNotFound('Booking not found in this fleet (cross-fleet ids are also 404).')
+  @ApiNotFound(
+    'Booking not found in this fleet (cross-fleet ids are also 404).',
+  )
   remove(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,

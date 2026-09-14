@@ -19,26 +19,50 @@ interface ChallengeRow {
 function makeSystem(store: Map<string, ChallengeRow>) {
   const tx = {
     phoneVerificationChallenge: {
-      findUnique: vi.fn(async ({ where }: { where: { phoneNumber: string } }) =>
-        store.get(where.phoneNumber) ?? null,
+      findUnique: vi.fn(
+        async ({ where }: { where: { phoneNumber: string } }) =>
+          store.get(where.phoneNumber) ?? null,
       ),
       upsert: vi.fn(
-        async ({ where, update, create }: { where: { phoneNumber: string }; update: Partial<ChallengeRow>; create: ChallengeRow }) => {
+        async ({
+          where,
+          update,
+          create,
+        }: {
+          where: { phoneNumber: string };
+          update: Partial<ChallengeRow>;
+          create: ChallengeRow;
+        }) => {
           const existing = store.get(where.phoneNumber);
           const row = existing
             ? { ...existing, ...update }
-            : { ...create, consumedAt: (create as Partial<ChallengeRow>).consumedAt ?? null };
+            : {
+                ...create,
+                consumedAt:
+                  (create as Partial<ChallengeRow>).consumedAt ?? null,
+              };
           store.set(where.phoneNumber, row as ChallengeRow);
           return row;
         },
       ),
       update: vi.fn(
-        async ({ where, data }: { where: { phoneNumber: string }; data: Partial<ChallengeRow> }) => {
+        async ({
+          where,
+          data,
+        }: {
+          where: { phoneNumber: string };
+          data: Partial<ChallengeRow>;
+        }) => {
           const row = store.get(where.phoneNumber);
           if (!row) throw new Error('missing');
           const next = { ...row, ...data };
-          if (typeof (data.attempts as unknown as { increment?: number })?.increment === 'number') {
-            next.attempts = row.attempts + (data.attempts as unknown as { increment: number }).increment;
+          if (
+            typeof (data.attempts as unknown as { increment?: number })
+              ?.increment === 'number'
+          ) {
+            next.attempts =
+              row.attempts +
+              (data.attempts as unknown as { increment: number }).increment;
           }
           store.set(where.phoneNumber, next);
           return next;
@@ -91,11 +115,20 @@ describe('OtpService', () => {
     const made = makeSystem(store);
     tx = made.tx;
     audit = { log: vi.fn(async () => undefined) };
-    service = new OtpService(made.system, configStub, audit as unknown as AuditService);
+    service = new OtpService(
+      made.system,
+      configStub,
+      audit as unknown as AuditService,
+    );
   });
 
   it('opens a challenge expiring in 5 minutes', async () => {
-    const result = await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
+    const result = await service.openChallenge(
+      PHONE,
+      'REGISTRATION',
+      USER,
+      NOW,
+    );
     expect(result).toEqual({ expiresInSeconds: 300 });
     expect(store.get(PHONE)).toMatchObject({
       purpose: 'REGISTRATION',
@@ -107,7 +140,13 @@ describe('OtpService', () => {
   });
 
   it('opens a phone-change challenge with a custom 60s lifetime', async () => {
-    const result = await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 60_000);
+    const result = await service.openChallenge(
+      PHONE,
+      'PHONE_CHANGE',
+      USER,
+      NOW,
+      60_000,
+    );
     expect(result).toEqual({ expiresInSeconds: 60 });
     expect(store.get(PHONE)).toMatchObject({
       purpose: 'PHONE_CHANGE',
@@ -117,10 +156,12 @@ describe('OtpService', () => {
 
   it('swaps the number on phone-change verification when still free', async () => {
     await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 60_000);
-    tx.user.findUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
-      if (where.id === USER) return { id: USER, phoneNumber: '01000000099' };
-      return null;
-    });
+    tx.user.findUnique.mockImplementation(
+      async ({ where }: { where: Record<string, string> }) => {
+        if (where.id === USER) return { id: USER, phoneNumber: '01000000099' };
+        return null;
+      },
+    );
     const result = await service.verifyChallenge(PHONE, '123456', NOW);
     expect(result).toEqual({ userId: USER });
     expect(tx.user.update).toHaveBeenCalledWith({
@@ -131,12 +172,21 @@ describe('OtpService', () => {
 
   it('rejects phone-change verification when the number was taken meanwhile', async () => {
     await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 60_000);
-    tx.user.findUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
-      if (where.id === USER) return { id: USER, phoneNumber: '01000000099' };
-      if (where.phoneNumber === PHONE) return { id: '00000000-0000-4000-8000-000000000002', phoneNumber: PHONE };
-      return null;
-    });
-    await expectCode(service.verifyChallenge(PHONE, '123456', NOW), 'PHONE_UNAVAILABLE');
+    tx.user.findUnique.mockImplementation(
+      async ({ where }: { where: Record<string, string> }) => {
+        if (where.id === USER) return { id: USER, phoneNumber: '01000000099' };
+        if (where.phoneNumber === PHONE)
+          return {
+            id: '00000000-0000-4000-8000-000000000002',
+            phoneNumber: PHONE,
+          };
+        return null;
+      },
+    );
+    await expectCode(
+      service.verifyChallenge(PHONE, '123456', NOW),
+      'PHONE_UNAVAILABLE',
+    );
     // The pending request is consumed so the owner can try another number.
     expect(store.get(PHONE)?.consumedAt).not.toBeNull();
     expect(tx.user.update).not.toHaveBeenCalled();
@@ -144,7 +194,12 @@ describe('OtpService', () => {
   it('rejects resend inside the 60s cooldown with retryAfter', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     await expectCode(
-      service.openChallenge(PHONE, 'REGISTRATION', USER, new Date(NOW.getTime() + 10_000)),
+      service.openChallenge(
+        PHONE,
+        'REGISTRATION',
+        USER,
+        new Date(NOW.getTime() + 10_000),
+      ),
       'OTP_RATE_LIMITED',
     );
   });
@@ -152,18 +207,35 @@ describe('OtpService', () => {
   it('resend after cooldown starts a fresh guess budget', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     store.get(PHONE)!.attempts = 4;
-    await service.openChallenge(PHONE, 'REGISTRATION', USER, new Date(NOW.getTime() + 61_000));
+    await service.openChallenge(
+      PHONE,
+      'REGISTRATION',
+      USER,
+      new Date(NOW.getTime() + 61_000),
+    );
     expect(store.get(PHONE)).toMatchObject({ attempts: 0, consumedAt: null });
   });
 
   it('send-otp resend preserves a live registration binding', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     // send-otp passes userId null (public resend) past the cooldown.
-    const resend = await service.openChallenge(PHONE, 'PROFILE', null, new Date(NOW.getTime() + 61_000));
+    const resend = await service.openChallenge(
+      PHONE,
+      'PROFILE',
+      null,
+      new Date(NOW.getTime() + 61_000),
+    );
     expect(resend).toEqual({ expiresInSeconds: 300 });
-    expect(store.get(PHONE)).toMatchObject({ purpose: 'REGISTRATION', userId: USER });
+    expect(store.get(PHONE)).toMatchObject({
+      purpose: 'REGISTRATION',
+      userId: USER,
+    });
     // Verification still stamps the bound user.
-    await service.verifyChallenge(PHONE, '123456', new Date(NOW.getTime() + 62_000));
+    await service.verifyChallenge(
+      PHONE,
+      '123456',
+      new Date(NOW.getTime() + 62_000),
+    );
     expect(tx.user.update).toHaveBeenCalledWith({
       where: { id: USER },
       data: { phoneNumber: PHONE, phoneVerifiedAt: expect.any(Date) },
@@ -172,7 +244,12 @@ describe('OtpService', () => {
 
   it('send-otp resend preserves a live phone-change window', async () => {
     await service.openChallenge(PHONE, 'PHONE_CHANGE', USER, NOW, 120_000);
-    const resend = await service.openChallenge(PHONE, 'PROFILE', null, new Date(NOW.getTime() + 61_000));
+    const resend = await service.openChallenge(
+      PHONE,
+      'PROFILE',
+      null,
+      new Date(NOW.getTime() + 61_000),
+    );
     expect(store.get(PHONE)).toMatchObject({
       purpose: 'PHONE_CHANGE',
       userId: USER,
@@ -183,7 +260,11 @@ describe('OtpService', () => {
 
   it('verifies the fixed code and stamps the user', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
-    const result = await service.verifyChallenge(PHONE, '123456', new Date(NOW.getTime() + 1000));
+    const result = await service.verifyChallenge(
+      PHONE,
+      '123456',
+      new Date(NOW.getTime() + 1000),
+    );
     expect(result).toEqual({ userId: USER });
     expect(store.get(PHONE)?.consumedAt).not.toBeNull();
     expect(tx.user.update).toHaveBeenCalledWith({
@@ -194,14 +275,20 @@ describe('OtpService', () => {
 
   it('rejects wrong codes and counts attempts', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
-    await expectCode(service.verifyChallenge(PHONE, '000000', NOW), 'OTP_INVALID');
+    await expectCode(
+      service.verifyChallenge(PHONE, '000000', NOW),
+      'OTP_INVALID',
+    );
     expect(store.get(PHONE)?.attempts).toBe(1);
   });
 
   it('locks the challenge after 5 wrong guesses', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     store.get(PHONE)!.attempts = 5;
-    await expectCode(service.verifyChallenge(PHONE, '000000', NOW), 'OTP_INVALID');
+    await expectCode(
+      service.verifyChallenge(PHONE, '000000', NOW),
+      'OTP_INVALID',
+    );
     expect(store.get(PHONE)?.consumedAt).not.toBeNull();
     expect(tx.user.update).not.toHaveBeenCalled();
   });
@@ -209,7 +296,11 @@ describe('OtpService', () => {
   it('rejects expired challenges', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     await expectCode(
-      service.verifyChallenge(PHONE, '123456', new Date(NOW.getTime() + 5 * 60_000 + 1000)),
+      service.verifyChallenge(
+        PHONE,
+        '123456',
+        new Date(NOW.getTime() + 5 * 60_000 + 1000),
+      ),
       'OTP_EXPIRED',
     );
   });
@@ -217,11 +308,17 @@ describe('OtpService', () => {
   it('rejects replay of a consumed challenge', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     await service.verifyChallenge(PHONE, '123456', NOW);
-    await expectCode(service.verifyChallenge(PHONE, '123456', NOW), 'OTP_INVALID');
+    await expectCode(
+      service.verifyChallenge(PHONE, '123456', NOW),
+      'OTP_INVALID',
+    );
   });
 
   it('rejects verification with no challenge', async () => {
-    await expectCode(service.verifyChallenge(PHONE, '123456', NOW), 'OTP_INVALID');
+    await expectCode(
+      service.verifyChallenge(PHONE, '123456', NOW),
+      'OTP_INVALID',
+    );
   });
 
   it('reports active challenges for the idempotency check', async () => {
@@ -235,9 +332,18 @@ describe('OtpService', () => {
   it('audits sends and verifications without the code value', async () => {
     await service.openChallenge(PHONE, 'REGISTRATION', USER, NOW);
     await service.verifyChallenge(PHONE, '123456', NOW);
-    await expectCode(service.verifyChallenge(PHONE, '000000', NOW), 'OTP_INVALID');
-    const actions = audit.log.mock.calls.map((call) => (call[0] as { action: string }).action);
-    expect(actions).toEqual(['otp.send', 'otp.verify.success', 'otp.verify.failure']);
+    await expectCode(
+      service.verifyChallenge(PHONE, '000000', NOW),
+      'OTP_INVALID',
+    );
+    const actions = audit.log.mock.calls.map(
+      (call) => (call[0] as { action: string }).action,
+    );
+    expect(actions).toEqual([
+      'otp.send',
+      'otp.verify.success',
+      'otp.verify.failure',
+    ]);
     expect(JSON.stringify(audit.log.mock.calls)).not.toContain('123456');
   });
 });

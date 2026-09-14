@@ -4,8 +4,16 @@ import type { ExecutionContext } from '@nestjs/common';
 import { TenantContextGuard } from './tenant-context.guard.js';
 import type { AuthorizationService } from '../services/authorization.service.js';
 
-function makeRequest(parts: { params?: object; headers?: object; user?: object }) {
-  const request = { params: parts.params ?? {}, headers: parts.headers ?? {}, user: parts.user };
+function makeRequest(parts: {
+  params?: object;
+  headers?: object;
+  user?: object;
+}) {
+  const request = {
+    params: parts.params ?? {},
+    headers: parts.headers ?? {},
+    user: parts.user,
+  };
   const ctx = {
     switchToHttp: () => ({ getRequest: () => request }),
   } as unknown as ExecutionContext;
@@ -25,7 +33,9 @@ describe('TenantContextGuard', () => {
         roleSlug: 'operator',
       })),
     };
-    guard = new TenantContextGuard(authorization as unknown as AuthorizationService);
+    guard = new TenantContextGuard(
+      authorization as unknown as AuthorizationService,
+    );
   });
 
   it('resolves the fleetId route param into a verified fleet context', async () => {
@@ -34,7 +44,10 @@ describe('TenantContextGuard', () => {
       user: { id: 'user-1' },
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(authorization.resolveFleetContext).toHaveBeenCalledWith('user-1', 'fleet-1');
+    expect(authorization.resolveFleetContext).toHaveBeenCalledWith(
+      'user-1',
+      'fleet-1',
+    );
     expect(request['fleetContext']).toMatchObject({ fleetId: 'fleet-1' });
   });
 
@@ -44,7 +57,10 @@ describe('TenantContextGuard', () => {
       user: { id: 'user-1' },
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(authorization.resolveFleetContext).toHaveBeenCalledWith('user-1', 'fleet-9');
+    expect(authorization.resolveFleetContext).toHaveBeenCalledWith(
+      'user-1',
+      'fleet-9',
+    );
   });
 
   it('passes through routes without any fleet selector', async () => {
@@ -54,9 +70,16 @@ describe('TenantContextGuard', () => {
   });
 
   it('rejects a fleet the user has no active membership in', async () => {
-    authorization.resolveFleetContext.mockRejectedValue(new ForbiddenException());
-    const { ctx } = makeRequest({ params: { fleetId: 'other' }, user: { id: 'user-1' } });
-    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(ForbiddenException);
+    authorization.resolveFleetContext.mockRejectedValue(
+      new ForbiddenException(),
+    );
+    const { ctx } = makeRequest({
+      params: { fleetId: 'other' },
+      user: { id: 'user-1' },
+    });
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('gives the verified super_admin a platform context without a membership check', async () => {
@@ -66,7 +89,10 @@ describe('TenantContextGuard', () => {
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(authorization.resolveFleetContext).not.toHaveBeenCalled();
-    expect(request['fleetContext']).toMatchObject({ fleetId: 'any-fleet', roleSlug: 'super_admin' });
+    expect(request['fleetContext']).toMatchObject({
+      fleetId: 'any-fleet',
+      roleSlug: 'super_admin',
+    });
   });
 
   it('ignores fleet selectors on public routes (no user yet)', async () => {

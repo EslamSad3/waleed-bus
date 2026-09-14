@@ -3,6 +3,8 @@ import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationModule } from '../authorization/authorization.module.js';
 import { PassengerAuthModule } from '../passenger-auth/passenger-auth.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
+import { AdminBookingsController } from './admin-bookings.controller.js';
+import { AdminBookingsService } from './admin-bookings.service.js';
 import { BookingsController } from './bookings.controller.js';
 import { BookingsService } from './bookings.service.js';
 import { MeController } from './me.controller.js';
@@ -24,8 +26,9 @@ import { TripSharesService } from './trip-shares.service.js';
     PassengerRatingController,
     MeController,
     PublicSharesController,
+    AdminBookingsController,
   ],
-  providers: [BookingsService, TripSharesService],
-  exports: [BookingsService, TripSharesService],
+  providers: [BookingsService, TripSharesService, AdminBookingsService],
+  exports: [BookingsService, TripSharesService, AdminBookingsService],
 })
 export class BookingsModule {}

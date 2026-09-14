@@ -14,8 +14,10 @@ describe('app bootstrap (serverless entry path)', () => {
   beforeAll(async () => {
     // Placeholders — nothing here opens a database connection; Prisma clients
     // connect lazily on first query.
-    process.env.TEST_DATABASE_URL ??= 'postgresql://app_tenant:placeholder@localhost:5432/bus_test';
-    process.env.TEST_DIRECT_URL ??= 'postgresql://postgres:placeholder@localhost:5432/bus_test';
+    process.env.TEST_DATABASE_URL ??=
+      'postgresql://app_tenant:placeholder@localhost:5432/bus_test';
+    process.env.TEST_DIRECT_URL ??=
+      'postgresql://postgres:placeholder@localhost:5432/bus_test';
     process.env.JWT_SECRET ??= 'unit-test-secret-0123456789abcdef0123456789';
     process.env.JWT_ISSUER ??= 'bus-api';
     process.env.JWT_AUDIENCE ??= 'bus-client';
@@ -34,7 +36,12 @@ describe('app bootstrap (serverless entry path)', () => {
     const res = await request(app.getHttpServer()).get('/').expect(200);
     expect(res.body).toMatchObject({
       statusCode: 200,
-      data: { name: 'Bus Fleet API', version: '1.0.0', docs: '/docs', health: '/health' },
+      data: {
+        name: 'Bus Fleet API',
+        version: '1.0.0',
+        docs: '/docs',
+        health: '/health',
+      },
     });
   });
 

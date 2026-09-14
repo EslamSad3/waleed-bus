@@ -6,7 +6,11 @@ import type { FleetContext } from '../authorization/services/authorization.servi
 import { AuditService } from '../audit/audit.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
-import { buildCursorArgs, toCursorPage, type CursorPage } from '../common/pagination.js';
+import {
+  buildCursorArgs,
+  toCursorPage,
+  type CursorPage,
+} from '../common/pagination.js';
 import { normalizePhone } from '../passenger-auth/phone.util.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { TenantContextService } from '../authorization/services/tenant-context.service.js';
@@ -109,8 +113,14 @@ export class DriverRosterService {
     return toCursorPage(entries, pageSize);
   }
 
-  async get(actor: RequestUser, fleetContext: FleetContext, memberId: string): Promise<RosterEntry> {
-    const run = async (tx: Prisma.TransactionClient): Promise<FleetMember | null> =>
+  async get(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    memberId: string,
+  ): Promise<RosterEntry> {
+    const run = async (
+      tx: Prisma.TransactionClient,
+    ): Promise<FleetMember | null> =>
       tx.fleetMember.findFirst({
         where: {
           id: memberId,
@@ -120,7 +130,11 @@ export class DriverRosterService {
       });
     const membership = await this.fleetPath.run(actor, fleetContext, run, run);
     if (!membership) {
-      throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Driver not found in this fleet.');
+      throw new CodedException(
+        404,
+        'RESOURCE_NOT_OWNED',
+        'Driver not found in this fleet.',
+      );
     }
     return this.toEntry(membership);
   }
@@ -136,13 +150,27 @@ export class DriverRosterService {
         where: { id: memberId, fleetId: fleetContext.fleetId },
       });
       if (!existing) {
-        throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Driver not found in this fleet.');
+        throw new CodedException(
+          404,
+          'RESOURCE_NOT_OWNED',
+          'Driver not found in this fleet.',
+        );
       }
-      const role = input.roleSlug ? await this.resolveDriverRole(tx, input.roleSlug) : undefined;
-      if (input.status && !['ACTIVE', 'SUSPENDED', 'REVOKED'].includes(input.status)) {
-        throw new CodedException(422, 'VALIDATION_FAILED', 'Unknown membership status.', {
-          fields: { status: 'must be ACTIVE, SUSPENDED, or REVOKED' },
-        });
+      const role = input.roleSlug
+        ? await this.resolveDriverRole(tx, input.roleSlug)
+        : undefined;
+      if (
+        input.status &&
+        !['ACTIVE', 'SUSPENDED', 'REVOKED'].includes(input.status)
+      ) {
+        throw new CodedException(
+          422,
+          'VALIDATION_FAILED',
+          'Unknown membership status.',
+          {
+            fields: { status: 'must be ACTIVE, SUSPENDED, or REVOKED' },
+          },
+        );
       }
       return tx.fleetMember.update({
         where: { id: memberId },
@@ -167,17 +195,29 @@ export class DriverRosterService {
     return this.toEntry(membership);
   }
 
-  async remove(actor: RequestUser, fleetContext: FleetContext, memberId: string): Promise<void> {
+  async remove(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    memberId: string,
+  ): Promise<void> {
     const run = async (tx: Prisma.TransactionClient): Promise<FleetMember> => {
       const existing = await tx.fleetMember.findFirst({
         where: { id: memberId, fleetId: fleetContext.fleetId },
       });
       if (!existing) {
-        throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Driver not found in this fleet.');
+        throw new CodedException(
+          404,
+          'RESOURCE_NOT_OWNED',
+          'Driver not found in this fleet.',
+        );
       }
       const now = new Date();
       await tx.busAssignment.updateMany({
-        where: { driverUserId: existing.userId, fleetId: fleetContext.fleetId, status: 'ACTIVE' },
+        where: {
+          driverUserId: existing.userId,
+          fleetId: fleetContext.fleetId,
+          status: 'ACTIVE',
+        },
         data: { status: 'ENDED', endedAt: now },
       });
       await tx.fleetMember.delete({ where: { id: memberId } });
@@ -201,57 +241,92 @@ export class DriverRosterService {
   /** Existing user by id, or a fresh phone+password account (owner vouches the phone). */
   private async resolveTargetUser(input: AddDriverInput): Promise<string> {
     if (input.userId) {
-      const target = await this.system.user.findUnique({ where: { id: input.userId } });
+      const target = await this.system.user.findUnique({
+        where: { id: input.userId },
+      });
       if (!target || !target.isActive) {
-        throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Target user not found or inactive.');
+        throw new CodedException(
+          404,
+          'RESOURCE_NOT_OWNED',
+          'Target user not found or inactive.',
+        );
       }
       return target.id;
     }
     if (!input.phone || !input.password) {
-      throw new CodedException(422, 'VALIDATION_FAILED', 'Provide userId or phone+name+password.', {
-        fields: { userId: 'either userId or phone+password is required' },
-      });
+      throw new CodedException(
+        422,
+        'VALIDATION_FAILED',
+        'Provide userId or phone+name+password.',
+        {
+          fields: { userId: 'either userId or phone+password is required' },
+        },
+      );
     }
     let phone: string;
     try {
       phone = normalizePhone(input.phone);
     } catch {
-      throw new CodedException(422, 'VALIDATION_FAILED', 'The request is invalid.', {
-        fields: { phone: 'phone must be a valid Egyptian mobile number' },
-      });
+      throw new CodedException(
+        422,
+        'VALIDATION_FAILED',
+        'The request is invalid.',
+        {
+          fields: { phone: 'phone must be a valid Egyptian mobile number' },
+        },
+      );
     }
     if (input.password.length < 8 || input.password.length > 128) {
-      throw new CodedException(422, 'VALIDATION_FAILED', 'The request is invalid.', {
-        fields: { password: 'password must be 8–128 characters' },
-      });
+      throw new CodedException(
+        422,
+        'VALIDATION_FAILED',
+        'The request is invalid.',
+        {
+          fields: { password: 'password must be 8–128 characters' },
+        },
+      );
     }
-    const created = await this.system.user.create({
-      data: {
-        name: input.name ?? null,
-        phoneNumber: phone,
-        phoneVerifiedAt: new Date(),
-        passwordHash: await argon2.hash(input.password),
-      },
-    }).catch((error) => {
-      throw translatePrismaError(error, 'User');
-    });
+    const created = await this.system.user
+      .create({
+        data: {
+          name: input.name ?? null,
+          phoneNumber: phone,
+          phoneVerifiedAt: new Date(),
+          passwordHash: await argon2.hash(input.password),
+        },
+      })
+      .catch((error) => {
+        throw translatePrismaError(error, 'User');
+      });
     return created.id;
   }
 
   /** Roster roles must be active, non-system, and driver-capable (grant driver.context.read). */
-  private async resolveDriverRole(tx: Prisma.TransactionClient, roleSlug = 'driver') {
+  private async resolveDriverRole(
+    tx: Prisma.TransactionClient,
+    roleSlug = 'driver',
+  ) {
     const role = await tx.role.findUnique({
       where: { slug: roleSlug },
       include: { rolePermissions: { include: { permission: true } } },
     });
     if (!role || !role.isActive || role.isSystem) {
-      throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Driver role not found.');
+      throw new CodedException(
+        404,
+        'RESOURCE_NOT_OWNED',
+        'Driver role not found.',
+      );
     }
     const capable = role.rolePermissions.some(
-      (rp) => rp.permission.key === 'driver.context.read' && rp.permission.isActive,
+      (rp) =>
+        rp.permission.key === 'driver.context.read' && rp.permission.isActive,
     );
     if (!capable) {
-      throw new CodedException(409, 'DRIVER_ASSIGNMENT_NOT_ALLOWED', 'Role is not driver-capable.');
+      throw new CodedException(
+        409,
+        'DRIVER_ASSIGNMENT_NOT_ALLOWED',
+        'Role is not driver-capable.',
+      );
     }
     return role;
   }
@@ -270,7 +345,9 @@ export class DriverRosterService {
     const roles =
       memberships.length > 0
         ? await this.system.role.findMany({
-            where: { id: { in: [...new Set(memberships.map((m) => m.roleId))] } },
+            where: {
+              id: { in: [...new Set(memberships.map((m) => m.roleId))] },
+            },
           })
         : [];
     const byUser = new Map(users.map((u) => [u.id, u]));
@@ -289,7 +366,10 @@ export class DriverRosterService {
 
   private async invalidateUserSessions(userId: string): Promise<void> {
     await this.system.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: userId }, data: { authVersion: { increment: 1 } } });
+      await tx.user.update({
+        where: { id: userId },
+        data: { authVersion: { increment: 1 } },
+      });
       await tx.session.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },

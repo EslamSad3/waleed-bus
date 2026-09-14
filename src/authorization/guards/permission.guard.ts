@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  type CanActivate,
+  type ExecutionContext,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
   PERMISSIONS_ALL_KEY,
@@ -23,21 +28,23 @@ export class PermissionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredAll = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_ALL_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    const requiredAny = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_ANY_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredAll = this.reflector.getAllAndOverride<string[]>(
+      PERMISSIONS_ALL_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const requiredAny = this.reflector.getAllAndOverride<string[]>(
+      PERMISSIONS_ANY_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     const isPlatform = this.reflector.getAllAndOverride<boolean>(PLATFORM_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
     if (!requiredAll && !requiredAny && !isPlatform) return true;
 
-    const request = context.switchToHttp().getRequest<{ user?: RequestUser; fleetContext?: FleetContext }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ user?: RequestUser; fleetContext?: FleetContext }>();
     const user = request.user;
     if (!user) throw new ForbiddenException('Authentication required');
 
@@ -49,7 +56,10 @@ export class PermissionGuard implements CanActivate {
     }
 
     const effective = request.fleetContext
-      ? await this.authorization.fleetPermissions(user.id, request.fleetContext.fleetId)
+      ? await this.authorization.fleetPermissions(
+          user.id,
+          request.fleetContext.fleetId,
+        )
       : await this.authorization.globalPermissions(user.id);
 
     const satisfied =
@@ -59,7 +69,9 @@ export class PermissionGuard implements CanActivate {
     if (!satisfied) {
       const missing = requiredAll?.filter((p) => !effective.has(p)) ?? [];
       throw new ForbiddenException(
-        missing.length > 0 ? `Missing required permission: ${missing.join(', ')}` : 'Missing required permission',
+        missing.length > 0
+          ? `Missing required permission: ${missing.join(', ')}`
+          : 'Missing required permission',
       );
     }
     return true;

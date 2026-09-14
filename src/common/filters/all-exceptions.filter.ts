@@ -36,13 +36,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const body = exception.getResponse();
       const message =
-        typeof body === 'string' ? body : ((body as { message?: unknown }).message ?? exception.message);
+        typeof body === 'string'
+          ? body
+          : ((body as { message?: unknown }).message ?? exception.message);
       const out: Record<string, unknown> = { statusCode: status, message };
       if (typeof body === 'object' && body !== null) {
-        const coded = body as { code?: unknown; details?: unknown; retryAfter?: unknown };
+        const coded = body as {
+          code?: unknown;
+          details?: unknown;
+          retryAfter?: unknown;
+        };
         if (typeof coded.code === 'string') out.code = coded.code;
         if (coded.details !== undefined) out.details = coded.details;
-        if (typeof coded.retryAfter === 'number') out.retryAfter = coded.retryAfter;
+        if (typeof coded.retryAfter === 'number')
+          out.retryAfter = coded.retryAfter;
       }
       if (typeof out.code !== 'string') out.code = defaultCodeFor(status);
       response.status(status).json(out);

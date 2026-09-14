@@ -1,4 +1,9 @@
-import { Global, Injectable, Module, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Global,
+  Injectable,
+  Module,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { ConfigService } from '../config/config.module.js';
@@ -8,9 +13,16 @@ import { ConfigService } from '../config/config.module.js';
  * endpoints only. Never use for ordinary tenant-scoped request data.
  */
 @Injectable()
-export class SystemPrismaService extends PrismaClient implements OnModuleDestroy {
+export class SystemPrismaService
+  extends PrismaClient
+  implements OnModuleDestroy
+{
   constructor(config: ConfigService) {
-    super({ adapter: new PrismaPg({ connectionString: config.config.database.systemUrl }) });
+    super({
+      adapter: new PrismaPg({
+        connectionString: config.config.database.systemUrl,
+      }),
+    });
   }
 
   onModuleDestroy(): Promise<void> {
@@ -24,9 +36,16 @@ export class SystemPrismaService extends PrismaClient implements OnModuleDestroy
  * transaction that sets app.user_id / app.fleet_id.
  */
 @Injectable()
-export class TenantPrismaService extends PrismaClient implements OnModuleDestroy {
+export class TenantPrismaService
+  extends PrismaClient
+  implements OnModuleDestroy
+{
   constructor(config: ConfigService) {
-    super({ adapter: new PrismaPg({ connectionString: config.config.database.tenantUrl }) });
+    super({
+      adapter: new PrismaPg({
+        connectionString: config.config.database.tenantUrl,
+      }),
+    });
   }
 
   onModuleDestroy(): Promise<void> {

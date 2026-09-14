@@ -32,15 +32,21 @@ describe('loadConfig', () => {
 
   it('throws listing every missing required variable', () => {
     const env = { NODE_ENV: 'development' } as unknown as NodeJS.ProcessEnv;
-    expect(() => loadConfig(env)).toThrow(/DATABASE_URL.*DIRECT_URL.*JWT_SECRET.*JWT_ISSUER.*JWT_AUDIENCE.*JWT_EXPIRES_IN/s);
+    expect(() => loadConfig(env)).toThrow(
+      /DATABASE_URL.*DIRECT_URL.*JWT_SECRET.*JWT_ISSUER.*JWT_AUDIENCE.*JWT_EXPIRES_IN/s,
+    );
   });
 
   it('rejects a JWT secret shorter than 32 characters', () => {
-    expect(() => loadConfig({ ...validEnv, JWT_SECRET: 'short' })).toThrow(/JWT_SECRET/);
+    expect(() => loadConfig({ ...validEnv, JWT_SECRET: 'short' })).toThrow(
+      /JWT_SECRET/,
+    );
   });
 
   it('rejects an invalid JWT expiration format', () => {
-    expect(() => loadConfig({ ...validEnv, JWT_EXPIRES_IN: 'forever' })).toThrow(/JWT_EXPIRES_IN/);
+    expect(() =>
+      loadConfig({ ...validEnv, JWT_EXPIRES_IN: 'forever' }),
+    ).toThrow(/JWT_EXPIRES_IN/);
   });
 
   it('prefers TEST database URLs when NODE_ENV is test', () => {
@@ -67,25 +73,47 @@ describe('resolveObserveCredentials', () => {
 
   it('returns null for the scaffold placeholder credentials', () => {
     expect(
-      resolveObserveCredentials({ OBSERVE_APP_KEY: 'YOUR_APP_KEY', OBSERVE_APP_SECRET: 'YOUR_APP_SECRET' }),
+      resolveObserveCredentials({
+        OBSERVE_APP_KEY: 'YOUR_APP_KEY',
+        OBSERVE_APP_SECRET: 'YOUR_APP_SECRET',
+      }),
     ).toBeNull();
   });
 
   it('requires both key and secret to activate telemetry', () => {
-    expect(resolveObserveCredentials({ OBSERVE_APP_KEY: 'k', OBSERVE_APP_SECRET: 'YOUR_APP_SECRET' })).toBeNull();
-    expect(resolveObserveCredentials({ OBSERVE_APP_KEY: 'YOUR_APP_KEY', OBSERVE_APP_SECRET: 's' })).toBeNull();
+    expect(
+      resolveObserveCredentials({
+        OBSERVE_APP_KEY: 'k',
+        OBSERVE_APP_SECRET: 'YOUR_APP_SECRET',
+      }),
+    ).toBeNull();
+    expect(
+      resolveObserveCredentials({
+        OBSERVE_APP_KEY: 'YOUR_APP_KEY',
+        OBSERVE_APP_SECRET: 's',
+      }),
+    ).toBeNull();
     expect(resolveObserveCredentials({ OBSERVE_APP_SECRET: 's' })).toBeNull();
     expect(resolveObserveCredentials({ OBSERVE_APP_KEY: 'k' })).toBeNull();
   });
 
   it('returns credentials when genuinely configured', () => {
     expect(
-      resolveObserveCredentials({ OBSERVE_APP_KEY: 'k_live', OBSERVE_APP_SECRET: 's_live', OBSERVE_SERVICE_ID: 'bus-prod' }),
+      resolveObserveCredentials({
+        OBSERVE_APP_KEY: 'k_live',
+        OBSERVE_APP_SECRET: 's_live',
+        OBSERVE_SERVICE_ID: 'bus-prod',
+      }),
     ).toEqual({ appKey: 'k_live', appSecret: 's_live', serviceId: 'bus-prod' });
   });
 
   it('defaults the service id to bus', () => {
-    expect(resolveObserveCredentials({ OBSERVE_APP_KEY: 'k_live', OBSERVE_APP_SECRET: 's_live' })).toEqual({
+    expect(
+      resolveObserveCredentials({
+        OBSERVE_APP_KEY: 'k_live',
+        OBSERVE_APP_SECRET: 's_live',
+      }),
+    ).toEqual({
       appKey: 'k_live',
       appSecret: 's_live',
       serviceId: 'bus',

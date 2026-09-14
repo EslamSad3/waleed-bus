@@ -1,8 +1,17 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { AuditService } from '../audit/audit.service.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
-import { buildCursorArgs, toCursorPage, type CursorPage } from '../common/pagination.js';
+import {
+  buildCursorArgs,
+  toCursorPage,
+  type CursorPage,
+} from '../common/pagination.js';
 import type { Role, Prisma } from '../generated/prisma/client.js';
 
 export interface CreateRoleInput {
@@ -32,7 +41,10 @@ export class RolesService {
   async create(input: CreateRoleInput, actorUserId: string): Promise<Role> {
     const role = await this.system
       .$transaction(async (tx) => {
-        const permissions = await this.resolvePermissions(tx, input.permissionKeys ?? []);
+        const permissions = await this.resolvePermissions(
+          tx,
+          input.permissionKeys ?? [],
+        );
         return tx.role.create({
           data: {
             name: input.name,
@@ -57,7 +69,10 @@ export class RolesService {
     return role;
   }
 
-  async findAll(query: { cursor?: string; limit?: string }): Promise<CursorPage<Role>> {
+  async findAll(query: {
+    cursor?: string;
+    limit?: string;
+  }): Promise<CursorPage<Role>> {
     const { pageSize, ...args } = buildCursorArgs(query);
     const roles = await this.system.role.findMany({
       ...args,
@@ -75,7 +90,11 @@ export class RolesService {
     return role;
   }
 
-  async update(id: string, input: UpdateRoleInput, actorUserId: string): Promise<Role> {
+  async update(
+    id: string,
+    input: UpdateRoleInput,
+    actorUserId: string,
+  ): Promise<Role> {
     const existing = await this.system.role.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Role not found');
     if (existing.isSystem && input.isActive === false) {
@@ -95,7 +114,8 @@ export class RolesService {
   async remove(id: string, actorUserId: string): Promise<void> {
     const existing = await this.system.role.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Role not found');
-    if (existing.isSystem) throw new ConflictException('System roles cannot be deleted');
+    if (existing.isSystem)
+      throw new ConflictException('System roles cannot be deleted');
     try {
       await this.system.role.delete({ where: { id } });
     } catch (error) {
@@ -111,8 +131,14 @@ export class RolesService {
   }
 
   /** Atomic replacement of a role's permission set. */
-  async setPermissions(roleId: string, permissionKeys: string[], actorUserId: string): Promise<Role> {
-    const existing = await this.system.role.findUnique({ where: { id: roleId } });
+  async setPermissions(
+    roleId: string,
+    permissionKeys: string[],
+    actorUserId: string,
+  ): Promise<Role> {
+    const existing = await this.system.role.findUnique({
+      where: { id: roleId },
+    });
     if (!existing) throw new NotFoundException('Role not found');
     if (existing.isSystem) {
       throw new ConflictException('System role permissions cannot be modified');
@@ -135,10 +161,15 @@ export class RolesService {
     return role;
   }
 
-  private async resolvePermissions(tx: Prisma.TransactionClient, keys: string[]) {
+  private async resolvePermissions(
+    tx: Prisma.TransactionClient,
+    keys: string[],
+  ) {
     if (keys.length === 0) return [];
     const unique = [...new Set(keys)];
-    const permissions = await tx.permission.findMany({ where: { key: { in: unique } } });
+    const permissions = await tx.permission.findMany({
+      where: { key: { in: unique } },
+    });
     const found = new Set(permissions.map((p) => p.key));
     const missing = unique.filter((k) => !found.has(k));
     if (missing.length > 0) {
@@ -146,7 +177,9 @@ export class RolesService {
     }
     const inactive = permissions.filter((p) => !p.isActive).map((p) => p.key);
     if (inactive.length > 0) {
-      throw new ForbiddenException(`Inactive permissions: ${inactive.join(', ')}`);
+      throw new ForbiddenException(
+        `Inactive permissions: ${inactive.join(', ')}`,
+      );
     }
     return permissions;
   }

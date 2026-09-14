@@ -11,7 +11,17 @@ import { FleetOwnerService } from './fleet-owner.service.js';
 @Module({
   imports: [PrismaModule, AuthorizationModule, AuditModule],
   controllers: [FleetOwnerController],
-  providers: [FleetOwnerService, BusLifecycleService, DriverRosterService, DriverAssignmentService],
-  exports: [FleetOwnerService, BusLifecycleService, DriverRosterService, DriverAssignmentService],
+  providers: [
+    FleetOwnerService,
+    BusLifecycleService,
+    DriverRosterService,
+    DriverAssignmentService,
+  ],
+  exports: [
+    FleetOwnerService,
+    BusLifecycleService,
+    DriverRosterService,
+    DriverAssignmentService,
+  ],
 })
 export class FleetOwnerModule {}
