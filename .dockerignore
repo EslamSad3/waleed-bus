@@ -1,0 +1,8 @@
+node_modules
+dist
+src/generated
+.pgdata-dev
+.pgdata-test
+.git
+.env
+.env.*

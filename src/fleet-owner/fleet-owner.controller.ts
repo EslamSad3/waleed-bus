@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { RequirePermission } from '../authorization/decorators/permissions.decorator.js';
+import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
@@ -59,6 +59,16 @@ export class FleetOwnerController {
   @ApiEnvelopeResponse(200, 'The updated profile.', OwnerProfileDto)
   updateMe(@CurrentUser() actor: RequestUser, @Body() dto: UpdateProfileDto) {
     return this.fleetOwner.updateProfile(actor.id, dto);
+  }
+
+  @Platform()
+  @Get('drivers')
+  @RequirePermission('fleet.drivers.read')
+  @ApiOperation({ summary: 'List every driver membership for platform operations, with fleet, owner, and active bus assignment.' })
+  @ApiCursorPagination()
+  @ApiEnvelopeResponse(200, 'Cursor page of system driver memberships.')
+  listSystemDrivers(@Query() query: { cursor?: string; limit?: string }) {
+    return this.roster.listSystem(query);
   }
 
   @Get('fleet/buses')

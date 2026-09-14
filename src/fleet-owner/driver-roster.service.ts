@@ -34,6 +34,13 @@ export interface RosterEntry extends Record<string, unknown> {
   phoneNumber: string | null;
 }
 
+/** Platform view of a driver membership, enriched for the operations dashboard. */
+export interface SystemDriverEntry extends RosterEntry {
+  fleet: { id: string; name: string };
+  fleetOwner: { id: string; name: string | null; phoneNumber: string | null };
+  assignedBus: { id: string; registrationNumber: string; plateNumber: string | null } | null;
+}
+
 /**
  * Driver roster: invite (existing user or fresh phone+password account),
  * list/get/update/remove with ACTIVE membership semantics. Authorization
@@ -106,6 +113,60 @@ export class DriverRosterService {
       });
     const members = await this.fleetPath.run(actor, fleetContext, run, run);
     const entries = await this.toEntries(members);
+    return toCursorPage(entries, pageSize);
+  }
+
+  /**
+   * Platform-only roster list. A row represents a driver's membership in one
+   * fleet, so operators can see the responsible fleet and its active bus
+   * assignment without relying on a client-provided fleet scope.
+   */
+  async listSystem(query: { cursor?: string; limit?: string }): Promise<CursorPage<SystemDriverEntry>> {
+    const { pageSize, ...args } = buildCursorArgs(query);
+    const memberships = await this.system.fleetMember.findMany({
+      where: { role: { slug: { in: DRIVER_ROLE_SLUGS } } },
+      ...args,
+      orderBy: { joinedAt: 'desc' },
+      include: {
+        user: true,
+        role: true,
+        fleet: { include: { owner: true } },
+      },
+    });
+    const activeAssignments = await this.system.busAssignment.findMany({
+      where: {
+        driverUserId: { in: memberships.map((membership) => membership.userId) },
+        status: 'ACTIVE',
+      },
+      include: { bus: true },
+    });
+    const assignmentByDriverId = new Map(activeAssignments.map((assignment) => [assignment.driverUserId, assignment]));
+    const entries = memberships.map((membership) => {
+      const assignment = assignmentByDriverId.get(membership.userId);
+      return {
+        id: membership.id,
+        userId: membership.userId,
+        fleetId: membership.fleetId,
+        roleId: membership.roleId,
+        roleSlug: membership.role.slug,
+        status: membership.status,
+        name: membership.user.name,
+        phoneNumber: membership.user.phoneNumber,
+        fleet: { id: membership.fleet.id, name: membership.fleet.name },
+        fleetOwner: {
+          id: membership.fleet.owner.id,
+          name: membership.fleet.owner.name,
+          phoneNumber: membership.fleet.owner.phoneNumber,
+        },
+        assignedBus: assignment
+          ? {
+              id: assignment.bus.id,
+              registrationNumber: assignment.bus.registrationNumber,
+              plateNumber: assignment.bus.plateNumber,
+            }
+          : null,
+      } satisfies SystemDriverEntry;
+    });
     return toCursorPage(entries, pageSize);
   }
 
