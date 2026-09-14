@@ -37,9 +37,7 @@ export class FleetBookingService {
     fleetContext: FleetContext,
     input: CreateBookingInput,
   ): Promise<Booking> {
-    const createBooking = async (
-      tx: Prisma.TransactionClient,
-    ): Promise<Booking> => {
+    const run = async (tx: Prisma.TransactionClient): Promise<Booking> => {
       const where =
         fleetContext.membershipId === null
           ? { id: input.tripId, fleetId: fleetContext.fleetId }
@@ -53,12 +51,7 @@ export class FleetBookingService {
         });
     };
 
-    return this.fleetPath.run(
-      actor,
-      fleetContext,
-      createBooking,
-      createBooking,
-    );
+    return this.fleetPath.run(actor, fleetContext, run, run);
   }
 
   async findAll(
@@ -67,21 +60,16 @@ export class FleetBookingService {
     query: { cursor?: string; limit?: string },
   ): Promise<CursorPage<Booking>> {
     const { pageSize, ...args } = buildCursorArgs(query);
-    const bookings = await this.fleetPath.run(
-      actor,
-      fleetContext,
-      (tx) =>
-        tx.booking.findMany({
-          ...args,
-          orderBy: { createdAt: 'desc' as const },
-        }),
-      (tx) =>
-        tx.booking.findMany({
-          where: { fleetId: fleetContext.fleetId },
-          ...args,
-          orderBy: { createdAt: 'desc' as const },
-        }),
-    );
+    const run = (tx: Prisma.TransactionClient) =>
+      tx.booking.findMany({
+        where:
+          fleetContext.membershipId === null
+            ? { fleetId: fleetContext.fleetId }
+            : undefined,
+        ...args,
+        orderBy: { createdAt: 'desc' as const },
+      });
+    const bookings = await this.fleetPath.run(actor, fleetContext, run, run);
     return toCursorPage(bookings, pageSize);
   }
 
@@ -90,13 +78,11 @@ export class FleetBookingService {
     fleetContext: FleetContext,
     id: string,
   ): Promise<Booking> {
-    const booking = await this.fleetPath.run(
-      actor,
-      fleetContext,
-      (tx) => tx.booking.findUnique({ where: { id } }),
-      (tx) =>
-        tx.booking.findFirst({ where: { id, fleetId: fleetContext.fleetId } }),
-    );
+    const run = (tx: Prisma.TransactionClient) =>
+      fleetContext.membershipId === null
+        ? tx.booking.findFirst({ where: { id, fleetId: fleetContext.fleetId } })
+        : tx.booking.findUnique({ where: { id } });
+    const booking = await this.fleetPath.run(actor, fleetContext, run, run);
     if (!booking) throw new NotFoundException('Booking not found');
     return booking;
   }
@@ -108,12 +94,13 @@ export class FleetBookingService {
     input: UpdateBookingInput,
   ): Promise<Booking> {
     await this.findOne(actor, fleetContext, id);
-    return this.fleetPath.run(
-      actor,
-      fleetContext,
-      (tx) => tx.booking.update({ where: { id }, data: input }),
-      (tx) => tx.booking.update({ where: { id }, data: input }),
-    );
+    const run = (tx: Prisma.TransactionClient) =>
+      tx.booking
+        .update({ where: { id }, data: input })
+        .catch((error) => {
+          throw translatePrismaError(error, 'Booking');
+        });
+    return this.fleetPath.run(actor, fleetContext, run, run);
   }
 
   async remove(
@@ -122,11 +109,10 @@ export class FleetBookingService {
     id: string,
   ): Promise<void> {
     await this.findOne(actor, fleetContext, id);
-    await this.fleetPath.run(
-      actor,
-      fleetContext,
-      (tx) => tx.booking.delete({ where: { id } }),
-      (tx) => tx.booking.delete({ where: { id } }),
-    );
+    const run = (tx: Prisma.TransactionClient) =>
+      tx.booking.delete({ where: { id } }).catch((error) => {
+        throw translatePrismaError(error, 'Booking');
+      });
+    await this.fleetPath.run(actor, fleetContext, run, run);
   }
 }

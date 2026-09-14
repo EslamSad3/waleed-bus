@@ -144,6 +144,35 @@ describe('Super Admin Booking Review (e2e)', () => {
       expect(Array.isArray(booking.auditTrail)).toBe(true);
     });
 
+    it('validates controller response conforms precisely to AdminBookingDetailDto contract shape', async () => {
+      const res = await api()
+        .get(`/admin/bookings/${activeBookingId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const booking = res.body.data;
+      expect(typeof booking.id).toBe('string');
+      expect(typeof booking.fleetId).toBe('string');
+      expect(typeof booking.fleetName).toBe('string');
+      expect(typeof booking.seats).toBe('number');
+      expect(typeof booking.status).toBe('string');
+      expect(typeof booking.paymentStatus).toBe('string');
+      expect(typeof booking.paymentMethod).toBe('string');
+
+      // Nested trip shape contract
+      expect(typeof booking.trip.id).toBe('string');
+      expect(typeof booking.trip.originName).toBe('string');
+      expect(typeof booking.trip.destinationName).toBe('string');
+      expect(typeof booking.trip.fare).toBe('string');
+      expect(typeof booking.trip.availableSeats).toBe('number');
+      expect(typeof booking.trip.bus.id).toBe('string');
+      expect(typeof booking.trip.bus.capacity).toBe('number');
+
+      // Nested ratings & audit trail contract
+      expect(booking.ratings).toBeDefined();
+      expect(Array.isArray(booking.auditTrail)).toBe(true);
+    });
+
     it('returns 404 for non-existent booking id', async () => {
       await api()
         .get('/admin/bookings/00000000-0000-0000-0000-000000000000')
@@ -264,7 +293,6 @@ describe('Super Admin Booking Review (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           reason: 'Administrative safety cancellation',
-          releaseSeats: true,
         })
         .expect(201);
 

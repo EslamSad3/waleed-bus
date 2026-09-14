@@ -27,12 +27,29 @@ export class AdminBookingLifecycleService {
     dto: AdminForceCancelBookingDto,
   ): Promise<AdminForceCancelResponseDto> {
     return this.system.$transaction(async (tx) => {
-      const booking = await tx.booking.findUnique({
-        where: { id },
-        include: { trip: true },
-      });
-      if (!booking)
+      // Concurrency lock: lock the booking row for update to prevent concurrent double-cancellations
+      const bookingRows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          tripId: string;
+          status: string;
+          paymentStatus: string;
+          paymentMethod: string | null;
+          departAt: Date;
+        }>
+      >`
+        SELECT b.id, b.trip_id as "tripId", b.status, b.payment_status as "paymentStatus",
+               b.payment_method as "paymentMethod", t.depart_at as "departAt"
+        FROM bookings b
+        JOIN trips t ON t.id = b.trip_id
+        WHERE b.id = ${id}::uuid
+        FOR UPDATE OF b
+      `;
+
+      if (bookingRows.length === 0) {
         throw new CodedException(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      }
+      const booking = bookingRows[0];
 
       if (booking.status === 'CANCELLED') {
         throw new CodedException(
@@ -42,9 +59,11 @@ export class AdminBookingLifecycleService {
         );
       }
 
-      const releaseSeats = dto.releaseSeats !== false;
-      const tripFuture = booking.trip.departAt.getTime() > Date.now();
-      const seatsRestored = releaseSeats && tripFuture;
+      // Seat model invariant: Waleed Bus derives trip capacity dynamically from CONFIRMED bookings
+      // (bus.capacity - SUM(seats WHERE status = 'CONFIRMED')). Therefore, cancelling a booking
+      // automatically restores its seats to available inventory for any future departure.
+      const tripFuture = new Date(booking.departAt).getTime() > Date.now();
+      const seatsRestored = tripFuture;
 
       let newPaymentStatus = booking.paymentStatus;
       if (booking.paymentStatus === 'PAID') {
@@ -75,7 +94,6 @@ export class AdminBookingLifecycleService {
         resourceId: id,
         metadata: {
           reason: dto.reason,
-          releaseSeats,
           seatsRestored,
           previousStatus: booking.status,
           newStatus: 'CANCELLED',

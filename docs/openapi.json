@@ -10229,12 +10229,6 @@
             "type": "string",
             "example": "Emergency route reroute",
             "description": "Administrative reason for cancellation."
-          },
-          "releaseSeats": {
-            "type": "boolean",
-            "example": true,
-            "default": true,
-            "description": "Whether to restore reserved seats to trip available inventory."
           }
         },
         "required": [

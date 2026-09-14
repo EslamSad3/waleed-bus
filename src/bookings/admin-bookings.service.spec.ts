@@ -19,14 +19,29 @@ describe('AdminBookingsService', () => {
   }) {
     const mockTx = {
       $queryRaw: vi.fn(
-        async () =>
-          overrides?.txQueryRaw ?? [
+        async () => {
+          if (overrides?.txQueryRaw) return overrides.txQueryRaw;
+          if (overrides?.bookingFindUnique) {
+            const b = overrides.bookingFindUnique as Record<string, any>;
+            return [
+              {
+                id: b.id,
+                tripId: b.tripId ?? 'trip-1',
+                status: b.status,
+                paymentStatus: b.paymentStatus ?? 'PENDING',
+                paymentMethod: b.paymentMethod ?? 'CASH',
+                departAt: b.trip?.departAt ?? new Date(Date.now() + 86400000),
+              },
+            ];
+          }
+          return [
             {
               id: 'trip-1',
               depart_at: new Date(Date.now() + 86400000),
               capacity: 14,
             },
-          ],
+          ];
+        },
       ),
       booking: {
         findUnique: vi.fn(async () => overrides?.bookingFindUnique ?? null),
@@ -474,7 +489,6 @@ describe('AdminBookingsService', () => {
 
       const res = (await service.forceCancel('booking-1', actorUserId, {
         reason: 'Emergency route maintenance',
-        releaseSeats: true,
       })) as unknown as Record<string, unknown>;
 
       expect(res.status).toBe('CANCELLED');

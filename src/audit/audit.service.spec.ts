@@ -61,7 +61,7 @@ describe('AuditService', () => {
       });
     });
 
-    it('does not throw on database write failure', async () => {
+    it('does not throw on database write failure, preserving best-effort non-blocking request execution', async () => {
       const mockSystem = {
         auditLog: {
           create: vi.fn().mockRejectedValue(new Error('DB Connection Lost')),

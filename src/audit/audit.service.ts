@@ -1,7 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 
-export type AuditClassification = 'OBSERVABILITY' | 'SECURITY' | 'GOVERNANCE';
+/**
+ * Categorizes audit events for observability, logging severity, and alert routing.
+ *
+ * NOTE: Audit writes remain best-effort and non-blocking for user requests to ensure
+ * platform availability. AuditDomain categorizes events for operational log severity
+ * (OBSERVABILITY = warning, SECURITY/GOVERNANCE = critical error log). It does NOT
+ * provide transactional durability guarantees or block business operations.
+ */
+export type AuditDomain = 'OBSERVABILITY' | 'SECURITY' | 'GOVERNANCE';
+export type AuditClassification = AuditDomain;
 
 export interface AuditInput {
   actorUserId?: string;
@@ -16,15 +25,16 @@ export interface AuditInput {
   userAgent?: string;
   success?: boolean;
   /**
-   * Classification determines audit failure guarantees:
-   * - OBSERVABILITY: best-effort telemetry, logged on failure without interruption.
-   * - SECURITY: auth/permission/session modifications requiring heightened alert logging.
-   * - GOVERNANCE: regulatory/compliance overrides and financial lifecycle transitions.
+   * Domain determines operational log severity and alert routing:
+   * - OBSERVABILITY: standard operational telemetry, logged as warning on failure.
+   * - SECURITY: auth/permission/session modifications, logged as critical error on failure.
+   * - GOVERNANCE: administrative lifecycle/financial overrides, logged as critical error on failure.
    */
-  classification?: AuditClassification;
+  classification?: AuditDomain;
+  domain?: AuditDomain;
 }
 
-/** Actions classified by default as SECURITY or GOVERNANCE when not explicitly tagged */
+/** Actions categorized by default as SECURITY or GOVERNANCE when not explicitly tagged */
 const SECURITY_PATTERNS = [
   'auth.',
   'login',
@@ -45,7 +55,7 @@ const GOVERNANCE_PATTERNS = [
   'report.resolve',
 ];
 
-export function deriveClassification(action: string): AuditClassification {
+export function deriveClassification(action: string): AuditDomain {
   const lower = action.toLowerCase();
   if (SECURITY_PATTERNS.some((p) => lower.includes(p))) {
     return 'SECURITY';
