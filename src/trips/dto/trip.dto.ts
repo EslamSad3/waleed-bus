@@ -9,7 +9,12 @@ import {
   Matches,
 } from 'class-validator';
 
-export const TRIP_STATUSES = ['SCHEDULED', 'DEPARTED', 'COMPLETED', 'CANCELLED'] as const;
+export const TRIP_STATUSES = [
+  'SCHEDULED',
+  'DEPARTED',
+  'COMPLETED',
+  'CANCELLED',
+] as const;
 export const BOOKING_STATUSES = ['CONFIRMED', 'CANCELLED'] as const;
 
 /** Documentation-only response model for a trip row. */
@@ -31,6 +36,12 @@ export class TripDto {
 
   @ApiProperty({ example: '2026-09-10T08:00:00.000Z', format: 'date-time' })
   departAt!: Date;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  routeId?: string | null;
+
+  @ApiProperty({ example: '50.00' })
+  fare!: string;
 
   @ApiProperty({ enum: [...TRIP_STATUSES], example: 'SCHEDULED' })
   status!: string;
@@ -75,7 +86,8 @@ export class BookingDto {
 export class CreateTripDto {
   @ApiProperty({
     format: 'uuid',
-    description: 'Bus id — must belong to the same fleet (cross-fleet bus ids resolve to 404).',
+    description:
+      'Bus id — must belong to the same fleet (cross-fleet bus ids resolve to 404).',
   })
   @IsUUID()
   busId!: string;
@@ -93,6 +105,16 @@ export class CreateTripDto {
   @ApiProperty({ example: '2026-09-10T08:00:00.000Z', format: 'date-time' })
   @IsDateString()
   departAt!: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  routeId?: string;
+
+  @ApiPropertyOptional({ example: '50.00' })
+  @IsOptional()
+  @IsString()
+  fare?: string;
 
   @ApiPropertyOptional({ enum: [...TRIP_STATUSES], default: 'SCHEDULED' })
   @IsOptional()
@@ -113,10 +135,23 @@ export class UpdateTripDto {
   @Length(1, 255)
   destination?: string;
 
-  @ApiPropertyOptional({ example: '2026-09-10T08:00:00.000Z', format: 'date-time' })
+  @ApiPropertyOptional({
+    example: '2026-09-10T08:00:00.000Z',
+    format: 'date-time',
+  })
   @IsOptional()
   @IsDateString()
   departAt?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  routeId?: string;
+
+  @ApiPropertyOptional({ example: '50.00' })
+  @IsOptional()
+  @IsString()
+  fare?: string;
 
   @ApiPropertyOptional({ enum: [...TRIP_STATUSES] })
   @IsOptional()
@@ -127,7 +162,8 @@ export class UpdateTripDto {
 export class CreateBookingDto {
   @ApiProperty({
     format: 'uuid',
-    description: 'Trip id — must belong to the same fleet (cross-fleet trip ids resolve to 404).',
+    description:
+      'Trip id — must belong to the same fleet (cross-fleet trip ids resolve to 404).',
   })
   @IsUUID()
   tripId!: string;
@@ -140,7 +176,9 @@ export class CreateBookingDto {
   @ApiPropertyOptional({ example: '+201001234567' })
   @IsOptional()
   @IsString()
-  @Matches(/^\+?[0-9]{6,20}$/, { message: 'passengerPhone must be a phone number' })
+  @Matches(/^\+?[0-9]{6,20}$/, {
+    message: 'passengerPhone must be a phone number',
+  })
   passengerPhone?: string;
 
   @ApiPropertyOptional({ enum: [...BOOKING_STATUSES], default: 'CONFIRMED' })
@@ -150,7 +188,11 @@ export class CreateBookingDto {
 }
 
 export class UpdateBookingDto {
-  @ApiPropertyOptional({ example: 'Ahmed Hassan', minLength: 1, maxLength: 255 })
+  @ApiPropertyOptional({
+    example: 'Ahmed Hassan',
+    minLength: 1,
+    maxLength: 255,
+  })
   @IsOptional()
   @IsString()
   @Length(1, 255)
@@ -159,7 +201,9 @@ export class UpdateBookingDto {
   @ApiPropertyOptional({ example: '+201001234567' })
   @IsOptional()
   @IsString()
-  @Matches(/^\+?[0-9]{6,20}$/, { message: 'passengerPhone must be a phone number' })
+  @Matches(/^\+?[0-9]{6,20}$/, {
+    message: 'passengerPhone must be a phone number',
+  })
   passengerPhone?: string;
 
   @ApiPropertyOptional({ enum: [...BOOKING_STATUSES] })

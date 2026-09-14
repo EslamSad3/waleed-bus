@@ -3185,6 +3185,192 @@
         ]
       }
     },
+    "/trips/search": {
+      "get": {
+        "operationId": "TripsSearchController_search",
+        "parameters": [
+          {
+            "name": "origin",
+            "required": true,
+            "in": "query",
+            "description": "Origin city or station",
+            "schema": {
+              "example": "Cairo",
+              "type": "string"
+            }
+          },
+          {
+            "name": "destination",
+            "required": true,
+            "in": "query",
+            "description": "Destination city or station",
+            "schema": {
+              "example": "Alexandria",
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "description": "Scheduled date of departure (YYYY-MM-DD format, calendar day match)",
+            "schema": {
+              "example": "2026-09-15",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of scheduled trips matching search criteria.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TripSearchResultItemDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search scheduled trips by origin, destination, and calendar date with available seats.",
+        "tags": [
+          "passenger-trips"
+        ]
+      }
+    },
+    "/trips/{id}": {
+      "get": {
+        "operationId": "TripsSearchController_getDetails",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trip details with ordered stations and vehicle information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TripDetailsResponseDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip not found."
+          }
+        },
+        "summary": "Retrieve detailed information for a trip including stations and available seats.",
+        "tags": [
+          "passenger-trips"
+        ]
+      }
+    },
+    "/public/routes/{identifier}": {
+      "get": {
+        "operationId": "RoutesController_resolve",
+        "parameters": [
+          {
+            "name": "identifier",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public route details with ordered stations and upcoming trips.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PublicRouteResponseDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Route not found for the provided identifier."
+          }
+        },
+        "summary": "Resolve route details, ordered stations, and upcoming scheduled trips from a QR identifier, code, or UUID.",
+        "tags": [
+          "routes"
+        ]
+      }
+    },
     "/fleets/{fleetId}/bookings": {
       "post": {
         "operationId": "BookingsController_create",
@@ -3551,6 +3737,347 @@
         ]
       }
     },
+    "/bookings": {
+      "post": {
+        "operationId": "PassengerBookingsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePassengerBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booking confirmed and seats reserved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PassengerBookingItemDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atomically reserve 1 to N seats on a scheduled trip.",
+        "tags": [
+          "passenger-bookings"
+        ]
+      },
+      "get": {
+        "operationId": "PassengerBookingsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by booking status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CONFIRMED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "timeFilter",
+            "required": false,
+            "in": "query",
+            "description": "Filter by upcoming or past trips",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "past"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of passenger bookings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PassengerBookingItemDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retrieve personal booking history and upcoming trips with cursor pagination.",
+        "tags": [
+          "passenger-bookings"
+        ]
+      }
+    },
+    "/bookings/{id}": {
+      "get": {
+        "operationId": "PassengerBookingsController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PassengerBookingItemDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retrieve comprehensive details for an individual booking owned by the passenger.",
+        "tags": [
+          "passenger-bookings"
+        ]
+      }
+    },
+    "/bookings/{id}/cancel": {
+      "post": {
+        "operationId": "PassengerBookingsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelPassengerBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking cancelled and seats restored to capacity.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CancelledBookingResponseDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel an active booking (full or partial) before trip departure.",
+        "tags": [
+          "passenger-bookings"
+        ]
+      }
+    },
+    "/bookings/{id}/share": {
+      "post": {
+        "operationId": "PassengerBookingsController_createShare",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Booking UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Trip share created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CreateTripShareResponseDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Booking not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate a secure 6-digit share code and tracking link for a confirmed booking.",
+        "tags": [
+          "passenger-bookings"
+        ]
+      }
+    },
     "/bookings/{id}/rating": {
       "post": {
         "operationId": "PassengerRatingController_rate",
@@ -3622,6 +4149,111 @@
         "summary": "Rate your own booking (COMPLETED trip; one write per side).",
         "tags": [
           "bookings"
+        ]
+      }
+    },
+    "/me/active-trip": {
+      "get": {
+        "operationId": "MeController_getActiveTrip",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active trip context or null if no active trip.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ActivePassengerTripDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retrieve current day-of-travel active trip context and live tracking descriptor.",
+        "tags": [
+          "passenger-bookings"
+        ]
+      }
+    },
+    "/public/trip-shares/{shareId}/verify": {
+      "post": {
+        "operationId": "PublicSharesController_verify",
+        "parameters": [
+          {
+            "name": "shareId",
+            "required": true,
+            "in": "path",
+            "description": "Trip Share UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTripShareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trip share verified successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VerifiedTripShareResponseDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip share not found."
+          }
+        },
+        "summary": "Verify a 6-digit trip share code and access read-only live tracking channel.",
+        "tags": [
+          "public-shares"
         ]
       }
     },
@@ -6052,6 +6684,22 @@
     {
       "name": "passenger-auth",
       "description": "Mobile passenger registration, OTP phone verification, and profile completion."
+    },
+    {
+      "name": "passenger-trips",
+      "description": "Passenger trip search, station itineraries, and real-time seat inventory."
+    },
+    {
+      "name": "passenger-bookings",
+      "description": "Passenger seat reservation, booking history, cancellation, and active trip tracking."
+    },
+    {
+      "name": "routes",
+      "description": "Public QR route resolution and station itineraries."
+    },
+    {
+      "name": "public-shares",
+      "description": "Public read-only live tracking share verification."
     }
   ],
   "servers": [],
@@ -7043,6 +7691,15 @@
             "type": "string",
             "example": "2026-09-10T08:00:00.000Z"
           },
+          "routeId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -7069,6 +7726,7 @@
           "origin",
           "destination",
           "departAt",
+          "fare",
           "status",
           "createdAt",
           "updatedAt"
@@ -7098,6 +7756,14 @@
             "type": "string",
             "example": "2026-09-10T08:00:00.000Z",
             "format": "date-time"
+          },
+          "routeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
           },
           "status": {
             "type": "string",
@@ -7137,6 +7803,14 @@
             "example": "2026-09-10T08:00:00.000Z",
             "format": "date-time"
           },
+          "routeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -7147,6 +7821,373 @@
             ]
           }
         }
+      },
+      "TripSearchBusDto": {
+        "type": "object",
+        "properties": {
+          "plateNumber": {
+            "type": "string",
+            "example": "ق ب أ 1234"
+          }
+        },
+        "required": [
+          "plateNumber"
+        ]
+      },
+      "TripSearchResultItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "routeId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "routeName": {
+            "type": "object",
+            "example": "Cairo - Alexandria Express",
+            "nullable": true
+          },
+          "origin": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "departAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-15T08:00:00.000Z"
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "status": {
+            "type": "string",
+            "example": "SCHEDULED"
+          },
+          "capacity": {
+            "type": "number",
+            "example": 14
+          },
+          "availableSeats": {
+            "type": "number",
+            "example": 6
+          },
+          "paymentMethods": {
+            "example": [
+              "CASH",
+              "VODAFONE_CASH"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bus": {
+            "$ref": "#/components/schemas/TripSearchBusDto"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "destination",
+          "departAt",
+          "fare",
+          "status",
+          "capacity",
+          "availableSeats",
+          "paymentMethods",
+          "bus"
+        ]
+      },
+      "TripStationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ramses Station"
+          },
+          "stopOrder": {
+            "type": "number",
+            "example": 1
+          },
+          "estimatedStopMinutes": {
+            "type": "object",
+            "example": 0,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "stopOrder"
+        ]
+      },
+      "TripRouteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Cairo - Alexandria Express"
+          },
+          "code": {
+            "type": "string",
+            "example": "CAI-ALX-01"
+          },
+          "stations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripStationDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "stations"
+        ]
+      },
+      "TripDetailBusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plateNumber": {
+            "type": "string",
+            "example": "ق ب أ 1234"
+          },
+          "registrationNumber": {
+            "type": "object",
+            "example": "BUS-001"
+          }
+        },
+        "required": [
+          "id",
+          "plateNumber"
+        ]
+      },
+      "TripDetailsResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "departAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-15T08:00:00.000Z"
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "status": {
+            "type": "string",
+            "example": "SCHEDULED"
+          },
+          "capacity": {
+            "type": "number",
+            "example": 14
+          },
+          "availableSeats": {
+            "type": "number",
+            "example": 6
+          },
+          "paymentMethods": {
+            "example": [
+              "CASH",
+              "VODAFONE_CASH"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "route": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TripRouteDto"
+              }
+            ]
+          },
+          "bus": {
+            "$ref": "#/components/schemas/TripDetailBusDto"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "destination",
+          "departAt",
+          "fare",
+          "status",
+          "capacity",
+          "availableSeats",
+          "paymentMethods",
+          "bus"
+        ]
+      },
+      "StationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ramses Station"
+          },
+          "address": {
+            "type": "object",
+            "example": "Ramses Square, Cairo"
+          },
+          "latitude": {
+            "type": "object",
+            "example": 30.0631
+          },
+          "longitude": {
+            "type": "object",
+            "example": 31.2497
+          },
+          "stopOrder": {
+            "type": "number",
+            "example": 1
+          },
+          "estimatedStopMinutes": {
+            "type": "object",
+            "example": 0
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "PublicRouteUpcomingTripBusDto": {
+        "type": "object",
+        "properties": {
+          "plateNumber": {
+            "type": "object",
+            "example": "ق ب أ 1234"
+          }
+        }
+      },
+      "PublicRouteUpcomingTripDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "departAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "capacity": {
+            "type": "number",
+            "example": 14
+          },
+          "availableSeats": {
+            "type": "number",
+            "example": 4
+          },
+          "bus": {
+            "$ref": "#/components/schemas/PublicRouteUpcomingTripBusDto"
+          }
+        },
+        "required": [
+          "id",
+          "departAt",
+          "fare",
+          "capacity",
+          "availableSeats",
+          "bus"
+        ]
+      },
+      "PublicRouteResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Cairo - Alexandria Express"
+          },
+          "code": {
+            "type": "string",
+            "example": "CAI-ALX-01"
+          },
+          "origin": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "qrIdentifier": {
+            "type": "string",
+            "example": "qr_route_cai_alx_01"
+          },
+          "stations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StationDto"
+            }
+          },
+          "upcomingTrips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicRouteUpcomingTripDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "origin",
+          "destination",
+          "qrIdentifier",
+          "stations",
+          "upcomingTrips"
+        ]
       },
       "BookingDto": {
         "type": "object",
@@ -7258,6 +8299,257 @@
           }
         }
       },
+      "BookingBusSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plateNumber": {
+            "type": "object",
+            "example": "ق ب أ 1234"
+          },
+          "registrationNumber": {
+            "type": "object",
+            "example": "BUS-001"
+          }
+        }
+      },
+      "BookingTripSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "departAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-15T08:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "example": "SCHEDULED"
+          },
+          "bus": {
+            "$ref": "#/components/schemas/BookingBusSummaryDto"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "destination",
+          "departAt",
+          "status"
+        ]
+      },
+      "PassengerBookingItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passengerName": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "passengerPhone": {
+            "type": "object",
+            "example": "01000000000"
+          },
+          "seats": {
+            "type": "number",
+            "example": 2
+          },
+          "status": {
+            "type": "string",
+            "example": "CONFIRMED"
+          },
+          "paymentMethod": {
+            "type": "object",
+            "example": "CASH"
+          },
+          "paymentStatus": {
+            "type": "object",
+            "example": "PENDING"
+          },
+          "totalAmount": {
+            "type": "object",
+            "example": "100.00"
+          },
+          "confirmedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "boardedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "droppedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "busRating": {
+            "type": "object",
+            "example": 5,
+            "nullable": true
+          },
+          "driverRating": {
+            "type": "object",
+            "example": 5,
+            "nullable": true
+          },
+          "trip": {
+            "$ref": "#/components/schemas/BookingTripSummaryDto"
+          }
+        },
+        "required": [
+          "id",
+          "tripId",
+          "passengerName",
+          "seats",
+          "status",
+          "confirmedAt",
+          "trip"
+        ]
+      },
+      "CreatePassengerBookingDto": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Target scheduled trip"
+          },
+          "seatCount": {
+            "type": "number",
+            "example": 2,
+            "minimum": 1,
+            "description": "Number of seats to reserve"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "CASH",
+              "VODAFONE_CASH",
+              "ORANGE_MONEY",
+              "ETISALAT_CASH",
+              "WE_PAY",
+              "CARD"
+            ],
+            "example": "CASH",
+            "description": "Payment method for this reservation"
+          },
+          "confirmTimeConflict": {
+            "type": "boolean",
+            "example": false,
+            "default": false,
+            "description": "Set to true to override a DUPLICATE_TIME_BOOKING conflict"
+          }
+        },
+        "required": [
+          "tripId",
+          "seatCount",
+          "paymentMethod"
+        ]
+      },
+      "CancelledBookingResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "example": "CONFIRMED"
+          },
+          "seats": {
+            "type": "number",
+            "example": 1
+          },
+          "cancelledSeats": {
+            "type": "number",
+            "example": 1
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "REFUND_PENDING"
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "cancellationReason": {
+            "type": "object",
+            "example": "Change of plans",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "seats",
+          "cancelledSeats",
+          "paymentStatus",
+          "cancelledAt"
+        ]
+      },
+      "CancelPassengerBookingDto": {
+        "type": "object",
+        "properties": {
+          "seatsToCancel": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1,
+            "description": "Number of seats to cancel. If omitted, all seats are cancelled."
+          },
+          "reason": {
+            "type": "string",
+            "example": "Change of plans",
+            "maxLength": 500,
+            "description": "Optional cancellation reason"
+          }
+        }
+      },
+      "CreateTripShareResponseDto": {
+        "type": "object",
+        "properties": {
+          "shareId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verificationCode": {
+            "type": "string",
+            "example": "482913"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shareId",
+          "verificationCode",
+          "expiresAt"
+        ]
+      },
       "BookingRatingDto": {
         "type": "object",
         "properties": {
@@ -7275,6 +8567,249 @@
         "required": [
           "busRating",
           "driverRating"
+        ]
+      },
+      "ActiveTripBusDto": {
+        "type": "object",
+        "properties": {
+          "plateNumber": {
+            "type": "object",
+            "example": "ق ب أ 1234",
+            "nullable": true
+          },
+          "capacity": {
+            "type": "number",
+            "example": 14
+          }
+        },
+        "required": [
+          "capacity"
+        ]
+      },
+      "ActiveTripDriverDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "object",
+            "example": "Mohamed Ibrahim",
+            "nullable": true
+          },
+          "phone": {
+            "type": "object",
+            "example": "01100000000",
+            "nullable": true
+          },
+          "picture": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          }
+        }
+      },
+      "ActiveTripDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "departAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "SCHEDULED"
+          },
+          "bus": {
+            "$ref": "#/components/schemas/ActiveTripBusDto"
+          },
+          "driver": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActiveTripDriverDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "destination",
+          "departAt",
+          "status",
+          "bus"
+        ]
+      },
+      "ActiveTripTrackingDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "example": "firebase_rtdb"
+          },
+          "channel": {
+            "type": "string",
+            "example": "trips/7f000001-91ea-13b2-8191-ea1c00000001"
+          }
+        },
+        "required": [
+          "provider",
+          "channel"
+        ]
+      },
+      "ActivePassengerTripDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seats": {
+            "type": "number",
+            "example": 2
+          },
+          "boardingStatus": {
+            "type": "string",
+            "example": "NOT_BOARDED",
+            "enum": [
+              "NOT_BOARDED",
+              "BOARDED",
+              "DROPPED"
+            ]
+          },
+          "trip": {
+            "$ref": "#/components/schemas/ActiveTripDetailDto"
+          },
+          "tracking": {
+            "$ref": "#/components/schemas/ActiveTripTrackingDto"
+          }
+        },
+        "required": [
+          "bookingId",
+          "seats",
+          "boardingStatus",
+          "trip",
+          "tracking"
+        ]
+      },
+      "TripShareBusDto": {
+        "type": "object",
+        "properties": {
+          "plateNumber": {
+            "type": "string",
+            "example": "ق ب أ 1234"
+          }
+        },
+        "required": [
+          "plateNumber"
+        ]
+      },
+      "TripShareTripDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "departAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-15T08:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "example": "SCHEDULED"
+          },
+          "bus": {
+            "$ref": "#/components/schemas/TripShareBusDto"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "destination",
+          "departAt",
+          "status",
+          "bus"
+        ]
+      },
+      "TripShareTrackingDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "example": "firebase_rtdb"
+          },
+          "channel": {
+            "type": "string",
+            "example": "trips/7f000001-91ea-13b2-8191-ea1c00000001"
+          }
+        },
+        "required": [
+          "provider",
+          "channel"
+        ]
+      },
+      "VerifiedTripShareResponseDto": {
+        "type": "object",
+        "properties": {
+          "shareId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passengerName": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "trip": {
+            "$ref": "#/components/schemas/TripShareTripDto"
+          },
+          "tracking": {
+            "$ref": "#/components/schemas/TripShareTrackingDto"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shareId",
+          "passengerName",
+          "trip",
+          "tracking",
+          "expiresAt"
+        ]
+      },
+      "VerifyTripShareDto": {
+        "type": "object",
+        "properties": {
+          "verificationCode": {
+            "type": "string",
+            "example": "482913",
+            "description": "6-digit numeric verification code"
+          }
+        },
+        "required": [
+          "verificationCode"
         ]
       },
       "OwnerProfileDto": {

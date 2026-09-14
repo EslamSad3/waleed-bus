@@ -84,7 +84,7 @@ DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['buses', 'trips', 'bookings', 'bus_assignments', 'passenger_reports'] LOOP
+  FOREACH t IN ARRAY ARRAY['buses', 'trips', 'bookings', 'bus_assignments', 'passenger_reports', 'routes', 'stations', 'route_stations'] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
     PERFORM app.__set_policy(t, 'tenant_isolation', format($ddl$
       CREATE POLICY tenant_isolation ON public.%I
@@ -155,6 +155,51 @@ CREATE POLICY self_rows ON public.user_roles
   FOR SELECT
   USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
 
+-- phone_verification_challenges: self rows only
+ALTER TABLE public.phone_verification_challenges ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS self_challenges ON public.phone_verification_challenges;
+CREATE POLICY self_challenges ON public.phone_verification_challenges
+  FOR ALL
+  USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
+
+-- user_auth_providers: self rows only
+ALTER TABLE public.user_auth_providers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS self_providers ON public.user_auth_providers;
+CREATE POLICY self_providers ON public.user_auth_providers
+  FOR ALL
+  USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
+
+-- trip_shares: readable/writable by members of the fleet owning the underlying booking
+ALTER TABLE public.trip_shares ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS booking_shares ON public.trip_shares;
+CREATE POLICY booking_shares ON public.trip_shares
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.bookings b
+      WHERE b.id = trip_shares.booking_id
+        AND b.fleet_id = NULLIF(current_setting('app.fleet_id', true), '')::uuid
+        AND app.is_fleet_member(NULLIF(current_setting('app.user_id', true), '')::uuid, b.fleet_id)
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.bookings b
+      WHERE b.id = trip_shares.booking_id
+        AND b.fleet_id = NULLIF(current_setting('app.fleet_id', true), '')::uuid
+        AND app.is_fleet_member(NULLIF(current_setting('app.user_id', true), '')::uuid, b.fleet_id)
+    )
+  );
+
+-- throttle_counters: internal system rate-limiting only, locked out from tenant role
+ALTER TABLE public.throttle_counters ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS system_only ON public.throttle_counters;
+CREATE POLICY system_only ON public.throttle_counters
+  FOR ALL
+  USING (false);
+
 -- ---------------------------------------------------------------------------
 -- 5. RBAC reference data: readable by any authenticated context,
 --    writable only through the privileged system path.
@@ -200,6 +245,9 @@ GRANT SELECT ON public.fleets TO app_tenant;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.fleet_members TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.buses, public.trips, public.bookings TO app_tenant;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.routes, public.stations, public.route_stations TO app_tenant;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.trip_shares TO app_tenant;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.phone_verification_challenges, public.user_auth_providers TO app_tenant;
 
 -- Spec 003: assignments are written by owner assignment flows (INSERT + status
 -- updates; no service path deletes — the DELETE grant keeps the family
@@ -226,4 +274,6 @@ BEGIN
     ALTER TABLE public.bookings
       ADD CONSTRAINT bookings_status_check CHECK (status IN ('CONFIRMED', 'CANCELLED'));
   END IF;
+  ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_payment_status_check;
+  ALTER TABLE public.bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('PENDING', 'PAID', 'CANCELLED', 'REFUND_PENDING', 'UNPAID'));
 END $$;

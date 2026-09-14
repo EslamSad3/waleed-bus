@@ -32,6 +32,7 @@ model User {
   otpChallenges  PhoneVerificationChallenge[]
   driverAssignments BusAssignment[]    @relation("AssignmentDriver")
   filedReports   PassengerReport[]    @relation("ReportDriver")
+  passengerBookings Booking[]         @relation("PassengerBookings")
 
   @@map("users")
 }
@@ -110,6 +111,9 @@ model Fleet {
   bookings Booking[]
   assignments BusAssignment[]
   reports  PassengerReport[]
+  routes   Route[]
+  stations Station[]
+  routeStations RouteStation[]
 
   @@map("fleets")
 }
@@ -196,6 +200,8 @@ model Trip {
   origin      String   @db.VarChar(255)
   destination String   @db.VarChar(255)
   departAt    DateTime @map("depart_at")
+  routeId     String?  @map("route_id") @db.Uuid
+  fare        Decimal  @default(0) @db.Decimal(10, 2)
   /// SCHEDULED | DEPARTED | COMPLETED | CANCELLED (validated in the application layer)
   status      String   @default("SCHEDULED") @db.VarChar(20)
   createdAt   DateTime @default(now()) @map("created_at")
@@ -203,11 +209,13 @@ model Trip {
 
   bus      Bus       @relation(fields: [busId], references: [id])
   fleet    Fleet     @relation(fields: [fleetId], references: [id])
+  route    Route?    @relation(fields: [routeId], references: [id])
   bookings Booking[]
   reports  PassengerReport[]
 
   @@index([fleetId])
   @@index([busId])
+  @@index([routeId])
   @@map("trips")
 }
 
@@ -217,9 +225,15 @@ model Booking {
   tripId         String   @map("trip_id") @db.Uuid
   passengerName  String   @map("passenger_name") @db.VarChar(255)
   passengerPhone String?  @map("passenger_phone") @db.VarChar(30)
+  passengerUserId String? @map("passenger_user_id") @db.Uuid
   seats          Int      @default(1)
   /// CONFIRMED | CANCELLED (validated in the application layer)
   status         String   @default("CONFIRMED") @db.VarChar(20)
+  totalAmount    Decimal? @map("total_amount") @db.Decimal(10, 2)
+  confirmedAt    DateTime @default(now()) @map("confirmed_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+  cancelledBy    String?   @map("cancelled_by") @db.Uuid
+  cancellationReason String? @map("cancellation_reason") @db.VarChar(500)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -245,12 +259,15 @@ model Booking {
   driverRatedAt  DateTime? @map("driver_rated_at")
   passengerRatedAt DateTime? @map("passenger_rated_at")
 
-  trip  Trip  @relation(fields: [tripId], references: [id])
-  fleet Fleet @relation(fields: [fleetId], references: [id])
-  reports PassengerReport[]
+  trip      Trip      @relation(fields: [tripId], references: [id])
+  fleet     Fleet     @relation(fields: [fleetId], references: [id])
+  passenger User?     @relation("PassengerBookings", fields: [passengerUserId], references: [id])
+  reports   PassengerReport[]
+  shares    TripShare[]
 
   @@index([fleetId])
   @@index([tripId])
+  @@index([passengerUserId])
   @@map("bookings")
 }
 
@@ -351,4 +368,81 @@ model ThrottleCounter {
 
   @@id([key])
   @@map("throttle_counters")
+}
+
+model Route {
+  id           String   @id @default(uuid()) @db.Uuid
+  fleetId      String   @map("fleet_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  code         String   @db.VarChar(50)
+  origin       String   @db.VarChar(255)
+  destination  String   @db.VarChar(255)
+  qrIdentifier String   @unique @map("qr_identifier") @db.VarChar(100)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  fleet    Fleet          @relation(fields: [fleetId], references: [id])
+  trips    Trip[]
+  stations RouteStation[]
+
+  @@unique([fleetId, code])
+  @@index([fleetId])
+  @@map("routes")
+}
+
+model Station {
+  id        String   @id @default(uuid()) @db.Uuid
+  fleetId   String   @map("fleet_id") @db.Uuid
+  name      String   @db.VarChar(255)
+  address   String?  @db.VarChar(500)
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fleet  Fleet          @relation(fields: [fleetId], references: [id])
+  routes RouteStation[]
+
+  @@index([fleetId])
+  @@map("stations")
+}
+
+model RouteStation {
+  id                   String   @id @default(uuid()) @db.Uuid
+  fleetId              String   @map("fleet_id") @db.Uuid
+  routeId              String   @map("route_id") @db.Uuid
+  stationId            String   @map("station_id") @db.Uuid
+  stopOrder            Int      @map("stop_order")
+  estimatedStopMinutes Int?     @map("estimated_stop_minutes")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  fleet   Fleet   @relation(fields: [fleetId], references: [id])
+  route   Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, stopOrder])
+  @@unique([routeId, stationId])
+  @@index([fleetId])
+  @@index([stationId])
+  @@map("route_stations")
+}
+
+model TripShare {
+  id               String    @id @default(uuid()) @db.Uuid
+  bookingId        String    @map("booking_id") @db.Uuid
+  verificationCode String    @map("verification_code") @db.VarChar(10)
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  viewCount        Int       @default(0) @map("view_count")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([expiresAt])
+  @@map("trip_shares")
 }

@@ -39,6 +39,10 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag('bookings', 'Fleet-owned booking CRUD — tenant path, RLS-enforced.')
     .addTag('audit', 'Platform audit log reads — privileged path, super admin only.')
     .addTag('passenger-auth', 'Mobile passenger registration, OTP phone verification, and profile completion.')
+    .addTag('passenger-trips', 'Passenger trip search, station itineraries, and real-time seat inventory.')
+    .addTag('passenger-bookings', 'Passenger seat reservation, booking history, cancellation, and active trip tracking.')
+    .addTag('routes', 'Public QR route resolution and station itineraries.')
+    .addTag('public-shares', 'Public read-only live tracking share verification.')
     .build();
   return SwaggerModule.createDocument(app, config);
 }
