@@ -11,9 +11,14 @@ export interface ObserveConfig {
   serviceId: string;
 }
 
+export interface CorsConfig {
+  allowedOrigins: string[];
+}
+
 export interface AppConfig {
   port: number;
   env: string;
+  cors: CorsConfig;
   database: {
     /** Connection used by every normal (RLS-enforced) tenant request path. */
     tenantUrl: string;
@@ -99,6 +104,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     port: Number(env.PORT ?? 3000),
     env: env.NODE_ENV ?? 'development',
+    cors: {
+      allowedOrigins: env.CORS_ALLOWED_ORIGINS
+        ? env.CORS_ALLOWED_ORIGINS.split(',')
+            .map((o) => o.trim())
+            .filter(Boolean)
+        : isTest || env.NODE_ENV === 'development' || !env.NODE_ENV
+          ? ['http://localhost:3000', 'http://127.0.0.1:3000']
+          : [],
+    },
     database: {
       tenantUrl: (isTest
         ? (env.TEST_DATABASE_URL ?? env.DATABASE_URL)

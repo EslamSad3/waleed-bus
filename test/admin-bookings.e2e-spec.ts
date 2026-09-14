@@ -144,6 +144,35 @@ describe('Super Admin Booking Review (e2e)', () => {
       expect(Array.isArray(booking.auditTrail)).toBe(true);
     });
 
+    it('validates controller response conforms precisely to AdminBookingDetailDto contract shape', async () => {
+      const res = await api()
+        .get(`/admin/bookings/${activeBookingId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const booking = res.body.data;
+      expect(typeof booking.id).toBe('string');
+      expect(typeof booking.fleetId).toBe('string');
+      expect(typeof booking.fleetName).toBe('string');
+      expect(typeof booking.seats).toBe('number');
+      expect(typeof booking.status).toBe('string');
+      expect(typeof booking.paymentStatus).toBe('string');
+      expect(typeof booking.paymentMethod).toBe('string');
+
+      // Nested trip shape contract
+      expect(typeof booking.trip.id).toBe('string');
+      expect(typeof booking.trip.originName).toBe('string');
+      expect(typeof booking.trip.destinationName).toBe('string');
+      expect(typeof booking.trip.fare).toBe('string');
+      expect(typeof booking.trip.availableSeats).toBe('number');
+      expect(typeof booking.trip.bus.id).toBe('string');
+      expect(typeof booking.trip.bus.capacity).toBe('number');
+
+      // Nested ratings & audit trail contract
+      expect(booking.ratings).toBeDefined();
+      expect(Array.isArray(booking.auditTrail)).toBe(true);
+    });
+
     it('returns 404 for non-existent booking id', async () => {
       await api()
         .get('/admin/bookings/00000000-0000-0000-0000-000000000000')
@@ -209,6 +238,34 @@ describe('Super Admin Booking Review (e2e)', () => {
 
       expect(res.body.data.paymentStatus).toBe('FAILED');
     });
+
+    it('serializes concurrent payment verifications preventing double verification race', async () => {
+      const raceBooking = await t.system.booking.create({
+        data: {
+          fleetId: world.fleetAId,
+          tripId: testTripId,
+          passengerName: 'Race Verify',
+          seats: 1,
+          totalAmount: 50.0,
+          paymentStatus: 'PENDING',
+          paymentMethod: 'VODAFONE_CASH',
+        },
+      });
+
+      const [resA, resB] = await Promise.all([
+        api()
+          .post(`/admin/bookings/${raceBooking.id}/payment/verify`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ reference: 'RACE-1', amount: 50.0 }),
+        api()
+          .post(`/admin/bookings/${raceBooking.id}/payment/verify`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ reference: 'RACE-2', amount: 50.0 }),
+      ]);
+
+      const statuses = [resA.status, resB.status].sort();
+      expect(statuses).toEqual([201, 409]);
+    });
   });
 
   describe('US4: Refund Processing', () => {
@@ -255,6 +312,50 @@ describe('Super Admin Booking Review (e2e)', () => {
       expect(res.body.data.paymentStatus).toBe('REFUNDED');
       expect(res.body.data.remainingRefundableBalance).toBe('0.00');
     });
+
+    it('serializes concurrent refunds to eliminate over-refunding race conditions', async () => {
+      const raceRefundBooking = await t.system.booking.create({
+        data: {
+          fleetId: world.fleetAId,
+          tripId: testTripId,
+          passengerName: 'Race Refund',
+          seats: 2,
+          totalAmount: 100.0,
+          refundedAmount: 0.0,
+          paymentStatus: 'PAID',
+          paymentMethod: 'VODAFONE_CASH',
+        },
+      });
+
+      // Two concurrent refunds for 60.0 each (total 120.0 > 100.0)
+      const [resA, resB] = await Promise.all([
+        api()
+          .post(`/admin/bookings/${raceRefundBooking.id}/payment/refund`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            refundReference: 'RACE-REF-1',
+            refundAmount: 60.0,
+            reason: 'Concurrent refund A',
+          }),
+        api()
+          .post(`/admin/bookings/${raceRefundBooking.id}/payment/refund`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            refundReference: 'RACE-REF-2',
+            refundAmount: 60.0,
+            reason: 'Concurrent refund B',
+          }),
+      ]);
+
+      const statuses = [resA.status, resB.status].sort();
+      expect(statuses).toEqual([201, 400]);
+
+      // Assert database final state never exceeds totalAmount
+      const finalBooking = await t.system.booking.findUnique({
+        where: { id: raceRefundBooking.id },
+      });
+      expect(Number(finalBooking!.refundedAmount)).toBe(60.0);
+    });
   });
 
   describe('US5: Force Cancellation & Reinstatement', () => {
@@ -264,7 +365,6 @@ describe('Super Admin Booking Review (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           reason: 'Administrative safety cancellation',
-          releaseSeats: true,
         })
         .expect(201);
 

@@ -181,8 +181,7 @@ Administratively cancels a booking with seat release control.
 
 ```json
 {
-  "reason": "Emergency trip rerouting by transit authority",
-  "releaseSeats": true
+  "reason": "Emergency trip rerouting by transit authority"
 }
 ```
 

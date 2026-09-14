@@ -1,6 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { BookingsService } from './bookings.service.js';
+import { FleetBookingService } from './fleet-booking.service.js';
+import { PassengerBookingService } from './passenger-booking.service.js';
+import { PassengerRatingService } from './passenger-rating.service.js';
+
+function makeBookingsService(
+  fleetPath: any = { run: vi.fn() },
+  tenantContext: any = { withUserContext: vi.fn() },
+  system: any = {},
+  audit: any = { log: vi.fn(async () => undefined) },
+): BookingsService {
+  return new BookingsService(
+    new FleetBookingService(fleetPath),
+    new PassengerBookingService(system, audit),
+    new PassengerRatingService(tenantContext, system),
+  );
+}
 
 describe('BookingsService - Passenger Booking (US2 & US3)', () => {
   const actor = { id: 'passenger-uuid-1', appRole: 'passenger' } as never;
@@ -80,11 +96,11 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
     const tenantContext = { withUserContext: vi.fn() };
     const audit = { log: vi.fn(async () => undefined) };
 
-    const service = new BookingsService(
-      fleetPath as never,
-      tenantContext as never,
-      mockSystem as never,
-      audit as never,
+    const service = makeBookingsService(
+      fleetPath,
+      tenantContext,
+      mockSystem,
+      audit,
     );
 
     return { service, mockSystem, tx, audit, mockBookingCreate };
@@ -215,11 +231,11 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
       const fleetPath = { run: vi.fn() };
       const tenantContext = { withUserContext: vi.fn() };
       const audit = { log: vi.fn() };
-      const service = new BookingsService(
-        fleetPath as never,
-        tenantContext as never,
-        mockSystem as never,
-        audit as never,
+      const service = makeBookingsService(
+        fleetPath,
+        tenantContext,
+        mockSystem,
+        audit,
       );
 
       const result = await service.findPassengerBookings(actor, {
@@ -270,16 +286,16 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
       const fleetPath = { run: vi.fn() };
       const tenantContext = { withUserContext: vi.fn() };
       const audit = { log: vi.fn() };
-      const service = new BookingsService(
-        fleetPath as never,
-        tenantContext as never,
-        mockSystem as never,
-        audit as never,
+      const service = makeBookingsService(
+        fleetPath,
+        tenantContext,
+        mockSystem,
+        audit,
       );
 
       const result = await service.findPassengerBookingById(actor, 'b-1');
       expect(result.id).toBe('b-1');
-      expect(result.trip.bus.plateNumber).toBe('ق ب أ 1234');
+      expect(result.trip.bus?.plateNumber).toBe('ق ب أ 1234');
     });
 
     it('returns 404 BOOKING_NOT_FOUND when booking belongs to another passenger (OWASP BOLA)', async () => {
@@ -300,11 +316,11 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
       const fleetPath = { run: vi.fn() };
       const tenantContext = { withUserContext: vi.fn() };
       const audit = { log: vi.fn() };
-      const service = new BookingsService(
-        fleetPath as never,
-        tenantContext as never,
-        mockSystem as never,
-        audit as never,
+      const service = makeBookingsService(
+        fleetPath,
+        tenantContext,
+        mockSystem,
+        audit,
       );
 
       const err = await service
@@ -350,12 +366,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         ),
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const result = await service.cancelPassengerBooking(actor, 'b-1', {
         reason: 'Change of plans',
@@ -399,12 +410,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         ),
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const result = await service.cancelPassengerBooking(actor, 'b-1', {
         seatsToCancel: 1,
@@ -443,12 +449,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         ),
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const err = await service
         .cancelPassengerBooking(actor, 'b-1', { seatsToCancel: 3 })
@@ -487,12 +488,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         ),
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const err = await service
         .cancelPassengerBooking(actor, 'b-1', {})
@@ -531,12 +527,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         ),
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const err = await service
         .cancelPassengerBooking(actor, 'b-1', {})
@@ -575,12 +566,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         ),
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const err = await service
         .cancelPassengerBooking(actor, 'b-1', {})
@@ -630,12 +616,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         },
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const result = await service.findActivePassengerTrip(actor);
 
@@ -671,12 +652,7 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         },
       };
 
-      const service = new BookingsService(
-        {} as never,
-        {} as never,
-        mockSystem as never,
-        { log: vi.fn() } as never,
-      );
+      const service = makeBookingsService({}, {}, mockSystem, { log: vi.fn() });
 
       const result = await service.findActivePassengerTrip(actor);
       expect(result).toBeNull();

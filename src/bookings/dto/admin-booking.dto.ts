@@ -151,16 +151,6 @@ export class AdminForceCancelBookingDto {
   @IsString()
   @IsNotEmpty()
   reason!: string;
-
-  @ApiPropertyOptional({
-    example: true,
-    default: true,
-    description:
-      'Whether to restore reserved seats to trip available inventory.',
-  })
-  @IsOptional()
-  @IsBoolean()
-  releaseSeats?: boolean;
 }
 
 export class AdminReinstateBookingDto {

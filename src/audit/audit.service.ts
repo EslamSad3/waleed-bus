@@ -1,6 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 
+/**
+ * Categorizes audit events for observability, logging severity, and alert routing.
+ *
+ * NOTE: Audit writes remain best-effort and non-blocking for user requests to ensure
+ * platform availability. AuditDomain categorizes events for operational log severity
+ * (OBSERVABILITY = warning, SECURITY/GOVERNANCE = critical error log). It does NOT
+ * provide transactional durability guarantees or block business operations.
+ */
+export type AuditDomain = 'OBSERVABILITY' | 'SECURITY' | 'GOVERNANCE';
+export type AuditClassification = AuditDomain;
+
 export interface AuditInput {
   actorUserId?: string;
   actorFleetId?: string;
@@ -13,6 +24,46 @@ export interface AuditInput {
   ip?: string;
   userAgent?: string;
   success?: boolean;
+  /**
+   * Domain determines operational log severity and alert routing:
+   * - OBSERVABILITY: standard operational telemetry, logged as warning on failure.
+   * - SECURITY: auth/permission/session modifications, logged as critical error on failure.
+   * - GOVERNANCE: administrative lifecycle/financial overrides, logged as critical error on failure.
+   */
+  classification?: AuditDomain;
+  domain?: AuditDomain;
+}
+
+/** Actions categorized by default as SECURITY or GOVERNANCE when not explicitly tagged */
+const SECURITY_PATTERNS = [
+  'auth.',
+  'login',
+  'logout',
+  'session',
+  'token',
+  'password',
+  'role',
+  'permission',
+];
+
+const GOVERNANCE_PATTERNS = [
+  'payment',
+  'refund',
+  'force_cancel',
+  'reinstate',
+  'override',
+  'report.resolve',
+];
+
+export function deriveClassification(action: string): AuditDomain {
+  const lower = action.toLowerCase();
+  if (SECURITY_PATTERNS.some((p) => lower.includes(p))) {
+    return 'SECURITY';
+  }
+  if (GOVERNANCE_PATTERNS.some((p) => lower.includes(p))) {
+    return 'GOVERNANCE';
+  }
+  return 'OBSERVABILITY';
 }
 
 /**
@@ -27,6 +78,9 @@ export class AuditService {
   constructor(private readonly system: SystemPrismaService) {}
 
   async log(input: AuditInput): Promise<void> {
+    const classification =
+      input.classification ?? deriveClassification(input.action);
+
     try {
       await this.system.auditLog.create({
         data: {
@@ -39,19 +93,24 @@ export class AuditService {
           resourceId: input.resourceId,
           metadata:
             input.metadata === undefined
-              ? undefined
-              : (input.metadata as object),
+              ? { classification }
+              : ({ ...input.metadata, classification } as object),
           ip: input.ip,
           userAgent: input.userAgent,
           success: input.success ?? true,
         },
       });
     } catch (error) {
-      // Audit failures must never take down the request path, but they must
-      // be loud.
-      this.logger.error(
-        `audit write failed for ${input.action}: ${String(error)}`,
-      );
+      // Differentiate audit failure handling based on classification
+      if (classification === 'SECURITY' || classification === 'GOVERNANCE') {
+        this.logger.error(
+          `[CRITICAL_AUDIT_FAILURE] ${classification} audit failed for action "${input.action}" on resource "${input.resource}/${input.resourceId}": ${String(error)}`,
+        );
+      } else {
+        this.logger.warn(
+          `[OBSERVABILITY_AUDIT_WARNING] audit write failed for ${input.action}: ${String(error)}`,
+        );
+      }
     }
   }
 

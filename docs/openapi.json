@@ -4430,8 +4430,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminBookingListResponseDto"
                     }
                   },
                   "required": [
@@ -4488,8 +4487,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminBookingDetailDto"
                     }
                   },
                   "required": [
@@ -4559,8 +4557,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminVerifyPaymentResponseDto"
                     }
                   },
                   "required": [
@@ -4633,8 +4630,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminFailPaymentResponseDto"
                     }
                   },
                   "required": [
@@ -4707,8 +4703,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminRefundPaymentResponseDto"
                     }
                   },
                   "required": [
@@ -4778,8 +4773,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminForceCancelResponseDto"
                     }
                   },
                   "required": [
@@ -4852,8 +4846,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminReinstateResponseDto"
                     }
                   },
                   "required": [
@@ -4926,8 +4919,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminOperationalOverrideResponseDto"
                     }
                   },
                   "required": [
@@ -5007,8 +4999,7 @@
                       "example": 200
                     },
                     "data": {
-                      "nullable": true,
-                      "example": null
+                      "$ref": "#/components/schemas/AdminResolveReportResponseDto"
                     }
                   },
                   "required": [
@@ -9595,6 +9586,472 @@
           "verificationCode"
         ]
       },
+      "AdminBookingListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "Al-Waleed Express"
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passengerName": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "passengerPhone": {
+            "type": "string",
+            "example": "+201000000000",
+            "nullable": true
+          },
+          "passengerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "seats": {
+            "type": "number",
+            "example": 2
+          },
+          "status": {
+            "type": "string",
+            "example": "CONFIRMED"
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "100.00",
+            "nullable": true
+          },
+          "refundedAmount": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "example": "CASH",
+            "nullable": true
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "PAID",
+            "nullable": true
+          },
+          "paymentReference": {
+            "type": "string",
+            "example": "REF-12345",
+            "nullable": true
+          },
+          "boardedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "dropStatus": {
+            "type": "string",
+            "example": "DROPPED_OFF",
+            "nullable": true
+          },
+          "hasReports": {
+            "type": "boolean",
+            "example": false
+          },
+          "tripDepartureTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "originName": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destinationName": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "confirmedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fleetId",
+          "fleetName",
+          "tripId",
+          "passengerName",
+          "seats",
+          "status",
+          "refundedAmount",
+          "hasReports",
+          "tripDepartureTime",
+          "originName",
+          "destinationName",
+          "createdAt"
+        ]
+      },
+      "AdminBookingListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminBookingListItemDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "example": "eyJpZCI6IjEyMyJ9",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AdminBookingDetailTripBusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationNumber": {
+            "type": "string",
+            "example": "BUS-001",
+            "nullable": true
+          },
+          "capacity": {
+            "type": "number",
+            "example": 14
+          }
+        },
+        "required": [
+          "id",
+          "capacity"
+        ]
+      },
+      "AdminBookingDetailTripDriverDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Mohamed Ibrahim",
+            "nullable": true
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "+201100000000",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "AdminBookingDetailTripDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "departureTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "originName": {
+            "type": "string",
+            "example": "Cairo"
+          },
+          "destinationName": {
+            "type": "string",
+            "example": "Alexandria"
+          },
+          "fare": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "status": {
+            "type": "string",
+            "example": "SCHEDULED"
+          },
+          "availableSeats": {
+            "type": "number",
+            "example": 12
+          },
+          "bus": {
+            "$ref": "#/components/schemas/AdminBookingDetailTripBusDto"
+          },
+          "driver": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdminBookingDetailTripDriverDto"
+              }
+            ]
+          },
+          "route": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "departureTime",
+          "originName",
+          "destinationName",
+          "fare",
+          "status",
+          "availableSeats",
+          "bus"
+        ]
+      },
+      "AdminBookingRatingsDto": {
+        "type": "object",
+        "properties": {
+          "busRating": {
+            "type": "number",
+            "example": 5,
+            "nullable": true
+          },
+          "driverRating": {
+            "type": "number",
+            "example": 5,
+            "nullable": true
+          },
+          "passengerRating": {
+            "type": "number",
+            "example": 5,
+            "nullable": true
+          }
+        }
+      },
+      "AdminBookingAuditTrailItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "example": "booking.verify_payment"
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "createdAt"
+        ]
+      },
+      "AdminBookingDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "Al-Waleed Express"
+          },
+          "status": {
+            "type": "string",
+            "example": "CONFIRMED"
+          },
+          "seats": {
+            "type": "number",
+            "example": 2
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "100.00",
+            "nullable": true
+          },
+          "refundedAmount": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "example": "CASH",
+            "nullable": true
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "PAID",
+            "nullable": true
+          },
+          "paymentReference": {
+            "type": "string",
+            "example": "REF-12345",
+            "nullable": true
+          },
+          "paymentNotes": {
+            "type": "string",
+            "example": "Customer paid at station",
+            "nullable": true
+          },
+          "paidAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "paymentMarkedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "confirmedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "cancellationReason": {
+            "type": "string",
+            "example": "Customer cancelled",
+            "nullable": true
+          },
+          "boardedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "boardedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "dropStatus": {
+            "type": "string",
+            "example": "DROPPED_OFF",
+            "nullable": true
+          },
+          "dropStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "dropReason": {
+            "type": "string",
+            "example": "Scheduled stop",
+            "nullable": true
+          },
+          "passenger": {
+            "type": "object"
+          },
+          "trip": {
+            "$ref": "#/components/schemas/AdminBookingDetailTripDto"
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "ratings": {
+            "$ref": "#/components/schemas/AdminBookingRatingsDto"
+          },
+          "auditTrail": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminBookingAuditTrailItemDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "fleetId",
+          "fleetName",
+          "status",
+          "seats",
+          "refundedAmount",
+          "trip",
+          "ratings",
+          "auditTrail"
+        ]
+      },
+      "AdminVerifyPaymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "PAID",
+            "nullable": true
+          },
+          "paymentMethod": {
+            "type": "string",
+            "example": "CASH",
+            "nullable": true
+          },
+          "paymentReference": {
+            "type": "string",
+            "example": "REF-12345",
+            "nullable": true
+          },
+          "paidAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "paymentMarkedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "bookingId"
+        ]
+      },
       "AdminVerifyPaymentDto": {
         "type": "object",
         "properties": {
@@ -9627,6 +10084,28 @@
           "amount"
         ]
       },
+      "AdminFailPaymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "FAILED",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookingId",
+          "updatedAt"
+        ]
+      },
       "AdminFailPaymentDto": {
         "type": "object",
         "properties": {
@@ -9645,6 +10124,48 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "AdminRefundPaymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "REFUNDED",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "100.00",
+            "nullable": true
+          },
+          "refundedAmount": {
+            "type": "string",
+            "example": "100.00"
+          },
+          "remainingRefundableBalance": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "refundReference": {
+            "type": "string",
+            "example": "REFUND-12345",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookingId",
+          "refundedAmount",
+          "remainingRefundableBalance",
+          "updatedAt"
         ]
       },
       "AdminRefundPaymentDto": {
@@ -9680,6 +10201,43 @@
           "reason"
         ]
       },
+      "AdminForceCancelResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "example": "CANCELLED"
+          },
+          "cancellationReason": {
+            "type": "string",
+            "example": "Administrative cancellation",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "REFUND_PENDING",
+            "nullable": true
+          },
+          "seatsRestored": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "seatsRestored"
+        ]
+      },
       "AdminForceCancelBookingDto": {
         "type": "object",
         "properties": {
@@ -9687,16 +10245,32 @@
             "type": "string",
             "example": "Emergency route reroute",
             "description": "Administrative reason for cancellation."
-          },
-          "releaseSeats": {
-            "type": "boolean",
-            "example": true,
-            "default": true,
-            "description": "Whether to restore reserved seats to trip available inventory."
           }
         },
         "required": [
           "reason"
+        ]
+      },
+      "AdminReinstateResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "example": "CONFIRMED"
+          },
+          "reinstatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reinstatedAt"
         ]
       },
       "AdminReinstateBookingDto": {
@@ -9710,6 +10284,38 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "AdminOperationalOverrideResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "boardedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "dropStatus": {
+            "type": "string",
+            "example": "DROPPED_OFF",
+            "nullable": true
+          },
+          "dropStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "updatedAt"
         ]
       },
       "AdminOperationalOverrideDto": {
@@ -9747,6 +10353,63 @@
         },
         "required": [
           "justification"
+        ]
+      },
+      "AdminResolveReportResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "driverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passengerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "driverNote": {
+            "type": "string",
+            "example": "Luggage issue resolved"
+          },
+          "status": {
+            "type": "string",
+            "example": "RESOLVED"
+          },
+          "resolutionNote": {
+            "type": "string",
+            "example": "Investigated and resolved with passenger",
+            "nullable": true
+          },
+          "resolvedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bookingId",
+          "driverId",
+          "driverNote",
+          "status",
+          "updatedAt"
         ]
       },
       "AdminResolveReportDto": {

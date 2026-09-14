@@ -64,6 +64,22 @@ describe('loadConfig', () => {
     const config = loadConfig({ ...validEnv, NODE_ENV: 'test' });
     expect(config.database.tenantUrl).toBe(validEnv.DATABASE_URL);
   });
+
+  it('parses comma-separated CORS_ALLOWED_ORIGINS', () => {
+    const config = loadConfig({
+      ...validEnv,
+      CORS_ALLOWED_ORIGINS: 'https://admin.waleed.com, https://dashboard.waleed.com',
+    });
+    expect(config.cors.allowedOrigins).toEqual([
+      'https://admin.waleed.com',
+      'https://dashboard.waleed.com',
+    ]);
+  });
+
+  it('defaults CORS allowed origins in development/test', () => {
+    const config = loadConfig({ ...validEnv, NODE_ENV: 'development' });
+    expect(config.cors.allowedOrigins).toContain('http://localhost:3000');
+  });
 });
 
 describe('resolveObserveCredentials', () => {
