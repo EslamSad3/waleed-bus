@@ -7,7 +7,11 @@ import argon2 from 'argon2';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { AuditService } from '../audit/audit.service.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
-import { buildCursorArgs, toCursorPage, type CursorPage } from '../common/pagination.js';
+import {
+  buildCursorArgs,
+  toCursorPage,
+  type CursorPage,
+} from '../common/pagination.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 export interface CreateUserInput {
@@ -69,7 +73,10 @@ export class UsersService {
     return user;
   }
 
-  async findAll(query: { cursor?: string; limit?: string }): Promise<CursorPage<SafeUser>> {
+  async findAll(query: {
+    cursor?: string;
+    limit?: string;
+  }): Promise<CursorPage<SafeUser>> {
     const { pageSize, ...args } = buildCursorArgs(query);
     const users = await this.system.user.findMany({
       ...args,
@@ -82,18 +89,26 @@ export class UsersService {
   async findOne(id: string): Promise<SafeUser> {
     const user = await this.system.user.findUnique({
       where: { id },
-      select: { ...this.safeSelection, globalRoles: { include: { role: true } } },
+      select: {
+        ...this.safeSelection,
+        globalRoles: { include: { role: true } },
+      },
     });
     if (!user) throw new NotFoundException('User not found');
     return user as unknown as SafeUser;
   }
 
-  async update(id: string, input: UpdateUserInput, actorUserId: string): Promise<SafeUser> {
+  async update(
+    id: string,
+    input: UpdateUserInput,
+    actorUserId: string,
+  ): Promise<SafeUser> {
     const user = await this.system.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { id } });
       if (!existing) throw new NotFoundException('User not found');
 
-      const securitySensitive = input.isActive === false || input.password !== undefined;
+      const securitySensitive =
+        input.isActive === false || input.password !== undefined;
       if (input.isActive === false) {
         await this.assertNotLastActiveSuperAdmin(tx, id);
       }
@@ -123,13 +138,21 @@ export class UsersService {
       action: 'user.update',
       resource: 'user',
       resourceId: id,
-      metadata: { name: input.name, isActive: input.isActive, passwordChanged: input.password !== undefined },
+      metadata: {
+        name: input.name,
+        isActive: input.isActive,
+        passwordChanged: input.password !== undefined,
+      },
     });
     return user;
   }
 
   /** Transactional replacement of the user's global role assignments. */
-  async setGlobalRoles(id: string, roleSlugs: string[], actorUserId: string): Promise<SafeUser> {
+  async setGlobalRoles(
+    id: string,
+    roleSlugs: string[],
+    actorUserId: string,
+  ): Promise<SafeUser> {
     const user = await this.system.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { id } });
       if (!existing) throw new NotFoundException('User not found');
@@ -144,7 +167,9 @@ export class UsersService {
       }
 
       await tx.userRole.deleteMany({ where: { userId: id } });
-      await tx.userRole.createMany({ data: roles.map((r) => ({ userId: id, roleId: r.id })) });
+      await tx.userRole.createMany({
+        data: roles.map((r) => ({ userId: id, roleId: r.id })),
+      });
       const updated = await tx.user.update({
         where: { id },
         data: { authVersion: { increment: 1 } },
@@ -190,12 +215,17 @@ export class UsersService {
    * Self-lockout protection: the operation must never leave the platform
    * without an active super administrator.
    */
-  private async assertNotLastActiveSuperAdmin(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+  private async assertNotLastActiveSuperAdmin(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
     const otherActiveSuperAdmins = await tx.user.count({
       where: {
         id: { not: userId },
         isActive: true,
-        globalRoles: { some: { role: { slug: 'super_admin', isActive: true } } },
+        globalRoles: {
+          some: { role: { slug: 'super_admin', isActive: true } },
+        },
       },
     });
     if (otherActiveSuperAdmins === 0) {
@@ -209,9 +239,11 @@ export class UsersService {
     const roles = await tx.role.findMany({ where: { slug: { in: unique } } });
     const found = new Set(roles.map((r) => r.slug));
     const missing = unique.filter((s) => !found.has(s));
-    if (missing.length > 0) throw new NotFoundException(`Unknown roles: ${missing.join(', ')}`);
+    if (missing.length > 0)
+      throw new NotFoundException(`Unknown roles: ${missing.join(', ')}`);
     const inactive = roles.filter((r) => !r.isActive).map((r) => r.slug);
-    if (inactive.length > 0) throw new ConflictException(`Inactive roles: ${inactive.join(', ')}`);
+    if (inactive.length > 0)
+      throw new ConflictException(`Inactive roles: ${inactive.join(', ')}`);
     return roles;
   }
 

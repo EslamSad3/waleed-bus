@@ -72,7 +72,10 @@ export class AuthService {
    * bucket decays with its window; the phone bucket additionally resets on
    * success.
    */
-  private async checkLoginBudget(targetKey: string | null, ip: string | undefined): Promise<void> {
+  private async checkLoginBudget(
+    targetKey: string | null,
+    ip: string | undefined,
+  ): Promise<void> {
     const verdicts = await Promise.all([
       targetKey ? this.throttle.peek(targetKey, LOGIN_PHONE_BUDGET) : null,
       ip ? this.throttle.peek(`login:ip:${ip}`, LOGIN_IP_BUDGET) : null,
@@ -89,7 +92,10 @@ export class AuthService {
     }
   }
 
-  private async recordLoginFailure(targetKey: string | null, ip: string | undefined): Promise<void> {
+  private async recordLoginFailure(
+    targetKey: string | null,
+    ip: string | undefined,
+  ): Promise<void> {
     await Promise.all([
       targetKey ? this.throttle.hit(targetKey, LOGIN_PHONE_BUDGET) : null,
       ip ? this.throttle.hit(`login:ip:${ip}`, LOGIN_IP_BUDGET) : null,
@@ -124,7 +130,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const valid = await argon2.verify(user.passwordHash, input.password).catch(() => false);
+    const valid = await argon2
+      .verify(user.passwordHash, input.password)
+      .catch(() => false);
     if (!valid) {
       await this.audit.log({
         action: 'auth.login.failure',
@@ -138,7 +146,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const { refreshToken, session } = await this.createSession(
+      user.id,
+      input.ip,
+      input.userAgent,
+    );
     const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
@@ -188,15 +200,21 @@ export class AuthService {
       });
     };
 
-    const user = await this.system.user.findUnique({ where: { phoneNumber: phone } });
+    const user = await this.system.user.findUnique({
+      where: { phoneNumber: phone },
+    });
     if (!user || !user.isActive || !user.passwordHash) {
       // Same-cost path: verify against a dummy hash so unknown phones,
       // inactive accounts, and passwordless accounts are indistinguishable.
-      await argon2.verify(await this.getDummyHash(), input.password).catch(() => false);
+      await argon2
+        .verify(await this.getDummyHash(), input.password)
+        .catch(() => false);
       await fail(user?.id);
       throw authenticationFailed();
     }
-    const valid = await argon2.verify(user.passwordHash, input.password).catch(() => false);
+    const valid = await argon2
+      .verify(user.passwordHash, input.password)
+      .catch(() => false);
     if (!valid) {
       await fail(user.id);
       throw authenticationFailed();
@@ -212,12 +230,21 @@ export class AuthService {
         userAgent: input.userAgent,
         success: false,
       });
-      throw new CodedException(403, 'PHONE_NOT_VERIFIED', 'Phone verification is required.', {
-        phoneNumber: phone,
-      });
+      throw new CodedException(
+        403,
+        'PHONE_NOT_VERIFIED',
+        'Phone verification is required.',
+        {
+          phoneNumber: phone,
+        },
+      );
     }
 
-    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const { refreshToken, session } = await this.createSession(
+      user.id,
+      input.ip,
+      input.userAgent,
+    );
     const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
@@ -254,7 +281,8 @@ export class AuthService {
     ip?: string;
     userAgent?: string;
   }): Promise<LoginResult> {
-    const method = input.loginType === 'FLEET_OWNER' ? 'fleet-owner-phone' : 'driver-phone';
+    const method =
+      input.loginType === 'FLEET_OWNER' ? 'fleet-owner-phone' : 'driver-phone';
     let phone: string;
     try {
       phone = normalizePhone(input.phone);
@@ -275,13 +303,19 @@ export class AuthService {
       });
     };
 
-    const user = await this.system.user.findUnique({ where: { phoneNumber: phone } });
+    const user = await this.system.user.findUnique({
+      where: { phoneNumber: phone },
+    });
     if (!user || !user.isActive || !user.passwordHash) {
-      await argon2.verify(await this.getDummyHash(), input.password).catch(() => false);
+      await argon2
+        .verify(await this.getDummyHash(), input.password)
+        .catch(() => false);
       await fail(user?.id);
       throw authenticationFailed();
     }
-    const valid = await argon2.verify(user.passwordHash, input.password).catch(() => false);
+    const valid = await argon2
+      .verify(user.passwordHash, input.password)
+      .catch(() => false);
     if (!valid) {
       await fail(user.id);
       throw authenticationFailed();
@@ -297,9 +331,14 @@ export class AuthService {
         userAgent: input.userAgent,
         success: false,
       });
-      throw new CodedException(403, 'PHONE_NOT_VERIFIED', 'Phone verification is required.', {
-        phoneNumber: phone,
-      });
+      throw new CodedException(
+        403,
+        'PHONE_NOT_VERIFIED',
+        'Phone verification is required.',
+        {
+          phoneNumber: phone,
+        },
+      );
     }
     // Account-type verification against live rows (system path — no identity
     // context exists yet). Mismatch is indistinguishable from bad credentials.
@@ -313,7 +352,9 @@ export class AuthService {
         ? await this.isFleetOwnerAccount(user.id)
         : await this.isDriverAccount(user.id);
     if (!accountOk && input.loginType === 'DRIVER') {
-      const owned = await this.system.fleet.findFirst({ where: { ownerId: user.id } });
+      const owned = await this.system.fleet.findFirst({
+        where: { ownerId: user.id },
+      });
       if (!owned) {
         try {
           await this.fleets.ensurePersonalFleet(user.id, user.name);
@@ -328,7 +369,11 @@ export class AuthService {
       throw authenticationFailed();
     }
 
-    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const { refreshToken, session } = await this.createSession(
+      user.id,
+      input.ip,
+      input.userAgent,
+    );
     const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
@@ -350,10 +395,16 @@ export class AuthService {
 
   /** FLEET_OWNER account: owns ≥1 fleet or holds an ACTIVE fleet_owner membership. */
   private async isFleetOwnerAccount(userId: string): Promise<boolean> {
-    const owned = await this.system.fleet.findFirst({ where: { ownerId: userId } });
+    const owned = await this.system.fleet.findFirst({
+      where: { ownerId: userId },
+    });
     if (owned) return true;
     const membership = await this.system.fleetMember.findFirst({
-      where: { userId, status: 'ACTIVE', role: { slug: 'fleet_owner', isActive: true } },
+      where: {
+        userId,
+        status: 'ACTIVE',
+        role: { slug: 'fleet_owner', isActive: true },
+      },
     });
     return membership !== null;
   }
@@ -370,13 +421,20 @@ export class AuthService {
       where: {
         userId,
         status: 'ACTIVE',
-        role: { slug: { in: ['driver', 'independent_driver'] }, isActive: true },
+        role: {
+          slug: { in: ['driver', 'independent_driver'] },
+          isActive: true,
+        },
       },
     });
     return membership !== null;
   }
 
-  async refresh(rawToken: string, ip?: string, userAgent?: string): Promise<LoginResult> {
+  async refresh(
+    rawToken: string,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<LoginResult> {
     const hashed = AuthService.hashRefreshToken(rawToken);
     const session = await this.system.session.findUnique({
       where: { refreshTokenHash: hashed },
@@ -384,7 +442,12 @@ export class AuthService {
         user: { include: { globalRoles: { include: { role: true } } } },
       },
     });
-    if (!session || session.revokedAt || session.expiresAt <= new Date() || !session.user.isActive) {
+    if (
+      !session ||
+      session.revokedAt ||
+      session.expiresAt <= new Date() ||
+      !session.user.isActive
+    ) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
@@ -443,7 +506,10 @@ export class AuthService {
     }
 
     const link = await this.system.userAuthProvider.findFirst({
-      where: { provider: identity.provider, providerUserId: identity.providerUserId },
+      where: {
+        provider: identity.provider,
+        providerUserId: identity.providerUserId,
+      },
       include: { user: true },
     });
     let user = link?.user ?? null;
@@ -455,7 +521,8 @@ export class AuthService {
           create: {
             name: 'Passenger',
             slug: 'passenger',
-            description: 'Mobile app passenger (system row; assigned via user_roles)',
+            description:
+              'Mobile app passenger (system row; assigned via user_roles)',
             isSystem: true,
           },
         });
@@ -490,7 +557,11 @@ export class AuthService {
       throw authenticationFailed();
     }
 
-    const { refreshToken, session } = await this.createSession(user.id, input.ip, input.userAgent);
+    const { refreshToken, session } = await this.createSession(
+      user.id,
+      input.ip,
+      input.userAgent,
+    );
     const accessToken = await this.signAccessToken({
       sub: user.id,
       email: user.email,
@@ -506,7 +577,11 @@ export class AuthService {
       ip: input.ip,
       userAgent: input.userAgent,
     });
-    const profileComplete = !!(user.name && user.phoneNumber && user.phoneVerifiedAt);
+    const profileComplete = !!(
+      user.name &&
+      user.phoneNumber &&
+      user.phoneVerifiedAt
+    );
     return { accessToken, refreshToken, profileComplete };
   }
 
@@ -532,7 +607,9 @@ export class AuthService {
     return { refreshToken, session: session.id };
   }
 
-  private async signAccessToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): Promise<string> {
+  private async signAccessToken(
+    payload: Omit<JwtPayload, 'iat' | 'exp'>,
+  ): Promise<string> {
     const { secret, issuer, audience, expiresIn } = this.config.config.jwt;
     return this.jwtService.signAsync(payload, {
       secret,

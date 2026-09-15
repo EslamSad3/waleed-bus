@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /** Accepted raw forms: 01…, +201…, 00201… (service normalizes to 01XXXXXXXXX). */
@@ -21,7 +28,9 @@ export class RegisterDto {
   @ApiProperty({ example: '01000000000', maxLength: 20 })
   @IsString()
   @MaxLength(20)
-  @Matches(new RegExp(PHONE_PATTERN), { message: 'phoneNumber must be a valid Egyptian mobile number' })
+  @Matches(new RegExp(PHONE_PATTERN), {
+    message: 'phoneNumber must be a valid Egyptian mobile number',
+  })
   @Trimmed()
   phoneNumber!: string;
 
@@ -36,7 +45,9 @@ export class SendOtpDto {
   @ApiProperty({ example: '01000000000', maxLength: 20 })
   @IsString()
   @MaxLength(20)
-  @Matches(new RegExp(PHONE_PATTERN), { message: 'phoneNumber must be a valid Egyptian mobile number' })
+  @Matches(new RegExp(PHONE_PATTERN), {
+    message: 'phoneNumber must be a valid Egyptian mobile number',
+  })
   @Trimmed()
   phoneNumber!: string;
 }
@@ -61,11 +72,16 @@ export class UpdateMeDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
-  @Matches(new RegExp(PHONE_PATTERN), { message: 'phoneNumber must be a valid Egyptian mobile number' })
+  @Matches(new RegExp(PHONE_PATTERN), {
+    message: 'phoneNumber must be a valid Egyptian mobile number',
+  })
   @Trimmed()
   phoneNumber?: string;
 
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/p.png', maxLength: 1024 })
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/p.png',
+    maxLength: 1024,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(1024)

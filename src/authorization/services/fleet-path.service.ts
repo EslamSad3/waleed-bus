@@ -30,8 +30,13 @@ export class FleetPathService {
     platformPath: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
     if (fleetContext.membershipId === null) {
-      if (actor.appRole !== 'super_admin' || fleetContext.roleSlug !== 'super_admin') {
-        throw new ForbiddenException('Platform fleet context requires the super_admin role');
+      if (
+        actor.appRole !== 'super_admin' ||
+        fleetContext.roleSlug !== 'super_admin'
+      ) {
+        throw new ForbiddenException(
+          'Platform fleet context requires the super_admin role',
+        );
       }
       return this.system.$transaction(platformPath);
     }

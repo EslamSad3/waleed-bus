@@ -2,7 +2,10 @@ import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module.js';
 import { buildValidationPipe } from '../../src/common/validation/validation-pipe.js';
-import { SystemPrismaService, TenantPrismaService } from '../../src/prisma/prisma.module.js';
+import {
+  SystemPrismaService,
+  TenantPrismaService,
+} from '../../src/prisma/prisma.module.js';
 
 export interface TestApp {
   app: INestApplication;
@@ -12,7 +15,9 @@ export interface TestApp {
 }
 
 export async function createTestApp(): Promise<TestApp> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
   const app = moduleRef.createNestApplication({ logger: false });
   app.useGlobalPipes(buildValidationPipe());
   await app.init();

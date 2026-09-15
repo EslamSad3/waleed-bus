@@ -12,7 +12,9 @@ const EMBEDDED_PASSWORD = 'postgres';
 
 function assertLocal(url: string, label: string): void {
   if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
-    throw new Error(`${label} must point at localhost, refusing: ${url.replace(/:[^:@/]+@/, ':***@')}`);
+    throw new Error(
+      `${label} must point at localhost, refusing: ${url.replace(/:[^:@/]+@/, ':***@')}`,
+    );
   }
 }
 
@@ -31,7 +33,8 @@ async function isPostgresRunning(port: number): Promise<boolean> {
   }
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Polls the port so a still-booting server is reused instead of clashing with it. */
 async function waitForPostgres(port: number, attempts = 6): Promise<boolean> {
@@ -80,7 +83,10 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
         connectionString: `postgresql://${EMBEDDED_USER}:${EMBEDDED_PASSWORD}@127.0.0.1:${port}/postgres`,
       });
       await client.connect();
-      const exists = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [db]);
+      const exists = await client.query(
+        'SELECT 1 FROM pg_database WHERE datname = $1',
+        [db],
+      );
       if (exists.rows.length === 0) {
         await client.query(`CREATE DATABASE "${db}"`);
       }
@@ -100,7 +106,9 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   }
 
   if (!tenantUrl || !systemUrl) {
-    throw new Error('TEST_DATABASE_URL and TEST_DIRECT_URL are required (or enable the embedded database)');
+    throw new Error(
+      'TEST_DATABASE_URL and TEST_DIRECT_URL are required (or enable the embedded database)',
+    );
   }
   assertLocal(tenantUrl, 'TEST_DATABASE_URL');
   assertLocal(systemUrl, 'TEST_DIRECT_URL');
@@ -108,7 +116,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   // The tenant password comes from the TEST URL itself — never from
   // TENANT_DB_PASSWORD, which belongs to the real environment the .env points at.
   const tenantUrl_ = new URL(tenantUrl);
-  const tenantPassword = decodeURIComponent(tenantUrl_.password) || 'app_tenant_pw';
+  const tenantPassword =
+    decodeURIComponent(tenantUrl_.password) || 'app_tenant_pw';
   // Role first (migrations validate the tenant URL), then migrations as owner,
   // then policies + grants once the tables exist.
   await ensureTenantRole(systemUrl, tenantPassword);

@@ -9,6 +9,8 @@ for (const [label, url] of [
   ['TEST_DIRECT_URL', systemUrl],
 ] as const) {
   if (url && !/@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
-    throw new Error(`${label} must point at localhost (e2e refuses remote databases)`);
+    throw new Error(
+      `${label} must point at localhost (e2e refuses remote databases)`,
+    );
   }
 }

@@ -276,5 +276,9 @@ BEGIN
       ADD CONSTRAINT bookings_status_check CHECK (status IN ('CONFIRMED', 'CANCELLED'));
   END IF;
   ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_payment_status_check;
-  ALTER TABLE public.bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IN ('PENDING', 'PAID', 'CANCELLED', 'REFUND_PENDING', 'UNPAID'));
+  ALTER TABLE public.bookings ADD CONSTRAINT bookings_payment_status_check CHECK (payment_status IS NULL OR payment_status IN ('PENDING', 'PAID', 'CANCELLED', 'REFUND_PENDING', 'UNPAID', 'FAILED', 'PARTIALLY_REFUNDED', 'REFUNDED'));
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'passenger_reports_status_check') THEN
+    ALTER TABLE public.passenger_reports
+      ADD CONSTRAINT passenger_reports_status_check CHECK (status IN ('PENDING', 'RESOLVED', 'DISMISSED'));
+  END IF;
 END $$;

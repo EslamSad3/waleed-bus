@@ -39,12 +39,21 @@ export class PassengerService {
     try {
       phone = normalizePhone(input.phoneNumber);
     } catch {
-      throw new CodedException(400, 'VALIDATION_FAILED', 'The request is invalid.', {
-        fields: { phoneNumber: 'phoneNumber must be a valid Egyptian mobile number' },
-      });
+      throw new CodedException(
+        400,
+        'VALIDATION_FAILED',
+        'The request is invalid.',
+        {
+          fields: {
+            phoneNumber: 'phoneNumber must be a valid Egyptian mobile number',
+          },
+        },
+      );
     }
     const { userId } = await this.system.$transaction(async (tx) => {
-      const existing = await tx.user.findUnique({ where: { phoneNumber: phone } });
+      const existing = await tx.user.findUnique({
+        where: { phoneNumber: phone },
+      });
       if (existing) return { userId: existing.id };
       // The passenger authority is a database row (constitution III); the
       // upsert keeps fresh, seeded, and truncated-test databases convergent.
@@ -54,7 +63,8 @@ export class PassengerService {
         create: {
           name: 'Passenger',
           slug: 'passenger',
-          description: 'Mobile app passenger (system row; assigned via user_roles)',
+          description:
+            'Mobile app passenger (system row; assigned via user_roles)',
           isSystem: true,
         },
       });
@@ -105,7 +115,8 @@ export class PassengerService {
     if (!user?.name) missingFields.push('name');
     if (!user?.phoneNumber) missingFields.push('phoneNumber');
     const phoneVerified = !!user?.phoneVerifiedAt;
-    if (!phoneVerified && !missingFields.includes('phoneNumber')) missingFields.push('phoneVerified');
+    if (!phoneVerified && !missingFields.includes('phoneNumber'))
+      missingFields.push('phoneVerified');
     const pending = await this.getPendingChange(userId);
     return {
       profileComplete: missingFields.length === 0,
@@ -127,13 +138,21 @@ export class PassengerService {
     now: Date = new Date(),
   ): Promise<{ phoneNumber: string; expiresInSeconds: number } | null> {
     const active = await this.system.phoneVerificationChallenge.findFirst({
-      where: { userId, purpose: 'PHONE_CHANGE', consumedAt: null, expiresAt: { gt: now } },
+      where: {
+        userId,
+        purpose: 'PHONE_CHANGE',
+        consumedAt: null,
+        expiresAt: { gt: now },
+      },
       orderBy: { expiresAt: 'desc' },
     });
     if (!active) return null;
     return {
       phoneNumber: active.phoneNumber,
-      expiresInSeconds: Math.max(1, Math.ceil((active.expiresAt.getTime() - now.getTime()) / 1000)),
+      expiresInSeconds: Math.max(
+        1,
+        Math.ceil((active.expiresAt.getTime() - now.getTime()) / 1000),
+      ),
     };
   }
 
@@ -158,32 +177,61 @@ export class PassengerService {
     expiresInSeconds: number | null;
     sent: boolean;
   }> {
-    if (input.name === undefined && input.phoneNumber === undefined && input.picture === undefined) {
-      throw new CodedException(400, 'VALIDATION_FAILED', 'The request is invalid.', {
-        fields: { _global: 'at least one of name, phoneNumber, picture is required' },
-      });
+    if (
+      input.name === undefined &&
+      input.phoneNumber === undefined &&
+      input.picture === undefined
+    ) {
+      throw new CodedException(
+        400,
+        'VALIDATION_FAILED',
+        'The request is invalid.',
+        {
+          fields: {
+            _global: 'at least one of name, phoneNumber, picture is required',
+          },
+        },
+      );
     }
     let phone: string | undefined;
     if (input.phoneNumber !== undefined) {
       try {
         phone = normalizePhone(input.phoneNumber);
       } catch {
-        throw new CodedException(400, 'VALIDATION_FAILED', 'The request is invalid.', {
-          fields: { phoneNumber: 'phoneNumber must be a valid Egyptian mobile number' },
-        });
+        throw new CodedException(
+          400,
+          'VALIDATION_FAILED',
+          'The request is invalid.',
+          {
+            fields: {
+              phoneNumber: 'phoneNumber must be a valid Egyptian mobile number',
+            },
+          },
+        );
       }
     }
     const now = new Date();
 
-    const current = await this.system.user.findUnique({ where: { id: userId } });
+    const current = await this.system.user.findUnique({
+      where: { id: userId },
+    });
     if (!current) {
-      throw new CodedException(401, 'AUTHENTICATION_FAILED', 'Unable to authenticate with the provided credentials.');
+      throw new CodedException(
+        401,
+        'AUTHENTICATION_FAILED',
+        'Unable to authenticate with the provided credentials.',
+      );
     }
 
     // Expired requests die on their own: consume the stale challenge rows so
     // a new change can be requested right after the window passes.
     await this.system.phoneVerificationChallenge.updateMany({
-      where: { userId, purpose: 'PHONE_CHANGE', consumedAt: null, expiresAt: { lte: now } },
+      where: {
+        userId,
+        purpose: 'PHONE_CHANGE',
+        consumedAt: null,
+        expiresAt: { lte: now },
+      },
       data: { consumedAt: now },
     });
 
@@ -207,12 +255,22 @@ export class PassengerService {
       // send (remaining window) without burning throttle budget or opening a
       // new challenge. The verify-time check stays authoritative on conflicts.
       if (!pending) {
-        const conflict = await this.system.user.findUnique({ where: { phoneNumber: phone } });
+        const conflict = await this.system.user.findUnique({
+          where: { phoneNumber: phone },
+        });
         if (conflict) {
           // Non-revealing: identical whether the number is taken or invalid.
-          throw new CodedException(409, 'PHONE_UNAVAILABLE', 'Unable to complete this update.');
+          throw new CodedException(
+            409,
+            'PHONE_UNAVAILABLE',
+            'Unable to complete this update.',
+          );
         }
-        const userVerdict = await this.throttle.hit(`phone-change:${userId}`, PHONE_CHANGE_USER_BUDGET, now);
+        const userVerdict = await this.throttle.hit(
+          `phone-change:${userId}`,
+          PHONE_CHANGE_USER_BUDGET,
+          now,
+        );
         if (!userVerdict.allowed) {
           throw new CodedException(
             429,
@@ -222,7 +280,11 @@ export class PassengerService {
             userVerdict.retryAfterSeconds,
           );
         }
-        const sendVerdict = await this.throttle.hit(`otp:send:${phone}`, SEND_BUDGET, now);
+        const sendVerdict = await this.throttle.hit(
+          `otp:send:${phone}`,
+          SEND_BUDGET,
+          now,
+        );
         if (!sendVerdict.allowed) {
           throw new CodedException(
             429,
@@ -232,8 +294,17 @@ export class PassengerService {
             sendVerdict.retryAfterSeconds,
           );
         }
-        const opened = await this.otp.openChallenge(phone, 'PHONE_CHANGE', userId, now, PHONE_CHANGE_LIFETIME_MS);
-        pending = { phoneNumber: phone, expiresInSeconds: opened.expiresInSeconds };
+        const opened = await this.otp.openChallenge(
+          phone,
+          'PHONE_CHANGE',
+          userId,
+          now,
+          PHONE_CHANGE_LIFETIME_MS,
+        );
+        pending = {
+          phoneNumber: phone,
+          expiresInSeconds: opened.expiresInSeconds,
+        };
         sent = true;
         await this.audit.log({
           action: 'phone.change',

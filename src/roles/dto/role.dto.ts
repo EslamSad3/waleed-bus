@@ -18,13 +18,19 @@ export class RoleDto {
   @ApiProperty({ example: 'Fleet Manager' })
   name!: string;
 
-  @ApiProperty({ example: 'fleet-manager', description: 'Kebab-case unique slug used in JWT app_role and role APIs.' })
+  @ApiProperty({
+    example: 'fleet-manager',
+    description: 'Kebab-case unique slug used in JWT app_role and role APIs.',
+  })
   slug!: string;
 
   @ApiPropertyOptional({ example: 'Manages fleet operations', nullable: true })
   description?: string;
 
-  @ApiProperty({ example: false, description: 'System roles are protected from mutation/deletion.' })
+  @ApiProperty({
+    example: false,
+    description: 'System roles are protected from mutation/deletion.',
+  })
   isSystem!: boolean;
 
   @ApiProperty({ example: true })
@@ -43,7 +49,13 @@ export class CreateRoleDto {
   @Length(1, 100)
   name!: string;
 
-  @ApiProperty({ example: 'fleet-manager', pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', minLength: 2, maxLength: 100, description: 'Kebab-case unique slug (409 otherwise).' })
+  @ApiProperty({
+    example: 'fleet-manager',
+    pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
+    minLength: 2,
+    maxLength: 100,
+    description: 'Kebab-case unique slug (409 otherwise).',
+  })
   @IsString()
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/, { message: 'slug must be kebab-case' })
   @Length(2, 100)
@@ -68,7 +80,11 @@ export class CreateRoleDto {
 }
 
 export class UpdateRoleDto {
-  @ApiPropertyOptional({ example: 'Fleet Manager', minLength: 1, maxLength: 100 })
+  @ApiPropertyOptional({
+    example: 'Fleet Manager',
+    minLength: 1,
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
   @Length(1, 100)
@@ -90,7 +106,8 @@ export class SetRolePermissionsDto {
   @ApiProperty({
     type: [String],
     example: ['buses.read', 'trips.update'],
-    description: 'Full replacement permission set (atomic; unknown keys → 409).',
+    description:
+      'Full replacement permission set (atomic; unknown keys → 409).',
   })
   @IsArray()
   @ArrayNotEmpty()

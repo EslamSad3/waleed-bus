@@ -6,7 +6,11 @@ import { AuditService } from '../audit/audit.service.js';
 import { TenantContextService } from '../authorization/services/tenant-context.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
-import { buildCursorArgs, toCursorPage, type CursorPage } from '../common/pagination.js';
+import {
+  buildCursorArgs,
+  toCursorPage,
+  type CursorPage,
+} from '../common/pagination.js';
 import type { Bus, Prisma, Trip } from '../generated/prisma/client.js';
 
 /**
@@ -54,7 +58,10 @@ export class FleetOwnerService {
     });
   }
 
-  updateProfile(userId: string, input: { name?: string; picture?: string }): Promise<Record<string, unknown>> {
+  updateProfile(
+    userId: string,
+    input: { name?: string; picture?: string },
+  ): Promise<Record<string, unknown>> {
     return this.tenantContext.withUserContext(userId, async (tx) => {
       const user = await tx.user.update({ where: { id: userId }, data: input });
       return {
@@ -75,7 +82,9 @@ export class FleetOwnerService {
     const { pageSize, ...args } = buildCursorArgs(query);
     const run = async (tx: Prisma.TransactionClient): Promise<Bus[]> =>
       tx.bus.findMany({
-        ...(fleetContext.membershipId === null ? { where: { fleetId: fleetContext.fleetId } } : {}),
+        ...(fleetContext.membershipId === null
+          ? { where: { fleetId: fleetContext.fleetId } }
+          : {}),
         ...args,
         orderBy: { createdAt: 'desc' },
       });
@@ -84,17 +93,32 @@ export class FleetOwnerService {
       .then((buses) => toCursorPage(buses, pageSize));
   }
 
-  async getBus(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<Bus> {
+  async getBus(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    busId: string,
+  ): Promise<Bus> {
     const run = async (tx: Prisma.TransactionClient): Promise<Bus | null> =>
       fleetContext.membershipId === null
-        ? tx.bus.findFirst({ where: { id: busId, fleetId: fleetContext.fleetId } })
+        ? tx.bus.findFirst({
+            where: { id: busId, fleetId: fleetContext.fleetId },
+          })
         : tx.bus.findUnique({ where: { id: busId } });
     const bus = await this.fleetPath.run(actor, fleetContext, run, run);
-    if (!bus) throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
+    if (!bus)
+      throw new CodedException(
+        404,
+        'BUS_ACCESS_DENIED',
+        'Bus not found in this fleet.',
+      );
     return bus;
   }
 
-  async createBus(actor: RequestUser, fleetContext: FleetContext, input: OwnerBusInput): Promise<Bus> {
+  async createBus(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    input: OwnerBusInput,
+  ): Promise<Bus> {
     const run = async (tx: Prisma.TransactionClient): Promise<Bus> =>
       tx.bus
         .create({ data: { ...input, fleetId: fleetContext.fleetId } })
@@ -144,7 +168,9 @@ export class FleetOwnerService {
     const { pageSize, ...args } = buildCursorArgs(query);
     const run = async (tx: Prisma.TransactionClient): Promise<Trip[]> =>
       tx.trip.findMany({
-        ...(fleetContext.membershipId === null ? { where: { fleetId: fleetContext.fleetId } } : {}),
+        ...(fleetContext.membershipId === null
+          ? { where: { fleetId: fleetContext.fleetId } }
+          : {}),
         ...args,
         orderBy: { departAt: 'desc' },
       });
@@ -153,13 +179,24 @@ export class FleetOwnerService {
       .then((trips) => toCursorPage(trips, pageSize));
   }
 
-  async getTrip(actor: RequestUser, fleetContext: FleetContext, tripId: string): Promise<Trip> {
+  async getTrip(
+    actor: RequestUser,
+    fleetContext: FleetContext,
+    tripId: string,
+  ): Promise<Trip> {
     const run = async (tx: Prisma.TransactionClient): Promise<Trip | null> =>
       fleetContext.membershipId === null
-        ? tx.trip.findFirst({ where: { id: tripId, fleetId: fleetContext.fleetId } })
+        ? tx.trip.findFirst({
+            where: { id: tripId, fleetId: fleetContext.fleetId },
+          })
         : tx.trip.findUnique({ where: { id: tripId } });
     const trip = await this.fleetPath.run(actor, fleetContext, run, run);
-    if (!trip) throw new CodedException(404, 'RESOURCE_NOT_OWNED', 'Trip not found in this fleet.');
+    if (!trip)
+      throw new CodedException(
+        404,
+        'RESOURCE_NOT_OWNED',
+        'Trip not found in this fleet.',
+      );
     return trip;
   }
 
@@ -176,7 +213,9 @@ export class FleetOwnerService {
       tx.trip.findMany({
         where: {
           busId,
-          ...(fleetContext.membershipId === null ? { fleetId: fleetContext.fleetId } : {}),
+          ...(fleetContext.membershipId === null
+            ? { fleetId: fleetContext.fleetId }
+            : {}),
         },
         ...args,
         orderBy: { departAt: 'desc' },
@@ -194,14 +233,21 @@ export class FleetOwnerService {
     for (const key of ['from', 'to'] as const) {
       const value = query[key];
       if (value !== undefined && Number.isNaN(Date.parse(value))) {
-        throw new CodedException(422, 'VALIDATION_FAILED', 'The request is invalid.', {
-          fields: { [key]: 'must be a valid date-time' },
-        });
+        throw new CodedException(
+          422,
+          'VALIDATION_FAILED',
+          'The request is invalid.',
+          {
+            fields: { [key]: 'must be a valid date-time' },
+          },
+        );
       }
     }
     const run = async (tx: Prisma.TransactionClient) => {
       const scope =
-        fleetContext.membershipId === null ? { fleetId: fleetContext.fleetId } : {};
+        fleetContext.membershipId === null
+          ? { fleetId: fleetContext.fleetId }
+          : {};
       const dateFilter = {
         ...(query.from ? { createdAt: { gte: new Date(query.from) } } : {}),
         ...(query.to ? { createdAt: { lte: new Date(query.to) } } : {}),
@@ -227,7 +273,10 @@ export class FleetOwnerService {
           _avg: { driverRating: true },
         }),
         tx.booking.count({
-          where: { ...scope, OR: [{ busRating: { not: null } }, { driverRating: { not: null } }] },
+          where: {
+            ...scope,
+            OR: [{ busRating: { not: null } }, { driverRating: { not: null } }],
+          },
         }),
       ]);
       return {

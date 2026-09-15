@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Max,
+  Min,
+} from 'class-validator';
 
 /** Documentation-only response model for a bus row. */
 export class BusDto {
@@ -29,7 +37,12 @@ export class BusDto {
 }
 
 export class CreateBusDto {
-  @ApiProperty({ example: 'BUS-A-002', minLength: 1, maxLength: 50, description: 'Unique within the fleet (409 otherwise).' })
+  @ApiProperty({
+    example: 'BUS-A-002',
+    minLength: 1,
+    maxLength: 50,
+    description: 'Unique within the fleet (409 otherwise).',
+  })
   @IsString()
   @Length(1, 50)
   registrationNumber!: string;

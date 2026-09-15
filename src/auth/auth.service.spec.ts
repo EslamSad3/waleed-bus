@@ -81,14 +81,18 @@ describe('AuthService', () => {
       updatedAt: new Date(),
     } as never);
     vi.mocked(system.userRole.findMany).mockResolvedValue([
-      { userId: '00000000-0000-4000-8000-000000000001', roleId: 'role-1', role: { slug: 'super_admin', isActive: true } },
+      {
+        userId: '00000000-0000-4000-8000-000000000001',
+        roleId: 'role-1',
+        role: { slug: 'super_admin', isActive: true },
+      },
     ] as never);
-    vi.mocked(system.session.create).mockImplementation(
-      (async (args: { data: Record<string, unknown> }) => ({
-        id: `generated-${Math.random().toString(36).slice(2)}`,
-        ...(args.data),
-      })) as never,
-    );
+    vi.mocked(system.session.create).mockImplementation((async (args: {
+      data: Record<string, unknown>;
+    }) => ({
+      id: `generated-${Math.random().toString(36).slice(2)}`,
+      ...args.data,
+    })) as never);
   });
 
   it('issues an access token whose verified payload carries app_role and authVersion', async () => {
@@ -113,14 +117,24 @@ describe('AuthService', () => {
 
   it('rejects a wrong password with 401', async () => {
     await expect(
-      service.login({ email: 'user@example.com', password: 'wrong', ip: '', userAgent: '' }),
+      service.login({
+        email: 'user@example.com',
+        password: 'wrong',
+        ip: '',
+        userAgent: '',
+      }),
     ).rejects.toMatchObject({ status: 401 });
   });
 
   it('rejects an unknown email with 401', async () => {
     vi.mocked(system.user.findUnique).mockResolvedValueOnce(null);
     await expect(
-      service.login({ email: 'nobody@example.com', password, ip: '', userAgent: '' }),
+      service.login({
+        email: 'nobody@example.com',
+        password,
+        ip: '',
+        userAgent: '',
+      }),
     ).rejects.toMatchObject({ status: 401 });
   });
 
@@ -133,13 +147,23 @@ describe('AuthService', () => {
       authVersion: 1,
     } as never);
     await expect(
-      service.login({ email: 'idle@example.com', password, ip: '', userAgent: '' }),
+      service.login({
+        email: 'idle@example.com',
+        password,
+        ip: '',
+        userAgent: '',
+      }),
     ).rejects.toMatchObject({ status: 401 });
   });
 
   it('creates a session whose refresh token is only returned hashed', async () => {
     vi.mocked(system.session.create).mockClear();
-    await service.login({ email: 'user@example.com', password, ip: '10.0.0.1', userAgent: 'ua' });
+    await service.login({
+      email: 'user@example.com',
+      password,
+      ip: '10.0.0.1',
+      userAgent: 'ua',
+    });
     expect(system.session.create).toHaveBeenCalledTimes(1);
     const arg = vi.mocked(system.session.create).mock.calls[0][0] as {
       data: { refreshTokenHash: string; ip?: string; userAgent?: string };
@@ -174,15 +198,20 @@ describe('AuthService', () => {
       refreshTokenHash: hashed,
       expiresAt: new Date(Date.now() + 60_000),
       revokedAt: null,
-      user: { isActive: true, authVersion: 3, email: 'user@example.com', globalRoles: [] },
+      user: {
+        isActive: true,
+        authVersion: 3,
+        email: 'user@example.com',
+        globalRoles: [],
+      },
     } as never);
     vi.mocked(system.session.update).mockResolvedValue({} as never);
-    vi.mocked(system.session.create).mockImplementation(
-      (async (args: { data: Record<string, unknown> }) => ({
-        id: `generated-${Math.random().toString(36).slice(2)}`,
-        ...(args.data),
-      })) as never,
-    );
+    vi.mocked(system.session.create).mockImplementation((async (args: {
+      data: Record<string, unknown>;
+    }) => ({
+      id: `generated-${Math.random().toString(36).slice(2)}`,
+      ...args.data,
+    })) as never);
 
     const result = await service.refresh(rawToken, '127.0.0.1', 'ua');
     expect(result.accessToken).toEqual(expect.any(String));
@@ -204,9 +233,16 @@ describe('AuthService', () => {
       refreshTokenHash: await AuthService.hashRefreshToken(rawToken),
       expiresAt: new Date(Date.now() + 60_000),
       revokedAt: new Date(),
-      user: { isActive: true, authVersion: 3, email: 'user@example.com', globalRoles: [] },
+      user: {
+        isActive: true,
+        authVersion: 3,
+        email: 'user@example.com',
+        globalRoles: [],
+      },
     } as never);
-    await expect(service.refresh(rawToken, '', '')).rejects.toMatchObject({ status: 401 });
+    await expect(service.refresh(rawToken, '', '')).rejects.toMatchObject({
+      status: 401,
+    });
   });
 
   it('rejects an expired refresh token', async () => {
@@ -217,9 +253,16 @@ describe('AuthService', () => {
       refreshTokenHash: await AuthService.hashRefreshToken(rawToken),
       expiresAt: new Date(Date.now() - 60_000),
       revokedAt: null,
-      user: { isActive: true, authVersion: 3, email: 'user@example.com', globalRoles: [] },
+      user: {
+        isActive: true,
+        authVersion: 3,
+        email: 'user@example.com',
+        globalRoles: [],
+      },
     } as never);
-    await expect(service.refresh(rawToken, '', '')).rejects.toMatchObject({ status: 401 });
+    await expect(service.refresh(rawToken, '', '')).rejects.toMatchObject({
+      status: 401,
+    });
   });
 
   it('logout revokes the session by id', async () => {
@@ -253,14 +296,25 @@ describe('AuthService', () => {
 
     function mockPassengerRole() {
       vi.mocked(system.userRole.findMany).mockResolvedValueOnce([
-        { userId: passengerId, roleId: 'role-passenger', role: { slug: 'passenger', isActive: true } },
+        {
+          userId: passengerId,
+          roleId: 'role-passenger',
+          role: { slug: 'passenger', isActive: true },
+        },
       ] as never);
     }
 
     it('issues passenger tokens for a verified phone', async () => {
-      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow());
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(
+        await passengerRow(),
+      );
       mockPassengerRole();
-      const result = await service.loginPassengerPhone({ phone, password, ip: '127.0.0.1', userAgent: 'vitest' });
+      const result = await service.loginPassengerPhone({
+        phone,
+        password,
+        ip: '127.0.0.1',
+        userAgent: 'vitest',
+      });
       expect(result.accessToken).toEqual(expect.any(String));
       const payload = await jwt.verifyAsync(result.accessToken, {
         secret: jwtConfig.secret,
@@ -268,29 +322,48 @@ describe('AuthService', () => {
         audience: jwtConfig.audience,
         algorithms: ['HS256'],
       });
-      expect(payload).toMatchObject({ sub: passengerId, app_role: 'passenger', authVersion: 1 });
-      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'auth.login.success' }));
+      expect(payload).toMatchObject({
+        sub: passengerId,
+        app_role: 'passenger',
+        authVersion: 1,
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.login.success' }),
+      );
     });
 
     it('returns PHONE_NOT_VERIFIED for correct credentials on an unverified phone', async () => {
-      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow({ phoneVerifiedAt: null }));
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(
+        await passengerRow({ phoneVerifiedAt: null }),
+      );
       const error = await service
         .loginPassengerPhone({ phone, password, ip: '', userAgent: '' })
         .catch((e: unknown) => e);
       expect(error).toMatchObject({ status: 403 });
-      expect((error as { getResponse: () => unknown }).getResponse()).toMatchObject({
+      expect(
+        (error as { getResponse: () => unknown }).getResponse(),
+      ).toMatchObject({
         code: 'PHONE_NOT_VERIFIED',
         details: { phoneNumber: phone },
       });
     });
 
     it('returns the generic 401 for a wrong password', async () => {
-      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow());
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(
+        await passengerRow(),
+      );
       const error = await service
-        .loginPassengerPhone({ phone, password: 'wrong-password', ip: '', userAgent: '' })
+        .loginPassengerPhone({
+          phone,
+          password: 'wrong-password',
+          ip: '',
+          userAgent: '',
+        })
         .catch((e: unknown) => e);
       expect(error).toMatchObject({ status: 401 });
-      expect((error as { getResponse: () => unknown }).getResponse()).toMatchObject({
+      expect(
+        (error as { getResponse: () => unknown }).getResponse(),
+      ).toMatchObject({
         code: 'AUTHENTICATION_FAILED',
       });
     });
@@ -298,19 +371,31 @@ describe('AuthService', () => {
     it('returns the generic 401 for an unknown phone', async () => {
       vi.mocked(system.user.findUnique).mockResolvedValueOnce(null);
       const error = await service
-        .loginPassengerPhone({ phone: '01000000099', password, ip: '', userAgent: '' })
+        .loginPassengerPhone({
+          phone: '01000000099',
+          password,
+          ip: '',
+          userAgent: '',
+        })
         .catch((e: unknown) => e);
       expect(error).toMatchObject({ status: 401 });
-      expect((error as { getResponse: () => unknown }).getResponse()).toMatchObject({
+      expect(
+        (error as { getResponse: () => unknown }).getResponse(),
+      ).toMatchObject({
         code: 'AUTHENTICATION_FAILED',
       });
       expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'auth.login.failure', success: false }),
+        expect.objectContaining({
+          action: 'auth.login.failure',
+          success: false,
+        }),
       );
     });
 
     it('returns the generic 401 for a passwordless provider-only account', async () => {
-      vi.mocked(system.user.findUnique).mockResolvedValueOnce(await passengerRow({ passwordHash: null }));
+      vi.mocked(system.user.findUnique).mockResolvedValueOnce(
+        await passengerRow({ passwordHash: null }),
+      );
       await expect(
         service.loginPassengerPhone({ phone, password, ip: '', userAgent: '' }),
       ).rejects.toMatchObject({ status: 401 });

@@ -31,7 +31,10 @@ describe('Tenant isolation (e2e)', () => {
   const api = () => request(t.app.getHttpServer());
 
   async function login(email: string): Promise<string> {
-    const res = await api().post('/auth/login').send({ email, password }).expect(201);
+    const res = await api()
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(201);
     tokens.set(email, res.body.data.accessToken);
     return res.body.data.accessToken;
   }
@@ -40,9 +43,16 @@ describe('Tenant isolation (e2e)', () => {
     t = await createTestApp();
     await resetDatabase(loadConfig(process.env).database.systemUrl);
     world = await seedIsolationWorld(t.system);
-    await createUser(t.system, { email: 'admin@example.com', password, globalRoleSlug: 'super_admin' });
+    await createUser(t.system, {
+      email: 'admin@example.com',
+      password,
+      globalRoleSlug: 'super_admin',
+    });
     // read-only member of fleet A: trips.read but no trips.update
-    const viewer = await createUser(t.system, { email: 'viewer@example.com', password });
+    const viewer = await createUser(t.system, {
+      email: 'viewer@example.com',
+      password,
+    });
     await addMember(t.system, {
       userId: viewer.id,
       fleetId: world.fleetAId,
@@ -64,7 +74,9 @@ describe('Tenant isolation (e2e)', () => {
       .get(`/fleets/${world.fleetAId}/buses`)
       .set('Authorization', `Bearer ${userAToken}`)
       .expect(200);
-    const regs = res.body.data.items.map((b: { registrationNumber: string }) => b.registrationNumber);
+    const regs = res.body.data.items.map(
+      (b: { registrationNumber: string }) => b.registrationNumber,
+    );
     expect(regs).toContain('BUS-A-001');
     expect(regs).not.toContain('BUS-B-001');
   });
@@ -143,10 +155,24 @@ describe('Tenant isolation (e2e)', () => {
     const jwtService = t.app.get(JwtService);
     const cfg = loadConfig(process.env).jwt;
     const forged = await jwtService.signAsync(
-      { sub: world.userAId, email: 'usera@example.com', app_role: 'super_admin', authVersion: 1, sessionId: 'fake' },
-      { secret: 'attacker-secret-0123456789abcdef0123', issuer: cfg.issuer, audience: cfg.audience, expiresIn: '15m' as never },
+      {
+        sub: world.userAId,
+        email: 'usera@example.com',
+        app_role: 'super_admin',
+        authVersion: 1,
+        sessionId: 'fake',
+      },
+      {
+        secret: 'attacker-secret-0123456789abcdef0123',
+        issuer: cfg.issuer,
+        audience: cfg.audience,
+        expiresIn: '15m' as never,
+      },
     );
-    await api().get('/roles').set('Authorization', `Bearer ${forged}`).expect(401);
+    await api()
+      .get('/roles')
+      .set('Authorization', `Bearer ${forged}`)
+      .expect(401);
   });
 
   // Test 11 — membership role change invalidates the outstanding token
@@ -166,7 +192,10 @@ describe('Tenant isolation (e2e)', () => {
       .send({ roleSlug: world.roleReadOnlySlug })
       .expect(200);
 
-    await api().get('/auth/me').set('Authorization', `Bearer ${userAToken}`).expect(401);
+    await api()
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(401);
     tokens.delete('usera@example.com');
     userAToken = await login('usera@example.com');
 
@@ -203,7 +232,10 @@ describe('Tenant isolation (e2e)', () => {
       .expect(200);
 
     // sessions were revoked by the suspension
-    await api().get('/auth/me').set('Authorization', `Bearer ${userAToken}`).expect(401);
+    await api()
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${userAToken}`)
+      .expect(401);
     tokens.delete('usera@example.com');
     const freshToken = await login('usera@example.com');
     await api()
@@ -227,14 +259,19 @@ describe('Tenant isolation (e2e)', () => {
       .get('/users?limit=100')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const userB = users.body.data.items.find((u: { email: string }) => u.email === 'userb@example.com');
+    const userB = users.body.data.items.find(
+      (u: { email: string }) => u.email === 'userb@example.com',
+    );
     await api()
       .patch(`/users/${userB.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ isActive: false })
       .expect(200);
 
-    await api().get('/auth/me').set('Authorization', `Bearer ${userBToken}`).expect(401);
+    await api()
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${userBToken}`)
+      .expect(401);
 
     // restore
     await api()
@@ -251,7 +288,9 @@ describe('Tenant isolation (e2e)', () => {
       .get(`/fleets/${world.fleetAId}/buses`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const regs = res.body.data.items.map((b: { registrationNumber: string }) => b.registrationNumber);
+    const regs = res.body.data.items.map(
+      (b: { registrationNumber: string }) => b.registrationNumber,
+    );
     expect(regs).toContain('BUS-A-001');
   });
 
@@ -274,7 +313,11 @@ describe('Tenant isolation (e2e)', () => {
     const booking = await api()
       .post(`/fleets/${world.fleetAId}/bookings`)
       .set('Authorization', `Bearer ${userAToken}`)
-      .send({ tripId: trip.body.data.id, passengerName: 'Nour', passengerPhone: '+201000000000' })
+      .send({
+        tripId: trip.body.data.id,
+        passengerName: 'Nour',
+        passengerPhone: '+201000000000',
+      })
       .expect(201);
 
     // cross-fleet trip reference is a 404, never a silent FK insert
@@ -308,18 +351,41 @@ describe('Tenant isolation (e2e)', () => {
   // 14-test world above is untouched.
   it('test 15: fleet-A owner cannot touch fleet-B buses (404) nor assign there', async () => {
     await ensureFleetDriverRoles(t.system);
-    const ownerRole = await t.system.role.findUniqueOrThrow({ where: { slug: 'fleet_owner' } });
-    const ownerA = await createPhoneUser(t.system, { phone: '01009009001', password, name: 'Owner A' });
-    await addMember(t.system, { userId: ownerA.id, fleetId: world.fleetAId, roleId: ownerRole.id });
+    const ownerRole = await t.system.role.findUniqueOrThrow({
+      where: { slug: 'fleet_owner' },
+    });
+    const ownerA = await createPhoneUser(t.system, {
+      phone: '01009009001',
+      password,
+      name: 'Owner A',
+    });
+    await addMember(t.system, {
+      userId: ownerA.id,
+      fleetId: world.fleetAId,
+      roleId: ownerRole.id,
+    });
     const ownerToken = (
-      await api().post('/auth/login').send({ loginType: 'FLEET_OWNER', phone: '01009009001', password }).expect(201)
+      await api()
+        .post('/auth/login')
+        .send({ loginType: 'FLEET_OWNER', phone: '01009009001', password })
+        .expect(201)
     ).body.data.accessToken as string;
     const withFleet = (fleetId: string) => ({
-      get: (path: string) => api().get(path).set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId),
-      post: (path: string) => api().post(path).set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId),
+      get: (path: string) =>
+        api()
+          .get(path)
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .set('x-fleet-id', fleetId),
+      post: (path: string) =>
+        api()
+          .post(path)
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .set('x-fleet-id', fleetId),
     });
 
-    await withFleet(world.fleetAId).get(`/fleet/buses/${world.busBId}`).expect(404);
+    await withFleet(world.fleetAId)
+      .get(`/fleet/buses/${world.busBId}`)
+      .expect(404);
     const assign = await withFleet(world.fleetAId)
       .post(`/fleet/buses/${world.busBId}/driver`)
       .send({ driverUserId: ownerA.id });
@@ -328,19 +394,39 @@ describe('Tenant isolation (e2e)', () => {
   });
 
   it('test 16: fleet-A driver cannot operate fleet-B bookings (404, never 403)', async () => {
-    const driverRole = await t.system.role.findUniqueOrThrow({ where: { slug: 'driver' } });
-    const driverA = await createPhoneUser(t.system, { phone: '01009009002', password, name: 'Driver A' });
-    await addMember(t.system, { userId: driverA.id, fleetId: world.fleetAId, roleId: driverRole.id });
+    const driverRole = await t.system.role.findUniqueOrThrow({
+      where: { slug: 'driver' },
+    });
+    const driverA = await createPhoneUser(t.system, {
+      phone: '01009009002',
+      password,
+      name: 'Driver A',
+    });
+    await addMember(t.system, {
+      userId: driverA.id,
+      fleetId: world.fleetAId,
+      roleId: driverRole.id,
+    });
     await t.system.busAssignment.create({
-      data: { fleetId: world.fleetAId, busId: world.busAId, driverUserId: driverA.id, status: 'ACTIVE' },
+      data: {
+        fleetId: world.fleetAId,
+        busId: world.busAId,
+        driverUserId: driverA.id,
+        status: 'ACTIVE',
+      },
     });
     const driverToken = (
-      await api().post('/auth/login').send({ loginType: 'DRIVER', phone: '01009009002', password }).expect(201)
+      await api()
+        .post('/auth/login')
+        .send({ loginType: 'DRIVER', phone: '01009009002', password })
+        .expect(201)
     ).body.data.accessToken as string;
 
     // Fleet-B booking through fleet-A scope: the guard anchors in-tx → 404.
     const board = await api()
-      .post(`/driver/trips/${world.tripBId}/passengers/${world.bookingBId}/board`)
+      .post(
+        `/driver/trips/${world.tripBId}/passengers/${world.bookingBId}/board`,
+      )
       .set('Authorization', `Bearer ${driverToken}`)
       .set('x-fleet-id', world.fleetAId);
     expect(board.status).toBe(404);
@@ -355,11 +441,20 @@ describe('Tenant isolation (e2e)', () => {
   });
 
   it('test 17: personal fleets are invisible across tenants in both directions', async () => {
-    const solo = await createPhoneUser(t.system, { phone: '01009009003', password, name: 'Solo' });
+    const solo = await createPhoneUser(t.system, {
+      phone: '01009009003',
+      password,
+      name: 'Solo',
+    });
     const soloToken = (
-      await api().post('/auth/login').send({ loginType: 'DRIVER', phone: '01009009003', password }).expect(201)
+      await api()
+        .post('/auth/login')
+        .send({ loginType: 'DRIVER', phone: '01009009003', password })
+        .expect(201)
     ).body.data.accessToken as string;
-    const membership = await t.system.fleetMember.findFirstOrThrow({ where: { userId: solo.id } });
+    const membership = await t.system.fleetMember.findFirstOrThrow({
+      where: { userId: solo.id },
+    });
     const personalFleetId = membership.fleetId;
 
     // Fleet-A operator has no membership in the personal fleet → 403.

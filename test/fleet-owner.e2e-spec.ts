@@ -39,18 +39,43 @@ describe('Fleet owner (e2e)', () => {
     await resetDatabase(loadConfig(process.env).database.systemUrl);
     await ensureFleetDriverRoles(system);
 
-    const ownerRole = await system.role.findUniqueOrThrow({ where: { slug: 'fleet_owner' } });
-    const owner = await createPhoneUser(system, { phone: ownerPhone, password, name: 'Owner Ahmed' });
-    const fleet = await createFleet(system, { name: 'Owner Fleet', ownerId: owner.id });
+    const ownerRole = await system.role.findUniqueOrThrow({
+      where: { slug: 'fleet_owner' },
+    });
+    const owner = await createPhoneUser(system, {
+      phone: ownerPhone,
+      password,
+      name: 'Owner Ahmed',
+    });
+    const fleet = await createFleet(system, {
+      name: 'Owner Fleet',
+      ownerId: owner.id,
+    });
     fleetId = fleet.id;
-    await addMember(system, { userId: owner.id, fleetId, roleId: ownerRole.id });
+    await addMember(system, {
+      userId: owner.id,
+      fleetId,
+      roleId: ownerRole.id,
+    });
 
-    const stranger = await createUser(system, { email: 'stranger@example.com', password });
-    const otherFleet = await createFleet(system, { name: 'Other Fleet', ownerId: stranger.id });
+    const stranger = await createUser(system, {
+      email: 'stranger@example.com',
+      password,
+    });
+    const otherFleet = await createFleet(system, {
+      name: 'Other Fleet',
+      ownerId: stranger.id,
+    });
     otherFleetId = otherFleet.id;
-    otherBusId = (await createBus(system, { fleetId: otherFleetId, registrationNumber: 'OTHER-1' })).id;
+    otherBusId = (
+      await createBus(system, {
+        fleetId: otherFleetId,
+        registrationNumber: 'OTHER-1',
+      })
+    ).id;
 
-    ownerToken = (await login('FLEET_OWNER', ownerPhone).expect(201)).body.data.accessToken;
+    ownerToken = (await login('FLEET_OWNER', ownerPhone).expect(201)).body.data
+      .accessToken;
   }, 120_000);
 
   afterAll(async () => {
@@ -63,14 +88,22 @@ describe('Fleet owner (e2e)', () => {
     expect(ok.body.data.accessToken).toBeTypeOf('string');
 
     const bad = await login('FLEET_OWNER', ownerPhone, 'Wrongpass!1');
-    expect(bad.body).toMatchObject({ statusCode: 401, code: 'AUTHENTICATION_FAILED' });
+    expect(bad.body).toMatchObject({
+      statusCode: 401,
+      code: 'AUTHENTICATION_FAILED',
+    });
 
     const mismatch = await login('DRIVER', ownerPhone);
-    expect(mismatch.body).toMatchObject({ statusCode: 401, code: 'AUTHENTICATION_FAILED' });
+    expect(mismatch.body).toMatchObject({
+      statusCode: 401,
+      code: 'AUTHENTICATION_FAILED',
+    });
   });
 
   it('GET /me returns the caller profile', async () => {
-    const res = await api().get('/me').set('Authorization', `Bearer ${ownerToken}`);
+    const res = await api()
+      .get('/me')
+      .set('Authorization', `Bearer ${ownerToken}`);
     expect(res.body).toMatchObject({
       statusCode: 200,
       data: { name: 'Owner Ahmed', phoneNumber: ownerPhone },
@@ -93,37 +126,58 @@ describe('Fleet owner (e2e)', () => {
       .send({ registrationNumber: 'OWN-1', capacity: 30 });
     expect(dup.status).toBe(409);
 
-    const list = await api().get('/fleet/buses').set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId);
+    const list = await api()
+      .get('/fleet/buses')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
     expect(list.body.data.items.length).toBeGreaterThanOrEqual(1);
     expect(list.body.data).toHaveProperty('nextCursor');
 
-    const get = await api().get(`/fleet/buses/${busId}`).set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId);
-    expect(get.body).toMatchObject({ statusCode: 200, data: { id: busId, isActive: true } });
+    const get = await api()
+      .get(`/fleet/buses/${busId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
+    expect(get.body).toMatchObject({
+      statusCode: 200,
+      data: { id: busId, isActive: true },
+    });
 
     const updated = await api()
       .patch(`/fleet/buses/${busId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId)
       .send({ capacity: 50 });
-    expect(updated.body).toMatchObject({ statusCode: 200, data: { capacity: 50 } });
+    expect(updated.body).toMatchObject({
+      statusCode: 200,
+      data: { capacity: 50 },
+    });
 
     const disabled = await api()
       .post(`/fleet/buses/${busId}/disable`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId);
-    expect(disabled.body).toMatchObject({ statusCode: 200, data: { isActive: false } });
+    expect(disabled.body).toMatchObject({
+      statusCode: 200,
+      data: { isActive: false },
+    });
 
     const redundant = await api()
       .post(`/fleet/buses/${busId}/disable`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId);
-    expect(redundant.body).toMatchObject({ statusCode: 409, code: 'BUS_ACTION_NOT_ALLOWED' });
+    expect(redundant.body).toMatchObject({
+      statusCode: 409,
+      code: 'BUS_ACTION_NOT_ALLOWED',
+    });
 
     const reactivated = await api()
       .post(`/fleet/buses/${busId}/reactivate`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId);
-    expect(reactivated.body).toMatchObject({ statusCode: 200, data: { isActive: true } });
+    expect(reactivated.body).toMatchObject({
+      statusCode: 200,
+      data: { isActive: true },
+    });
   });
 
   it('disable is blocked while a DEPARTED trip runs on the bus (409), cross-fleet buses 404', async () => {
@@ -145,7 +199,10 @@ describe('Fleet owner (e2e)', () => {
       .post(`/fleet/buses/${busId}/disable`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId);
-    expect(blocked.body).toMatchObject({ statusCode: 409, code: 'BUS_ACTION_NOT_ALLOWED' });
+    expect(blocked.body).toMatchObject({
+      statusCode: 409,
+      code: 'BUS_ACTION_NOT_ALLOWED',
+    });
 
     const foreign = await api()
       .get(`/fleet/buses/${otherBusId}`)
@@ -161,7 +218,10 @@ describe('Fleet owner (e2e)', () => {
   });
 
   it('owner trip reads are scoped; missing fleet selector denies by default (403)', async () => {
-    const trips = await api().get('/fleet/trips').set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId);
+    const trips = await api()
+      .get('/fleet/trips')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
     expect(trips.body.data).toHaveProperty('items');
 
     const noScope = await api()
@@ -175,11 +235,22 @@ describe('Fleet owner (e2e)', () => {
       slug: 'buses-reader-003',
       permissions: ['fleet.buses.read'],
     });
-    const limited = await createPhoneUser(t.system, { phone: '01001001002', password, name: 'Limited Layla' });
-    await addMember(t.system, { userId: limited.id, fleetId, roleId: limitedRole.id });
+    const limited = await createPhoneUser(t.system, {
+      phone: '01001001002',
+      password,
+      name: 'Limited Layla',
+    });
+    await addMember(t.system, {
+      userId: limited.id,
+      fleetId,
+      roleId: limitedRole.id,
+    });
     // Membership in a non-owner role never passes the FLEET_OWNER account check.
     const rejected = await login('FLEET_OWNER', '01001001002');
-    expect(rejected.body).toMatchObject({ statusCode: 401, code: 'AUTHENTICATION_FAILED' });
+    expect(rejected.body).toMatchObject({
+      statusCode: 401,
+      code: 'AUTHENTICATION_FAILED',
+    });
   });
 
   it('GET /fleet/buses/:busId/trips returns only that bus trips; foreign bus 404', async () => {
@@ -198,9 +269,24 @@ describe('Fleet owner (e2e)', () => {
         .send({ registrationNumber: 'OWN-TRIPS-B', capacity: 40 })
     ).body.data.id as string;
 
-    const tripA1 = await createTrip(t.system, { fleetId, busId: busA, origin: 'Cairo', destination: 'Giza' });
-    const tripA2 = await createTrip(t.system, { fleetId, busId: busA, origin: 'Cairo', destination: 'Suez' });
-    await createTrip(t.system, { fleetId, busId: busB, origin: 'Cairo', destination: 'Luxor' });
+    const tripA1 = await createTrip(t.system, {
+      fleetId,
+      busId: busA,
+      origin: 'Cairo',
+      destination: 'Giza',
+    });
+    const tripA2 = await createTrip(t.system, {
+      fleetId,
+      busId: busA,
+      origin: 'Cairo',
+      destination: 'Suez',
+    });
+    await createTrip(t.system, {
+      fleetId,
+      busId: busB,
+      origin: 'Cairo',
+      destination: 'Luxor',
+    });
 
     const page = await api()
       .get(`/fleet/buses/${busA}/trips`)
@@ -208,10 +294,16 @@ describe('Fleet owner (e2e)', () => {
       .set('x-fleet-id', fleetId);
     expect(page.status).toBe(200);
     expect(page.body.data).toHaveProperty('nextCursor');
-    const ids = (page.body.data.items as Array<{ id: string }>).map((row) => row.id);
+    const ids = (page.body.data.items as Array<{ id: string }>).map(
+      (row) => row.id,
+    );
     expect(ids).toContain(tripA1.id);
     expect(ids).toContain(tripA2.id);
-    expect(page.body.data.items.every((row: { busId: string }) => row.busId === busA)).toBe(true);
+    expect(
+      page.body.data.items.every(
+        (row: { busId: string }) => row.busId === busA,
+      ),
+    ).toBe(true);
 
     const foreign = await api()
       .get(`/fleet/buses/${otherBusId}/trips`)
@@ -234,11 +326,20 @@ describe('Fleet owner (e2e)', () => {
     expect(driverLogin.status).toBe(201);
     const driverToken = driverLogin.body.data.accessToken as string;
 
-    const list = await api().get('/fleet/drivers').set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId);
+    const list = await api()
+      .get('/fleet/drivers')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
     expect(list.body.data.items.length).toBeGreaterThanOrEqual(1);
 
-    const get = await api().get(`/fleet/drivers/${memberId}`).set('Authorization', `Bearer ${ownerToken}`).set('x-fleet-id', fleetId);
-    expect(get.body).toMatchObject({ statusCode: 200, data: { id: memberId, status: 'ACTIVE' } });
+    const get = await api()
+      .get(`/fleet/drivers/${memberId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-fleet-id', fleetId);
+    expect(get.body).toMatchObject({
+      statusCode: 200,
+      data: { id: memberId, status: 'ACTIVE' },
+    });
 
     // Authorization change bumps authVersion → the driver's token dies.
     const suspended = await api()
@@ -246,9 +347,14 @@ describe('Fleet owner (e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-fleet-id', fleetId)
       .send({ status: 'SUSPENDED' });
-    expect(suspended.body).toMatchObject({ statusCode: 200, data: { status: 'SUSPENDED' } });
+    expect(suspended.body).toMatchObject({
+      statusCode: 200,
+      data: { status: 'SUSPENDED' },
+    });
 
-    const stale = await api().get('/me').set('Authorization', `Bearer ${driverToken}`);
+    const stale = await api()
+      .get('/me')
+      .set('Authorization', `Bearer ${driverToken}`);
     expect(stale.status).toBe(401);
 
     const removed = await api()
@@ -306,11 +412,16 @@ describe('Fleet owner (e2e)', () => {
       .set('x-fleet-id', fleetId);
     expect(unassign.body).toMatchObject({ statusCode: 200 });
 
-    const history = await t.system.busAssignment.findMany({ where: { busId: bus } });
+    const history = await t.system.busAssignment.findMany({
+      where: { busId: bus },
+    });
     expect(history.length).toBe(2);
     expect(history.every((r) => r.status === 'ENDED')).toBe(true);
 
     const foreign = await assign('00000000-0000-4000-8000-000000000000');
-    expect(foreign.body).toMatchObject({ statusCode: 409, code: 'DRIVER_ASSIGNMENT_NOT_ALLOWED' });
+    expect(foreign.body).toMatchObject({
+      statusCode: 409,
+      code: 'DRIVER_ASSIGNMENT_NOT_ALLOWED',
+    });
   });
 });

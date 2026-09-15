@@ -27,7 +27,10 @@ export class UserDto {
   @ApiProperty({ example: true })
   isActive!: boolean;
 
-  @ApiProperty({ example: 1, description: 'Bumped on security-sensitive changes; stale tokens rejected.' })
+  @ApiProperty({
+    example: 1,
+    description: 'Bumped on security-sensitive changes; stale tokens rejected.',
+  })
   authVersion!: number;
 
   @ApiProperty({ format: 'date-time' })
@@ -45,7 +48,10 @@ export class MyMembershipDto {
   @ApiProperty({ example: 'Fleet A' })
   fleetName!: string;
 
-  @ApiProperty({ example: 'fleet-operator', description: 'Slug of the role held in this fleet.' })
+  @ApiProperty({
+    example: 'fleet-operator',
+    description: 'Slug of the role held in this fleet.',
+  })
   roleSlug!: string;
 
   @ApiProperty({ example: 'ACTIVE' })
@@ -98,12 +104,22 @@ export class FleetDto {
 }
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'owner@fleet.com', format: 'email', maxLength: 255, description: 'Stored lowercase; duplicates → 409.' })
+  @ApiProperty({
+    example: 'owner@fleet.com',
+    format: 'email',
+    maxLength: 255,
+    description: 'Stored lowercase; duplicates → 409.',
+  })
   @IsEmail()
   @MaxLength(255)
   email!: string;
 
-  @ApiProperty({ example: 'Passw0rd!123', format: 'password', minLength: 8, maxLength: 128 })
+  @ApiProperty({
+    example: 'Passw0rd!123',
+    format: 'password',
+    minLength: 8,
+    maxLength: 128,
+  })
   @IsString()
   @MinLength(8)
   @MaxLength(128)
@@ -118,7 +134,8 @@ export class CreateUserDto {
   @ApiPropertyOptional({
     type: [String],
     example: ['fleet-owner'],
-    description: 'Global role slugs assigned at creation (unknown/inactive slugs → 409).',
+    description:
+      'Global role slugs assigned at creation (unknown/inactive slugs → 409).',
   })
   @IsOptional()
   @IsArray()
@@ -133,12 +150,20 @@ export class UpdateUserDto {
   @Length(0, 255)
   name?: string;
 
-  @ApiPropertyOptional({ example: false, description: 'Deactivating bumps authVersion and revokes sessions.' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Deactivating bumps authVersion and revokes sessions.',
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ example: 'Passw0rd!456', format: 'password', minLength: 8, maxLength: 128 })
+  @ApiPropertyOptional({
+    example: 'Passw0rd!456',
+    format: 'password',
+    minLength: 8,
+    maxLength: 128,
+  })
   @IsOptional()
   @IsString()
   @MinLength(8)
@@ -150,7 +175,8 @@ export class SetUserRolesDto {
   @ApiProperty({
     type: [String],
     example: ['fleet-owner'],
-    description: 'Full replacement set of global role slugs. Removing the last active super admin → 409.',
+    description:
+      'Full replacement set of global role slugs. Removing the last active super admin → 409.',
   })
   @IsArray()
   @IsString({ each: true })
@@ -158,12 +184,19 @@ export class SetUserRolesDto {
 }
 
 export class AddMemberDto {
-  @ApiProperty({ format: 'uuid', description: 'Target user — must exist and be active (else 404).' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Target user — must exist and be active (else 404).',
+  })
   @IsString()
   @Matches(/^[0-9a-fA-F-]{36}$/)
   userId!: string;
 
-  @ApiPropertyOptional({ example: 'fleet-operator', description: 'Role slug within this fleet; roleId takes precedence when both are given.' })
+  @ApiPropertyOptional({
+    example: 'fleet-operator',
+    description:
+      'Role slug within this fleet; roleId takes precedence when both are given.',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)
@@ -189,7 +222,11 @@ export class UpdateMemberDto {
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)
   roleSlug?: string;
 
-  @ApiPropertyOptional({ enum: [...MEMBER_STATUSES], description: 'Suspending/revoking takes effect immediately (sessions invalidated).' })
+  @ApiPropertyOptional({
+    enum: [...MEMBER_STATUSES],
+    description:
+      'Suspending/revoking takes effect immediately (sessions invalidated).',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^(ACTIVE|SUSPENDED|REVOKED)$/)
@@ -202,12 +239,18 @@ export class CreateFleetDto {
   @Length(1, 255)
   name!: string;
 
-  @ApiProperty({ format: 'uuid', description: 'User id of the fleet owner (must exist and be active).' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'User id of the fleet owner (must exist and be active).',
+  })
   @IsString()
   @Matches(/^[0-9a-fA-F-]{36}$/)
   ownerId!: string;
 
-  @ApiPropertyOptional({ example: 'fleet-owner', description: 'Optional initial ACTIVE membership for the owner.' })
+  @ApiPropertyOptional({
+    example: 'fleet-owner',
+    description: 'Optional initial ACTIVE membership for the owner.',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)

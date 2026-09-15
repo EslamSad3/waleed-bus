@@ -1,4 +1,8 @@
-import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  type CanActivate,
+  type ExecutionContext,
+} from '@nestjs/common';
 import { TenantContextService } from '../authorization/services/tenant-context.service.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
@@ -30,11 +34,19 @@ export class DriverTripGuard implements CanActivate {
     const user = request.user;
     const fleetContext = request.fleetContext;
     if (!user || !fleetContext || fleetContext.membershipId === null) {
-      throw new CodedException(403, 'FORBIDDEN', 'Driver fleet context is required.');
+      throw new CodedException(
+        403,
+        'FORBIDDEN',
+        'Driver fleet context is required.',
+      );
     }
     const tripId = request.params?.tripId;
     if (!tripId) {
-      throw new CodedException(404, 'TRIP_ACCESS_DENIED', 'Trip not found on the assigned bus.');
+      throw new CodedException(
+        404,
+        'TRIP_ACCESS_DENIED',
+        'Trip not found on the assigned bus.',
+      );
     }
     const anchored = await this.tenantContext.withFleetContext(
       { userId: user.id, fleetId: fleetContext.fleetId },

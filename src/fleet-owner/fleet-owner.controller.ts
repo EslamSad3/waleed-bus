@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
@@ -51,7 +63,10 @@ export class FleetOwnerController {
   ) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Return the caller profile (owner and driver share this endpoint).' })
+  @ApiOperation({
+    summary:
+      'Return the caller profile (owner and driver share this endpoint).',
+  })
   @ApiEnvelopeResponse(200, 'The caller profile.', OwnerProfileDto)
   getMe(@CurrentUser() actor: RequestUser) {
     return this.fleetOwner.getProfile(actor.id);
@@ -132,10 +147,14 @@ export class FleetOwnerController {
   @Post('fleet/buses/:busId/disable')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('fleet.buses.update')
-  @ApiOperation({ summary: 'Disable an owned bus (blocked while a DEPARTED trip runs on it).' })
+  @ApiOperation({
+    summary: 'Disable an owned bus (blocked while a DEPARTED trip runs on it).',
+  })
   @ApiUuidParam('busId', 'Bus id (uuid).')
   @ApiEnvelopeResponse(200, 'Disabled bus.')
-  @ApiConflict('409 BUS_ACTION_NOT_ALLOWED while a DEPARTED trip runs on the bus.')
+  @ApiConflict(
+    '409 BUS_ACTION_NOT_ALLOWED while a DEPARTED trip runs on the bus.',
+  )
   disableBus(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -160,7 +179,9 @@ export class FleetOwnerController {
 
   @Get('fleet/buses/:busId/trips')
   @RequirePermission('fleet.trips.read')
-  @ApiOperation({ summary: 'List owned trips scheduled on one bus (cursor pagination).' })
+  @ApiOperation({
+    summary: 'List owned trips scheduled on one bus (cursor pagination).',
+  })
   @ApiUuidParam('busId', 'Bus id (uuid).')
   @ApiCursorPagination()
   @ApiEnvelopeResponse(200, 'Cursor page of trips for the bus.')
@@ -176,7 +197,9 @@ export class FleetOwnerController {
 
   @Get('fleet/trips')
   @RequirePermission('fleet.trips.read')
-  @ApiOperation({ summary: 'List owned fleet trips (cursor pagination, read-only in v1).' })
+  @ApiOperation({
+    summary: 'List owned fleet trips (cursor pagination, read-only in v1).',
+  })
   @ApiCursorPagination()
   @ApiEnvelopeResponse(200, 'Cursor page of owned trips.')
   listTrips(
@@ -203,10 +226,15 @@ export class FleetOwnerController {
 
   @Post('fleet/drivers')
   @RequirePermission('fleet.drivers.create')
-  @ApiOperation({ summary: 'Invite a driver (existing user or fresh phone+password account) with an ACTIVE membership.' })
+  @ApiOperation({
+    summary:
+      'Invite a driver (existing user or fresh phone+password account) with an ACTIVE membership.',
+  })
   @ApiEnvelopeResponse(201, 'Driver membership created.')
   @ApiNotFound('Target user not found (or driver role missing).')
-  @ApiConflict('409 DRIVER_ASSIGNMENT_NOT_ALLOWED when the role is not driver-capable.')
+  @ApiConflict(
+    '409 DRIVER_ASSIGNMENT_NOT_ALLOWED when the role is not driver-capable.',
+  )
   addDriver(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -217,7 +245,9 @@ export class FleetOwnerController {
 
   @Get('fleet/drivers')
   @RequirePermission('fleet.drivers.read')
-  @ApiOperation({ summary: 'List driver memberships of the owned fleet (cursor pagination).' })
+  @ApiOperation({
+    summary: 'List driver memberships of the owned fleet (cursor pagination).',
+  })
   @ApiCursorPagination()
   @ApiEnvelopeResponse(200, 'Cursor page of driver memberships.')
   listDrivers(
@@ -244,7 +274,10 @@ export class FleetOwnerController {
 
   @Patch('fleet/drivers/:driverId')
   @RequirePermission('fleet.drivers.update')
-  @ApiOperation({ summary: 'Update a driver membership (role/status); bumps authVersion and revokes sessions.' })
+  @ApiOperation({
+    summary:
+      'Update a driver membership (role/status); bumps authVersion and revokes sessions.',
+  })
   @ApiUuidParam('driverId', 'Membership id (uuid).')
   @ApiEnvelopeResponse(200, 'Updated driver membership.')
   @ApiNotFound('Driver not found in this fleet (cross-fleet ids are also 404).')
@@ -259,7 +292,10 @@ export class FleetOwnerController {
 
   @Delete('fleet/drivers/:driverId')
   @RequirePermission('fleet.drivers.delete')
-  @ApiOperation({ summary: 'Remove a driver (ends membership + active assignment; bumps authVersion).' })
+  @ApiOperation({
+    summary:
+      'Remove a driver (ends membership + active assignment; bumps authVersion).',
+  })
   @ApiUuidParam('driverId', 'Membership id (uuid).')
   @ApiEnvelopeResponse(200, 'Driver removed; data is null.')
   @ApiNotFound('Driver not found in this fleet (cross-fleet ids are also 404).')
@@ -273,10 +309,15 @@ export class FleetOwnerController {
 
   @Post('fleet/buses/:busId/driver')
   @RequirePermission('fleet.drivers.update')
-  @ApiOperation({ summary: 'Assign a driver to a bus (ends the prior ACTIVE row; idempotent).' })
+  @ApiOperation({
+    summary:
+      'Assign a driver to a bus (ends the prior ACTIVE row; idempotent).',
+  })
   @ApiUuidParam('busId', 'Bus id (uuid).')
   @ApiEnvelopeResponse(201, 'Active assignment row.')
-  @ApiConflict('409 DRIVER_ASSIGNMENT_NOT_ALLOWED when the target is inactive or foreign.')
+  @ApiConflict(
+    '409 DRIVER_ASSIGNMENT_NOT_ALLOWED when the target is inactive or foreign.',
+  )
   assignDriver(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -288,10 +329,14 @@ export class FleetOwnerController {
 
   @Delete('fleet/buses/:busId/driver')
   @RequirePermission('fleet.drivers.delete')
-  @ApiOperation({ summary: 'Unassign the active driver of a bus (row → ENDED, history kept).' })
+  @ApiOperation({
+    summary: 'Unassign the active driver of a bus (row → ENDED, history kept).',
+  })
   @ApiUuidParam('busId', 'Bus id (uuid).')
   @ApiEnvelopeResponse(200, 'Driver unassigned; data is null.')
-  @ApiNotFound('Bus not found, or no active assignment (cross-fleet ids are also 404).')
+  @ApiNotFound(
+    'Bus not found, or no active assignment (cross-fleet ids are also 404).',
+  )
   unassignDriver(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,
@@ -316,8 +361,13 @@ export class FleetOwnerController {
 
   @Get('fleet/reports')
   @RequirePermission('fleet.reports.read')
-  @ApiOperation({ summary: 'Read fleet reports + rating summary (clarify Q4-A shape).' })
-  @ApiEnvelopeResponse(200, '{reports, ratingSummary} scoped to the owned fleet.')
+  @ApiOperation({
+    summary: 'Read fleet reports + rating summary (clarify Q4-A shape).',
+  })
+  @ApiEnvelopeResponse(
+    200,
+    '{reports, ratingSummary} scoped to the owned fleet.',
+  )
   getReports(
     @CurrentUser() actor: RequestUser,
     @CurrentFleet() fleetContext: FleetContext,

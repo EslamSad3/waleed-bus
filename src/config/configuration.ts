@@ -11,9 +11,14 @@ export interface ObserveConfig {
   serviceId: string;
 }
 
+export interface CorsConfig {
+  allowedOrigins: string[];
+}
+
 export interface AppConfig {
   port: number;
   env: string;
+  cors: CorsConfig;
   database: {
     /** Connection used by every normal (RLS-enforced) tenant request path. */
     tenantUrl: string;
@@ -50,7 +55,8 @@ export function resolveObserveCredentials(
 ): { appKey: string; appSecret: string; serviceId: string } | null {
   const appKey = env.OBSERVE_APP_KEY ?? '';
   const appSecret = env.OBSERVE_APP_SECRET ?? '';
-  if (OBSERVE_PLACEHOLDERS.has(appKey) || OBSERVE_PLACEHOLDERS.has(appSecret)) return null;
+  if (OBSERVE_PLACEHOLDERS.has(appKey) || OBSERVE_PLACEHOLDERS.has(appSecret))
+    return null;
   return { appKey, appSecret, serviceId: env.OBSERVE_SERVICE_ID ?? 'bus' };
 }
 
@@ -58,9 +64,12 @@ function collectProblems(env: NodeJS.ProcessEnv): string[] {
   const problems: string[] = [];
   const isTest = env.NODE_ENV === 'test';
 
-  const tenantUrl = (isTest ? env.TEST_DATABASE_URL ?? env.DATABASE_URL : env.DATABASE_URL) ?? '';
+  const tenantUrl =
+    (isTest ? (env.TEST_DATABASE_URL ?? env.DATABASE_URL) : env.DATABASE_URL) ??
+    '';
   if (!tenantUrl) problems.push('DATABASE_URL');
-  const systemUrl = (isTest ? env.TEST_DIRECT_URL ?? env.DIRECT_URL : env.DIRECT_URL) ?? '';
+  const systemUrl =
+    (isTest ? (env.TEST_DIRECT_URL ?? env.DIRECT_URL) : env.DIRECT_URL) ?? '';
   if (!systemUrl) problems.push('DIRECT_URL');
 
   const secret = env.JWT_SECRET ?? '';
@@ -69,14 +78,18 @@ function collectProblems(env: NodeJS.ProcessEnv): string[] {
   if (!env.JWT_AUDIENCE) problems.push('JWT_AUDIENCE');
   const expiresIn = env.JWT_EXPIRES_IN ?? '';
   if (!DURATION_PATTERN.test(expiresIn)) {
-    problems.push('JWT_EXPIRES_IN (invalid duration, use e.g. 900, 15m, 1h, 7d)');
+    problems.push(
+      'JWT_EXPIRES_IN (invalid duration, use e.g. 900, 15m, 1h, 7d)',
+    );
   }
 
   const port = Number(env.PORT ?? 3000);
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) problems.push('PORT (invalid)');
+  if (!Number.isInteger(port) || port <= 0 || port > 65535)
+    problems.push('PORT (invalid)');
 
   const fixedOtpCode = env.OTP_FIXED_CODE ?? '123456';
-  if (!/^\d{6}$/.test(fixedOtpCode)) problems.push('OTP_FIXED_CODE (must be 6 digits)');
+  if (!/^\d{6}$/.test(fixedOtpCode))
+    problems.push('OTP_FIXED_CODE (must be 6 digits)');
 
   return problems;
 }
@@ -91,9 +104,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     port: Number(env.PORT ?? 3000),
     env: env.NODE_ENV ?? 'development',
+    cors: {
+      allowedOrigins: env.CORS_ALLOWED_ORIGINS
+        ? env.CORS_ALLOWED_ORIGINS.split(',')
+            .map((o) => o.trim())
+            .filter(Boolean)
+        : isTest || env.NODE_ENV === 'development' || !env.NODE_ENV
+          ? ['http://localhost:3000', 'http://127.0.0.1:3000']
+          : [],
+    },
     database: {
-      tenantUrl: (isTest ? env.TEST_DATABASE_URL ?? env.DATABASE_URL : env.DATABASE_URL) as string,
-      systemUrl: (isTest ? env.TEST_DIRECT_URL ?? env.DIRECT_URL : env.DIRECT_URL) as string,
+      tenantUrl: (isTest
+        ? (env.TEST_DATABASE_URL ?? env.DATABASE_URL)
+        : env.DATABASE_URL) as string,
+      systemUrl: (isTest
+        ? (env.TEST_DIRECT_URL ?? env.DIRECT_URL)
+        : env.DIRECT_URL) as string,
     },
     jwt: {
       secret: env.JWT_SECRET as string,
@@ -109,9 +135,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       fixedOtpCode: env.OTP_FIXED_CODE ?? '123456',
       googleClientId: env.GOOGLE_CLIENT_ID || undefined,
       appleClientId: env.APPLE_CLIENT_ID || undefined,
-      googleJwksUri: env.GOOGLE_JWKS_URI || 'https://www.googleapis.com/oauth2/v3/certs',
+      googleJwksUri:
+        env.GOOGLE_JWKS_URI || 'https://www.googleapis.com/oauth2/v3/certs',
       appleJwksUri: env.APPLE_JWKS_URI || 'https://appleid.apple.com/auth/keys',
     },
-    observe: resolveObserveCredentials(env) ?? { serviceId: env.OBSERVE_SERVICE_ID ?? 'bus' },
+    observe: resolveObserveCredentials(env) ?? {
+      serviceId: env.OBSERVE_SERVICE_ID ?? 'bus',
+    },
   };
 }

@@ -36,7 +36,10 @@ describe('TenantContextService', () => {
   it('withFleetContext sets both app.user_id and app.fleet_id transaction-locally', async () => {
     const { tenant, captured } = makeTenantClient();
     const service = new TenantContextService(tenant as never);
-    await service.withFleetContext({ userId: 'user-1', fleetId: 'fleet-1' }, async () => 'done');
+    await service.withFleetContext(
+      { userId: 'user-1', fleetId: 'fleet-1' },
+      async () => 'done',
+    );
     expect(tenant.$transaction).toHaveBeenCalledTimes(1);
     expect(captured).toHaveLength(1);
     const sql = String(captured[0].sql);

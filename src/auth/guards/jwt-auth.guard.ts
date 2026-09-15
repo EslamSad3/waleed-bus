@@ -52,18 +52,28 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid token');
     }
 
-    if (typeof payload.sub !== 'string' || typeof payload.authVersion !== 'number' || typeof payload.sessionId !== 'string') {
+    if (
+      typeof payload.sub !== 'string' ||
+      typeof payload.authVersion !== 'number' ||
+      typeof payload.sessionId !== 'string'
+    ) {
       throw new UnauthorizedException('Invalid token claims');
     }
 
-    const user = await this.tenantContext.withUserContext(payload.sub, async (tx) => {
-      const found = await tx.user.findUnique({ where: { id: payload.sub } });
-      if (!found || !found.isActive) return null;
-      if (found.authVersion !== payload.authVersion) return null;
-      const session = await tx.session.findUnique({ where: { id: payload.sessionId } });
-      if (!session || session.revokedAt || session.expiresAt <= new Date()) return null;
-      return found;
-    });
+    const user = await this.tenantContext.withUserContext(
+      payload.sub,
+      async (tx) => {
+        const found = await tx.user.findUnique({ where: { id: payload.sub } });
+        if (!found || !found.isActive) return null;
+        if (found.authVersion !== payload.authVersion) return null;
+        const session = await tx.session.findUnique({
+          where: { id: payload.sessionId },
+        });
+        if (!session || session.revokedAt || session.expiresAt <= new Date())
+          return null;
+        return found;
+      },
+    );
 
     if (!user) throw new UnauthorizedException();
 
@@ -71,7 +81,8 @@ export class JwtAuthGuard implements CanActivate {
     // a passenger token with missing/unverified phone is restricted to
     // profile/OTP routes. Non-passenger tokens are always full.
     const profileScope: RequestUser['profileScope'] =
-      payload.app_role === 'passenger' && (!user.phoneNumber || !user.phoneVerifiedAt)
+      payload.app_role === 'passenger' &&
+      (!user.phoneNumber || !user.phoneVerifiedAt)
         ? 'restricted'
         : 'full';
 
@@ -85,25 +96,32 @@ export class JwtAuthGuard implements CanActivate {
     } satisfies RequestUser;
 
     if (profileScope === 'restricted') {
-      const allowRestricted = this.reflector.getAllAndOverride<boolean>(ALLOW_RESTRICTED_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]);
+      const allowRestricted = this.reflector.getAllAndOverride<boolean>(
+        ALLOW_RESTRICTED_KEY,
+        [context.getHandler(), context.getClass()],
+      );
       if (!allowRestricted) {
         const missingFields = [
           ...(user.name ? [] : ['name']),
           ...(user.phoneNumber ? [] : ['phoneNumber']),
           ...(user.phoneVerifiedAt ? [] : ['phoneVerified']),
         ];
-        throw new CodedException(403, 'PROFILE_INCOMPLETE', 'Profile completion is required.', {
-          missingFields,
-        });
+        throw new CodedException(
+          403,
+          'PROFILE_INCOMPLETE',
+          'Profile completion is required.',
+          {
+            missingFields,
+          },
+        );
       }
     }
     return true;
   }
 
-  private extractToken(request: { headers: Record<string, string | string[] | undefined> }): string | undefined {
+  private extractToken(request: {
+    headers: Record<string, string | string[] | undefined>;
+  }): string | undefined {
     const header = request.headers.authorization;
     if (typeof header !== 'string') return undefined;
     const [type, token] = header.split(' ');

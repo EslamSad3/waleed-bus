@@ -22,7 +22,10 @@ export class TenantContextService {
   constructor(private readonly tenant: TenantPrismaService) {}
 
   /** Identity-only context: user/session/membership reads for the guard chain. */
-  withUserContext<T>(userId: string, fn: (tx: TenantTx) => Promise<T>): Promise<T> {
+  withUserContext<T>(
+    userId: string,
+    fn: (tx: TenantTx) => Promise<T>,
+  ): Promise<T> {
     return this.tenant.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`;
       return fn(tx as TenantTx);

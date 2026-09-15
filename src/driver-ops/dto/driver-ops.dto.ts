@@ -1,18 +1,32 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class DropOffDto {
   @ApiProperty({ enum: ['DROPPED_OFF', 'NOT_DROPPED_OFF'] })
   @IsIn(['DROPPED_OFF', 'NOT_DROPPED_OFF'])
   status!: string;
 
-  @ApiPropertyOptional({ description: 'Station id — required when status is DROPPED_OFF.' })
+  @ApiPropertyOptional({
+    description: 'Station id — required when status is DROPPED_OFF.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   stationId?: string;
 
-  @ApiPropertyOptional({ description: 'Reason — required when status is NOT_DROPPED_OFF.' })
+  @ApiPropertyOptional({
+    description: 'Reason — required when status is NOT_DROPPED_OFF.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -20,7 +34,11 @@ export class DropOffDto {
 }
 
 export class CashPaymentDto {
-  @ApiProperty({ enum: ['CASH'], description: 'Only cash is accepted on-device; the amount is read-only from the booking.' })
+  @ApiProperty({
+    enum: ['CASH'],
+    description:
+      'Only cash is accepted on-device; the amount is read-only from the booking.',
+  })
   @IsIn(['CASH'])
   method!: string;
 
@@ -60,12 +78,16 @@ export class PassengerReportDto {
 }
 
 export class DriverTripsQueryDto {
-  @ApiPropertyOptional({ enum: ['SCHEDULED', 'DEPARTED', 'COMPLETED', 'CANCELLED'] })
+  @ApiPropertyOptional({
+    enum: ['SCHEDULED', 'DEPARTED', 'COMPLETED', 'CANCELLED'],
+  })
   @IsOptional()
   @IsIn(['SCHEDULED', 'DEPARTED', 'COMPLETED', 'CANCELLED'])
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Opaque cursor of the last item of the previous page.' })
+  @ApiPropertyOptional({
+    description: 'Opaque cursor of the last item of the previous page.',
+  })
   @IsOptional()
   @IsString()
   cursor?: string;
@@ -98,7 +120,10 @@ export class DriverTripParams {
 }
 
 export class ClaimBusDto {
-  @ApiProperty({ format: 'uuid', description: 'Owned-fleet bus to claim as the operating bus.' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Owned-fleet bus to claim as the operating bus.',
+  })
   @IsUUID()
   busId!: string;
 }

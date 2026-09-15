@@ -24,8 +24,12 @@ export function buildCursorArgs(
   query: { cursor?: string; limit?: string | number },
   defaultSize = DEFAULT_PAGE_SIZE,
 ): CursorArgs {
-  const rawLimit = typeof query.limit === 'string' ? Number(query.limit) : query.limit;
-  const limit = Number.isInteger(rawLimit) && (rawLimit as number) > 0 ? (rawLimit as number) : defaultSize;
+  const rawLimit =
+    typeof query.limit === 'string' ? Number(query.limit) : query.limit;
+  const limit =
+    Number.isInteger(rawLimit) && (rawLimit as number) > 0
+      ? (rawLimit as number)
+      : defaultSize;
   const pageSize = Math.min(limit, MAX_PAGE_SIZE);
   const cursor = query.cursor;
   if (!cursor) return { take: pageSize + 1, pageSize };

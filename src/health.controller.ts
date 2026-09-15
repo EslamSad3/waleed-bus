@@ -16,7 +16,10 @@ export class HealthController {
       type: 'object',
       properties: {
         statusCode: { type: 'integer', example: 200 },
-        data: { type: 'object', properties: { status: { type: 'string', example: 'ok' } } },
+        data: {
+          type: 'object',
+          properties: { status: { type: 'string', example: 'ok' } },
+        },
       },
     },
   })
@@ -51,7 +54,17 @@ export class RootController {
       },
     },
   })
-  serviceInfo(): { name: string; version: string; docs: string; health: string } {
-    return { name: 'Bus Fleet API', version: API_VERSION, docs: '/docs', health: '/health' };
+  serviceInfo(): {
+    name: string;
+    version: string;
+    docs: string;
+    health: string;
+  } {
+    return {
+      name: 'Bus Fleet API',
+      version: API_VERSION,
+      docs: '/docs',
+      health: '/health',
+    };
   }
 }

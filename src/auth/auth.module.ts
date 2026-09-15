@@ -10,7 +10,13 @@ import { FleetsModule } from '../fleets/fleets.module.js';
 import { PassengerAuthModule } from '../passenger-auth/passenger-auth.module.js';
 
 @Module({
-  imports: [JwtModule.register({}), AuthorizationModule, AuditModule, PassengerAuthModule, FleetsModule],
+  imports: [
+    JwtModule.register({}),
+    AuthorizationModule,
+    AuditModule,
+    PassengerAuthModule,
+    FleetsModule,
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,
