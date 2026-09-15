@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsInt,
   IsNumber,
@@ -7,8 +9,11 @@ import {
   IsString,
   IsUUID,
   Length,
+  Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class StationDto {
   @ApiProperty({ format: 'uuid' })
@@ -133,6 +138,140 @@ export class AddRouteStationDto {
   @IsInt()
   @Min(0)
   estimatedStopMinutes?: number;
+}
+
+/** Platform management DTOs. A Station is presented to operators as a stop. */
+export class CreateStopDto {
+  @ApiProperty({ example: 'ميدان رمسيس' })
+  @IsString()
+  @Length(1, 255)
+  name!: string;
+
+  @ApiProperty({ example: 'ميدان رمسيس، القاهرة' })
+  @IsString()
+  @Length(1, 500)
+  address!: string;
+
+  @ApiProperty({ example: 30.0626, minimum: -90, maximum: 90 })
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude!: number;
+
+  @ApiProperty({ example: 31.2467, minimum: -180, maximum: 180 })
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude!: number;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateStopDto {
+  @ApiPropertyOptional({ example: 'ميدان رمسيس' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'ميدان رمسيس، القاهرة' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 500)
+  address?: string;
+
+  @ApiPropertyOptional({ example: 30.0626, minimum: -90, maximum: 90 })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiPropertyOptional({ example: 31.2467, minimum: -180, maximum: 180 })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class TripLineStopDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  stopId!: string;
+
+  @ApiPropertyOptional({ example: 5, minimum: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  estimatedStopMinutes?: number;
+}
+
+export class CreateTripLineDto {
+  @ApiProperty({ example: 'القاهرة – بني سويف' })
+  @IsString()
+  @Length(1, 255)
+  name!: string;
+
+  @ApiProperty({ example: 'CAI-BNS-01' })
+  @IsString()
+  @Length(1, 50)
+  code!: string;
+
+  @ApiProperty({ type: () => [TripLineStopDto], minItems: 2 })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => TripLineStopDto)
+  outboundStops!: TripLineStopDto[];
+
+  @ApiProperty({ type: () => [TripLineStopDto], minItems: 2 })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => TripLineStopDto)
+  returnStops!: TripLineStopDto[];
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateTripLineDto {
+  @ApiPropertyOptional({ example: 'القاهرة – بني سويف' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'CAI-BNS-01' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  code?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateDirectionalRouteStopsDto {
+  @ApiProperty({ type: () => [TripLineStopDto], minItems: 2 })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => TripLineStopDto)
+  stops!: TripLineStopDto[];
 }
 
 export class PublicRouteUpcomingTripBusDto {

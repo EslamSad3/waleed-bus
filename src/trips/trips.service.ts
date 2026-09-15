@@ -54,12 +54,21 @@ export class TripsService {
         fleetContext.membershipId === null
           ? { id: input.busId, fleetId: fleetContext.fleetId }
           : { id: input.busId };
-      const bus = await tx.bus.findFirst({ where });
+      const bus = await tx.bus.findFirst({ where, include: { line: true } });
       if (!bus) throw new NotFoundException('Bus not found in this fleet');
+      let route = null;
+      if (input.routeId) {
+        route = await tx.route.findFirst({ where: { id: input.routeId, isActive: true } });
+        if (!route || !bus.lineId || route.lineId !== bus.lineId) {
+          throw new CodedException(422, 'ROUTE_NOT_ASSIGNED_TO_BUS', 'اختر اتجاهًا تابعًا لخط الرحلة المعيّن للأتوبيس.');
+        }
+      }
       return tx.trip
         .create({
           data: {
             ...input,
+            origin: route?.origin ?? input.origin,
+            destination: route?.destination ?? input.destination,
             departAt: new Date(input.departAt),
             fleetId: fleetContext.fleetId,
           },

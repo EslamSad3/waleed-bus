@@ -16,7 +16,9 @@ model User {
   email           String?   @unique @db.VarChar(255)
   passwordHash    String?   @map("password_hash") @db.VarChar(255)
   name            String?   @db.VarChar(255)
+  nickname        String?   @db.VarChar(100)
   phoneNumber     String?   @unique @map("phone_number") @db.VarChar(20)
+  nationalId      String?   @map("national_id") @db.VarChar(14)
   phoneVerifiedAt DateTime? @map("phone_verified_at")
   picture         String?   @db.VarChar(1024)
   isActive        Boolean   @default(true) @map("is_active")
@@ -111,9 +113,6 @@ model Fleet {
   bookings Booking[]
   assignments BusAssignment[]
   reports  PassengerReport[]
-  routes   Route[]
-  stations Station[]
-  routeStations RouteStation[]
 
   @@map("fleets")
 }
@@ -180,16 +179,19 @@ model Bus {
   registrationNumber String   @map("registration_number") @db.VarChar(50)
   plateNumber        String?  @map("plate_number") @db.VarChar(50)
   capacity           Int
+  lineId             String?  @map("line_id") @db.Uuid
   isActive           Boolean  @default(true) @map("is_active")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   fleet Fleet  @relation(fields: [fleetId], references: [id])
+  line  Line?  @relation("BusTripLine", fields: [lineId], references: [id], onDelete: SetNull)
   trips Trip[]
   assignments BusAssignment[]
 
   @@unique([fleetId, registrationNumber])
   @@index([fleetId])
+  @@index([lineId])
   @@map("buses")
 }
 
@@ -372,7 +374,9 @@ model ThrottleCounter {
 
 model Route {
   id           String   @id @default(uuid()) @db.Uuid
-  fleetId      String   @map("fleet_id") @db.Uuid
+  lineId       String   @map("line_id") @db.Uuid
+  /// OUTBOUND | RETURN. Both directions own their stop ordering independently.
+  direction    String   @default("OUTBOUND") @db.VarChar(20)
   name         String   @db.VarChar(255)
   code         String   @db.VarChar(50)
   origin       String   @db.VarChar(255)
@@ -382,18 +386,34 @@ model Route {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  fleet    Fleet          @relation(fields: [fleetId], references: [id])
   trips    Trip[]
+  line     Line           @relation(fields: [lineId], references: [id], onDelete: Cascade)
   stations RouteStation[]
 
-  @@unique([fleetId, code])
-  @@index([fleetId])
+  @@unique([code])
+  @@unique([lineId, direction])
+  @@index([lineId])
   @@map("routes")
+}
+
+/// Commercial two-way service. Its child Routes are the independent travel
+/// directions; buses are assigned here, while Trips select one child Route.
+model Line {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  code      String   @unique @db.VarChar(50)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  directions Route[]
+  buses      Bus[] @relation("BusTripLine")
+
+  @@map("lines")
 }
 
 model Station {
   id        String   @id @default(uuid()) @db.Uuid
-  fleetId   String   @map("fleet_id") @db.Uuid
   name      String   @db.VarChar(255)
   address   String?  @db.VarChar(500)
   latitude  Decimal? @db.Decimal(10, 7)
@@ -402,16 +422,12 @@ model Station {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  fleet  Fleet          @relation(fields: [fleetId], references: [id])
   routes RouteStation[]
-
-  @@index([fleetId])
   @@map("stations")
 }
 
 model RouteStation {
   id                   String   @id @default(uuid()) @db.Uuid
-  fleetId              String   @map("fleet_id") @db.Uuid
   routeId              String   @map("route_id") @db.Uuid
   stationId            String   @map("station_id") @db.Uuid
   stopOrder            Int      @map("stop_order")
@@ -419,13 +435,11 @@ model RouteStation {
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
-  fleet   Fleet   @relation(fields: [fleetId], references: [id])
   route   Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
   station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
 
   @@unique([routeId, stopOrder])
   @@unique([routeId, stationId])
-  @@index([fleetId])
   @@index([stationId])
   @@map("route_stations")
 }

@@ -15,7 +15,10 @@ import type { FleetMember, Prisma } from '../generated/prisma/client.js';
 export interface AddDriverInput {
   userId?: string;
   name?: string;
+  nickname?: string;
   phone?: string;
+  nationalId?: string;
+  picture?: string;
   password?: string;
   roleSlug?: string;
 }
@@ -31,7 +34,18 @@ export interface RosterEntry extends Record<string, unknown> {
   roleSlug: string;
   status: string;
   name: string | null;
+  nickname: string | null;
   phoneNumber: string | null;
+  nationalId: string | null;
+  picture: string | null;
+  assignments?: {
+    id: string;
+    busId: string;
+    registrationNumber: string;
+    status: string;
+    createdAt: Date;
+    endedAt: Date | null;
+  }[];
 }
 
 /** Platform view of a driver membership, enriched for the operations dashboard. */
@@ -151,7 +165,10 @@ export class DriverRosterService {
         roleSlug: membership.role.slug,
         status: membership.status,
         name: membership.user.name,
+        nickname: membership.user.nickname,
         phoneNumber: membership.user.phoneNumber,
+        nationalId: membership.user.nationalId,
+        picture: membership.user.picture,
         fleet: { id: membership.fleet.id, name: membership.fleet.name },
         fleetOwner: {
           id: membership.fleet.owner.id,
@@ -286,11 +303,23 @@ export class DriverRosterService {
         fields: { password: 'password must be 8–128 characters' },
       });
     }
+    const existingUser = await this.system.user.findUnique({ where: { phoneNumber: phone } });
+    if (existingUser) {
+      throw new CodedException(
+        409,
+        'PHONE_ALREADY_REGISTERED',
+        'رقم الموبايل مستخدم بالفعل لحساب آخر. استخدم رقمًا مختلفًا للسائق.',
+        { fields: { phone: 'رقم الموبايل مستخدم بالفعل لحساب آخر.' } },
+      );
+    }
     const created = await this.system.user.create({
       data: {
         name: input.name ?? null,
+        nickname: input.nickname ?? null,
         phoneNumber: phone,
+        nationalId: input.nationalId ?? null,
         phoneVerifiedAt: new Date(),
+        picture: input.picture ?? null,
         passwordHash: await argon2.hash(input.password),
       },
     }).catch((error) => {
@@ -334,8 +363,22 @@ export class DriverRosterService {
             where: { id: { in: [...new Set(memberships.map((m) => m.roleId))] } },
           })
         : [];
+    const assignments =
+      ids.length > 0
+        ? await this.system.busAssignment.findMany({
+            where: { driverUserId: { in: ids } },
+            include: { bus: true },
+            orderBy: { createdAt: 'desc' },
+          })
+        : [];
     const byUser = new Map(users.map((u) => [u.id, u]));
     const byRole = new Map(roles.map((r) => [r.id, r]));
+    const assignmentsByUser = new Map<string, typeof assignments>();
+    for (const assignment of assignments) {
+      const rows = assignmentsByUser.get(assignment.driverUserId) ?? [];
+      rows.push(assignment);
+      assignmentsByUser.set(assignment.driverUserId, rows);
+    }
     return memberships.map((m) => ({
       id: m.id,
       userId: m.userId,
@@ -344,7 +387,18 @@ export class DriverRosterService {
       roleSlug: byRole.get(m.roleId)?.slug ?? '',
       status: m.status,
       name: byUser.get(m.userId)?.name ?? null,
+      nickname: byUser.get(m.userId)?.nickname ?? null,
       phoneNumber: byUser.get(m.userId)?.phoneNumber ?? null,
+      nationalId: byUser.get(m.userId)?.nationalId ?? null,
+      picture: byUser.get(m.userId)?.picture ?? null,
+      assignments: (assignmentsByUser.get(m.userId) ?? []).map((assignment) => ({
+        id: assignment.id,
+        busId: assignment.busId,
+        registrationNumber: assignment.bus.registrationNumber,
+        status: assignment.status,
+        createdAt: assignment.createdAt,
+        endedAt: assignment.endedAt,
+      })),
     }));
   }
 

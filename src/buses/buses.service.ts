@@ -4,7 +4,10 @@ import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
 import { buildCursorArgs, toCursorPage, type CursorPage } from '../common/pagination.js';
-import type { Bus } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
+
+const busInclude = { line: true } satisfies Prisma.BusInclude;
+type BusWithLine = Prisma.BusGetPayload<{ include: typeof busInclude }>;
 
 export interface CreateBusInput {
   registrationNumber: string;
@@ -23,19 +26,19 @@ export interface UpdateBusInput {
 export class BusesService {
   constructor(private readonly fleetPath: FleetPathService) {}
 
-  create(actor: RequestUser, fleetContext: FleetContext, input: CreateBusInput): Promise<Bus> {
+  create(actor: RequestUser, fleetContext: FleetContext, input: CreateBusInput): Promise<BusWithLine> {
     return this.fleetPath.run(
       actor,
       fleetContext,
       (tx) =>
         tx.bus
-          .create({ data: { ...input, fleetId: fleetContext.fleetId } })
+          .create({ data: { ...input, fleetId: fleetContext.fleetId }, include: busInclude })
           .catch((error) => {
             throw translatePrismaError(error, 'Bus');
           }),
       (tx) =>
         tx.bus
-          .create({ data: { ...input, fleetId: fleetContext.fleetId } })
+          .create({ data: { ...input, fleetId: fleetContext.fleetId }, include: busInclude })
           .catch((error) => {
             throw translatePrismaError(error, 'Bus');
           }),
@@ -46,23 +49,24 @@ export class BusesService {
     actor: RequestUser,
     fleetContext: FleetContext,
     query: { cursor?: string; limit?: string },
-  ): Promise<CursorPage<Bus>> {
+  ): Promise<CursorPage<BusWithLine>> {
     const { pageSize, ...args } = buildCursorArgs(query);
     const buses = await this.fleetPath.run(
       actor,
       fleetContext,
-      (tx) => tx.bus.findMany({ ...args, orderBy: { createdAt: 'desc' as const } }),
+      (tx) => tx.bus.findMany({ ...args, include: busInclude, orderBy: { createdAt: 'desc' as const } }),
       (tx) =>
         tx.bus.findMany({
           where: { fleetId: fleetContext.fleetId },
           ...args,
+          include: busInclude,
           orderBy: { createdAt: 'desc' as const },
         }),
     );
     return toCursorPage(buses, pageSize);
   }
 
-  async findOne(actor: RequestUser, fleetContext: FleetContext, id: string): Promise<Bus> {
+  async findOne(actor: RequestUser, fleetContext: FleetContext, id: string): Promise<BusWithLine> {
     const bus = await this.findOwned(actor, fleetContext, id);
     if (!bus) throw new NotFoundException('Bus not found');
     return bus;
@@ -73,13 +77,13 @@ export class BusesService {
     fleetContext: FleetContext,
     id: string,
     input: UpdateBusInput,
-  ): Promise<Bus> {
+  ): Promise<BusWithLine> {
     await this.findOne(actor, fleetContext, id);
     return this.fleetPath.run(
       actor,
       fleetContext,
-      (tx) => tx.bus.update({ where: { id }, data: input }),
-      (tx) => tx.bus.update({ where: { id }, data: input }),
+      (tx) => tx.bus.update({ where: { id }, data: input, include: busInclude }),
+      (tx) => tx.bus.update({ where: { id }, data: input, include: busInclude }),
     );
   }
 
@@ -98,8 +102,8 @@ export class BusesService {
     return this.fleetPath.run(
       actor,
       fleetContext,
-      (tx) => tx.bus.findUnique({ where: { id } }),
-      (tx) => tx.bus.findFirst({ where: { id, fleetId: fleetContext.fleetId } }),
+      (tx) => tx.bus.findUnique({ where: { id }, include: busInclude }),
+      (tx) => tx.bus.findFirst({ where: { id, fleetId: fleetContext.fleetId }, include: busInclude }),
     );
   }
 }

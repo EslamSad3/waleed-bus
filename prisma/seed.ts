@@ -131,7 +131,7 @@ async function main(): Promise<void> {
     console.log(`✔ super admin already exists: ${existingAdmin.email}`);
   }
 
-  // Ensure sample fleet, bus, route, stations, and trips exist for local development
+  // Local-only fixtures: fleets/buses consume the shared system stop + line catalog.
   let sampleFleet = await prisma.fleet.findFirst();
   const admin = existingAdmin ?? (await prisma.user.findUnique({ where: { email: adminEmail.toLowerCase() } }));
   if (!sampleFleet && admin) {
@@ -165,15 +165,10 @@ async function main(): Promise<void> {
     console.log(`✔ sample bus ensured: ${bus.registrationNumber} (${bus.plateNumber})`);
 
     const route = await prisma.route.upsert({
-      where: {
-        fleetId_code: {
-          fleetId: sampleFleet.id,
-          code: 'CAI-ALX-01',
-        },
-      },
+      where: { code: 'CAI-ALX-01' },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
+        line: { connectOrCreate: { where: { code: 'CAI-ALX' }, create: { name: 'Cairo ↔ Alexandria', code: 'CAI-ALX' } } }, direction: 'OUTBOUND',
         name: 'Cairo - Alexandria Express',
         code: 'CAI-ALX-01',
         origin: 'Cairo',
@@ -188,7 +183,6 @@ async function main(): Promise<void> {
       update: {},
       create: {
         id: '7f000001-91ea-13b2-8191-ea1c00000201',
-        fleetId: sampleFleet.id,
         name: 'Ramses Station',
         address: 'Ramses Square, Cairo',
         latitude: 30.0631,
@@ -201,7 +195,6 @@ async function main(): Promise<void> {
       update: {},
       create: {
         id: '7f000001-91ea-13b2-8191-ea1c00000202',
-        fleetId: sampleFleet.id,
         name: 'Banha Station',
         address: 'Banha Transit Hub',
         latitude: 30.466,
@@ -214,7 +207,6 @@ async function main(): Promise<void> {
       update: {},
       create: {
         id: '7f000001-91ea-13b2-8191-ea1c00000203',
-        fleetId: sampleFleet.id,
         name: 'Mahatet Masr (Alexandria)',
         address: 'Alexandria Station Square',
         latitude: 31.1927,
@@ -226,7 +218,6 @@ async function main(): Promise<void> {
       where: { routeId_stopOrder: { routeId: route.id, stopOrder: 1 } },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
         routeId: route.id,
         stationId: ramses.id,
         stopOrder: 1,
@@ -238,7 +229,6 @@ async function main(): Promise<void> {
       where: { routeId_stopOrder: { routeId: route.id, stopOrder: 2 } },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
         routeId: route.id,
         stationId: banha.id,
         stopOrder: 2,
@@ -250,12 +240,16 @@ async function main(): Promise<void> {
       where: { routeId_stopOrder: { routeId: route.id, stopOrder: 3 } },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
         routeId: route.id,
         stationId: alex.id,
         stopOrder: 3,
         estimatedStopMinutes: 150,
       },
+    });
+
+    await prisma.bus.update({
+      where: { id: bus.id },
+      data: { lineId: route.lineId },
     });
 
     console.log('✔ sample route, stations, and stops ensured');
@@ -332,15 +326,10 @@ async function main(): Promise<void> {
 
     // Ensure secondary route: Cairo -> Sharm El Sheikh
     const routeSharm = await prisma.route.upsert({
-      where: {
-        fleetId_code: {
-          fleetId: sampleFleet.id,
-          code: 'CAI-SSH-01',
-        },
-      },
+      where: { code: 'CAI-SSH-01' },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
+        line: { connectOrCreate: { where: { code: 'CAI-SSH' }, create: { name: 'Cairo ↔ Sharm El Sheikh', code: 'CAI-SSH' } } }, direction: 'OUTBOUND',
         name: 'Cairo - Sharm El Sheikh Highway',
         code: 'CAI-SSH-01',
         origin: 'Cairo',
@@ -352,15 +341,10 @@ async function main(): Promise<void> {
 
     // Ensure return route: Alexandria -> Cairo
     const routeReturn = await prisma.route.upsert({
-      where: {
-        fleetId_code: {
-          fleetId: sampleFleet.id,
-          code: 'ALX-CAI-01',
-        },
-      },
+      where: { code: 'ALX-CAI-01' },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
+        line: { connectOrCreate: { where: { code: 'CAI-ALX' }, create: { name: 'Cairo ↔ Alexandria', code: 'CAI-ALX' } } }, direction: 'RETURN',
         name: 'Alexandria - Cairo Return Express',
         code: 'ALX-CAI-01',
         origin: 'Alexandria',
@@ -375,7 +359,6 @@ async function main(): Promise<void> {
       where: { routeId_stopOrder: { routeId: routeReturn.id, stopOrder: 1 } },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
         routeId: routeReturn.id,
         stationId: alex.id,
         stopOrder: 1,
@@ -386,7 +369,6 @@ async function main(): Promise<void> {
       where: { routeId_stopOrder: { routeId: routeReturn.id, stopOrder: 2 } },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
         routeId: routeReturn.id,
         stationId: banha.id,
         stopOrder: 2,
@@ -397,7 +379,6 @@ async function main(): Promise<void> {
       where: { routeId_stopOrder: { routeId: routeReturn.id, stopOrder: 3 } },
       update: {},
       create: {
-        fleetId: sampleFleet.id,
         routeId: routeReturn.id,
         stationId: ramses.id,
         stopOrder: 3,

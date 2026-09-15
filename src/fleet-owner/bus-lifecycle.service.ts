@@ -5,7 +5,10 @@ import type { FleetContext } from '../authorization/services/authorization.servi
 import { CodedException } from '../common/filters/coded.exception.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
 import { AuditService } from '../audit/audit.service.js';
-import type { Bus, Prisma } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
+
+const busInclude = { line: true } satisfies Prisma.BusInclude;
+type BusWithLine = Prisma.BusGetPayload<{ include: typeof busInclude }>;
 
 /**
  * Bus disable/reactivate guards. Disable is blocked while the bus carries a
@@ -20,8 +23,8 @@ export class BusLifecycleService {
     private readonly audit: AuditService,
   ) {}
 
-  async disable(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<Bus> {
-    const run = async (tx: Prisma.TransactionClient): Promise<Bus> => {
+  async disable(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<BusWithLine> {
+    const run = async (tx: Prisma.TransactionClient): Promise<BusWithLine> => {
       const bus = await tx.bus.findUnique({ where: { id: busId } });
       if (!bus) {
         throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
@@ -45,7 +48,7 @@ export class BusLifecycleService {
           { tripId: departed.id },
         );
       }
-      return tx.bus.update({ where: { id: busId }, data: { isActive: false } }).catch((error) => {
+      return tx.bus.update({ where: { id: busId }, data: { isActive: false }, include: busInclude }).catch((error) => {
         throw translatePrismaError(error, 'Bus');
       });
     };
@@ -63,8 +66,8 @@ export class BusLifecycleService {
     return bus;
   }
 
-  async reactivate(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<Bus> {
-    const run = async (tx: Prisma.TransactionClient): Promise<Bus> => {
+  async reactivate(actor: RequestUser, fleetContext: FleetContext, busId: string): Promise<BusWithLine> {
+    const run = async (tx: Prisma.TransactionClient): Promise<BusWithLine> => {
       const bus = await tx.bus.findUnique({ where: { id: busId } });
       if (!bus) {
         throw new CodedException(404, 'BUS_ACCESS_DENIED', 'Bus not found in this fleet.');
@@ -72,7 +75,7 @@ export class BusLifecycleService {
       if (bus.isActive) {
         throw new CodedException(409, 'BUS_ACTION_NOT_ALLOWED', 'Bus is already active.');
       }
-      return tx.bus.update({ where: { id: busId }, data: { isActive: true } }).catch((error) => {
+      return tx.bus.update({ where: { id: busId }, data: { isActive: true }, include: busInclude }).catch((error) => {
         throw translatePrismaError(error, 'Bus');
       });
     };

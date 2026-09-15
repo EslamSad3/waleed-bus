@@ -91,6 +91,13 @@ export class AssignDriverDto {
   driverUserId!: string;
 }
 
+/** A trip line is platform-defined; a fleet assigns it to one of its buses. */
+export class AssignTripLineDto {
+  @ApiProperty({ format: 'uuid', description: 'Active system trip-line id.' })
+  @IsUUID()
+  tripLineId!: string;
+}
+
 export class AddDriverDto {
   @ApiPropertyOptional({ format: 'uuid', description: 'Existing user id to invite (either userId or phone+name+password).' })
   @IsOptional()
@@ -103,11 +110,29 @@ export class AddDriverDto {
   @MaxLength(255)
   name?: string;
 
+  @ApiPropertyOptional({ example: 'Karim', maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  nickname?: string;
+
   @ApiPropertyOptional({ example: '01001234567' })
   @IsOptional()
   @IsString()
   @MaxLength(20)
   phone?: string;
+
+  @ApiPropertyOptional({ example: '29801011234567', minLength: 14, maxLength: 14 })
+  @IsOptional()
+  @IsString()
+  @Length(14, 14)
+  nationalId?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/drivers/karim.jpg', maxLength: 1024 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  picture?: string;
 
   @ApiPropertyOptional({ example: 'Passw0rd!123', format: 'password', minLength: 8, maxLength: 128 })
   @IsOptional()

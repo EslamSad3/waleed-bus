@@ -84,7 +84,7 @@ DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['buses', 'trips', 'bookings', 'bus_assignments', 'passenger_reports', 'routes', 'stations', 'route_stations'] LOOP
+  FOREACH t IN ARRAY ARRAY['buses', 'trips', 'bookings', 'bus_assignments', 'passenger_reports'] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
     PERFORM app.__set_policy(t, 'tenant_isolation', format($ddl$
       CREATE POLICY tenant_isolation ON public.%I
@@ -245,7 +245,8 @@ GRANT SELECT ON public.fleets TO app_tenant;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.fleet_members TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.buses, public.trips, public.bookings TO app_tenant;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.routes, public.stations, public.route_stations TO app_tenant;
+-- Stops and trip lines are platform-owned catalog data, never tenant-scoped.
+REVOKE ALL ON public.lines, public.routes, public.stations, public.route_stations FROM app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.trip_shares TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.phone_verification_challenges, public.user_auth_providers TO app_tenant;
 

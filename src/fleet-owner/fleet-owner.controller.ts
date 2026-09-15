@@ -15,12 +15,14 @@ import {
 import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
 import { BusLifecycleService } from './bus-lifecycle.service.js';
+import { BusTripLineService } from './bus-trip-line.service.js';
 import { DriverAssignmentService } from './driver-assignment.service.js';
 import { DriverRosterService } from './driver-roster.service.js';
 import { FleetOwnerService } from './fleet-owner.service.js';
 import {
   AddDriverDto,
   AssignDriverDto,
+  AssignTripLineDto,
   CreateFleetBusDto,
   FleetReportsQueryDto,
   OwnerProfileDto,
@@ -45,6 +47,7 @@ export class FleetOwnerController {
     private readonly lifecycle: BusLifecycleService,
     private readonly roster: DriverRosterService,
     private readonly assignment: DriverAssignmentService,
+    private readonly tripLines: BusTripLineService,
   ) {}
 
   @Get('me')
@@ -295,6 +298,20 @@ export class FleetOwnerController {
     @Param('busId', ParseUUIDPipe) busId: string,
   ) {
     return this.assignment.unassign(actor, fleetContext, busId);
+  }
+
+  @Post('fleet/buses/:busId/trip-line')
+  @RequirePermission('fleet.buses.update')
+  @ApiOperation({ summary: 'Assign a platform-defined trip line to a bus.' })
+  assignTripLine(@CurrentUser() actor: RequestUser, @CurrentFleet() fleetContext: FleetContext, @Param('busId', ParseUUIDPipe) busId: string, @Body() dto: AssignTripLineDto) {
+    return this.tripLines.assign(actor, fleetContext, busId, dto.tripLineId);
+  }
+
+  @Delete('fleet/buses/:busId/trip-line')
+  @RequirePermission('fleet.buses.update')
+  @ApiOperation({ summary: 'Remove the current trip line from a bus.' })
+  unassignTripLine(@CurrentUser() actor: RequestUser, @CurrentFleet() fleetContext: FleetContext, @Param('busId', ParseUUIDPipe) busId: string) {
+    return this.tripLines.unassign(actor, fleetContext, busId);
   }
 
   @Get('fleet/reports')
