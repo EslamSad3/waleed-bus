@@ -12,7 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { RequirePermission } from '../authorization/decorators/permissions.decorator.js';
+import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentFleet } from '../common/decorators/current-fleet.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
@@ -27,12 +27,14 @@ import {
 import type { RequestUser } from '../auth/jwt-payload.js';
 import type { FleetContext } from '../authorization/services/authorization.service.js';
 import { BusLifecycleService } from './bus-lifecycle.service.js';
+import { BusTripLineService } from './bus-trip-line.service.js';
 import { DriverAssignmentService } from './driver-assignment.service.js';
 import { DriverRosterService } from './driver-roster.service.js';
 import { FleetOwnerService } from './fleet-owner.service.js';
 import {
   AddDriverDto,
   AssignDriverDto,
+  AssignTripLineDto,
   CreateFleetBusDto,
   FleetReportsQueryDto,
   OwnerProfileDto,
@@ -57,6 +59,7 @@ export class FleetOwnerController {
     private readonly lifecycle: BusLifecycleService,
     private readonly roster: DriverRosterService,
     private readonly assignment: DriverAssignmentService,
+    private readonly tripLines: BusTripLineService,
   ) {}
 
   @Get('me')
@@ -74,6 +77,16 @@ export class FleetOwnerController {
   @ApiEnvelopeResponse(200, 'The updated profile.', OwnerProfileDto)
   updateMe(@CurrentUser() actor: RequestUser, @Body() dto: UpdateProfileDto) {
     return this.fleetOwner.updateProfile(actor.id, dto);
+  }
+
+  @Platform()
+  @Get('drivers')
+  @RequirePermission('fleet.drivers.read')
+  @ApiOperation({ summary: 'List every driver membership for platform operations, with fleet, owner, and active bus assignment.' })
+  @ApiCursorPagination()
+  @ApiEnvelopeResponse(200, 'Cursor page of system driver memberships.')
+  listSystemDrivers(@Query() query: { cursor?: string; limit?: string }) {
+    return this.roster.listSystem(query);
   }
 
   @Get('fleet/buses')
@@ -330,6 +343,20 @@ export class FleetOwnerController {
     @Param('busId', ParseUUIDPipe) busId: string,
   ) {
     return this.assignment.unassign(actor, fleetContext, busId);
+  }
+
+  @Post('fleet/buses/:busId/trip-line')
+  @RequirePermission('fleet.buses.update')
+  @ApiOperation({ summary: 'Assign a platform-defined trip line to a bus.' })
+  assignTripLine(@CurrentUser() actor: RequestUser, @CurrentFleet() fleetContext: FleetContext, @Param('busId', ParseUUIDPipe) busId: string, @Body() dto: AssignTripLineDto) {
+    return this.tripLines.assign(actor, fleetContext, busId, dto.tripLineId);
+  }
+
+  @Delete('fleet/buses/:busId/trip-line')
+  @RequirePermission('fleet.buses.update')
+  @ApiOperation({ summary: 'Remove the current trip line from a bus.' })
+  unassignTripLine(@CurrentUser() actor: RequestUser, @CurrentFleet() fleetContext: FleetContext, @Param('busId', ParseUUIDPipe) busId: string) {
+    return this.tripLines.unassign(actor, fleetContext, busId);
   }
 
   @Get('fleet/reports')

@@ -12,7 +12,10 @@ export interface RlsViolation {
   problem: string;
 }
 
-const EXCLUDED_TABLES = new Set(['_prisma_migrations']);
+// Platform catalog records are deliberately not tenant-scoped. They are
+// accessible only through privileged system services, while app_tenant has no
+// grants on them (enforced by 001-tenant-isolation.sql).
+const EXCLUDED_TABLES = new Set(['_prisma_migrations', 'lines', 'routes', 'stations', 'route_stations']);
 
 export async function checkRls(systemUrl: string): Promise<RlsViolation[]> {
   const client = new pg.Client({ connectionString: systemUrl });
