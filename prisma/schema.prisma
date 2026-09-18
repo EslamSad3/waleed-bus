@@ -227,6 +227,12 @@ model Booking {
   tripId         String   @map("trip_id") @db.Uuid
   passengerName  String   @map("passenger_name") @db.VarChar(255)
   passengerPhone String?  @map("passenger_phone") @db.VarChar(30)
+  boardingStationId String? @map("boarding_station_id") @db.Uuid
+  landingStationId String? @map("landing_station_id") @db.Uuid
+  pickupAddress String? @map("pickup_address") @db.VarChar(500)
+  pickupLatitude Decimal? @map("pickup_latitude") @db.Decimal(10, 7)
+  pickupLongitude Decimal? @map("pickup_longitude") @db.Decimal(10, 7)
+  pickupLocationConfirmed Boolean @default(false) @map("pickup_location_confirmed")
   passengerUserId String? @map("passenger_user_id") @db.Uuid
   seats          Int      @default(1)
   /// CONFIRMED | CANCELLED (validated in the application layer)
@@ -274,6 +280,8 @@ model Booking {
   @@index([fleetId])
   @@index([tripId])
   @@index([passengerUserId])
+  @@index([boardingStationId])
+  @@index([landingStationId])
   @@index([status])
   @@index([paymentStatus])
   @@map("bookings")
@@ -425,17 +433,34 @@ model Line {
   @@map("lines")
 }
 
-model Station {
+model Governorate {
   id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(255)
-  address   String?  @db.VarChar(500)
-  latitude  Decimal? @db.Decimal(10, 7)
-  longitude Decimal? @db.Decimal(10, 7)
-  isActive  Boolean  @default(true) @map("is_active")
+  code      String   @unique @db.VarChar(30)
+  nameAr    String   @map("name_ar") @db.VarChar(100)
+  nameEn    String   @map("name_en") @db.VarChar(100)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  routes RouteStation[]
+  stations Station[]
+
+  @@map("governorates")
+}
+
+model Station {
+  id            String      @id @default(uuid()) @db.Uuid
+  name          String      @db.VarChar(255)
+  address       String?     @db.VarChar(500)
+  latitude      Decimal?    @db.Decimal(10, 7)
+  longitude     Decimal?    @db.Decimal(10, 7)
+  governorateId String      @map("governorate_id") @db.Uuid
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  governorate Governorate   @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  routes     RouteStation[]
+
+  @@index([governorateId])
   @@map("stations")
 }
 
@@ -445,6 +470,8 @@ model RouteStation {
   stationId            String   @map("station_id") @db.Uuid
   stopOrder            Int      @map("stop_order")
   estimatedStopMinutes Int?     @map("estimated_stop_minutes")
+  /// BOARDING | LANDING | BOTH. Controls passenger search and booking choices.
+  stopType             String   @default("BOTH") @map("stop_type") @db.VarChar(20)
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 

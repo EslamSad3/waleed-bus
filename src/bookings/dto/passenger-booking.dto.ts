@@ -4,10 +4,12 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Length,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
@@ -24,9 +26,16 @@ export const PASSENGER_PAYMENT_METHODS = [
 export const BOOKING_STATUS_FILTER = ['CONFIRMED', 'CANCELLED'] as const;
 export const TIME_FILTER = ['upcoming', 'past'] as const;
 
+// PostgreSQL accepts UUID-shaped IDs even when their version bits are not an
+// RFC UUID version. Local imported/seeded data contains such stable IDs, and
+// the public trip search returns them verbatim. Keep the boundary strict about
+// the database UUID shape without incorrectly requiring RFC version bits.
+const POSTGRES_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class CreatePassengerBookingDto {
   @ApiProperty({ format: 'uuid', description: 'Target scheduled trip' })
-  @IsUUID()
+  @Matches(POSTGRES_UUID_PATTERN, { message: 'tripId must be a UUID' })
   tripId!: string;
 
   @ApiProperty({
@@ -46,6 +55,45 @@ export class CreatePassengerBookingDto {
   @IsString()
   @IsIn([...PASSENGER_PAYMENT_METHODS])
   paymentMethod!: string;
+
+  @ApiProperty({ format: 'uuid', description: 'Boarding stop selected from this trip line.' })
+  @Matches(POSTGRES_UUID_PATTERN, {
+    message: 'boardingStationId must be a UUID',
+  })
+  boardingStationId!: string;
+
+  @ApiProperty({ format: 'uuid', description: 'Landing stop selected from this trip line.' })
+  @Matches(POSTGRES_UUID_PATTERN, {
+    message: 'landingStationId must be a UUID',
+  })
+  landingStationId!: string;
+
+  @ApiPropertyOptional({ maxLength: 500, description: 'Passenger pickup address shown to the driver.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 500)
+  pickupAddress?: string;
+
+  @ApiPropertyOptional({ minimum: -90, maximum: 90 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  pickupLatitude?: number;
+
+  @ApiPropertyOptional({ minimum: -180, maximum: 180 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  pickupLongitude?: number;
+
+  @ApiPropertyOptional({ default: false, description: 'Passenger confirmed that the supplied current location is their pickup location.' })
+  @IsOptional()
+  @IsBoolean()
+  pickupLocationConfirmed?: boolean;
 
   @ApiPropertyOptional({
     example: false,

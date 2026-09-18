@@ -79,6 +79,12 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
     });
     routeId = route.id;
 
+    const cairo = await system.governorate.upsert({
+      where: { code: 'CAIRO' },
+      update: {},
+      create: { code: 'CAIRO', nameAr: 'القاهرة', nameEn: 'Cairo' },
+    });
+
     const st1 = await system.station.create({
       data: {
         fleetId,
@@ -86,6 +92,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
         address: 'Ramses Square, Cairo',
         latitude: 30.0631,
         longitude: 31.2497,
+        governorateId: cairo.id,
       },
     });
 
@@ -96,6 +103,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
         address: 'Banha Transit Hub',
         latitude: 30.466,
         longitude: 31.1853,
+        governorateId: cairo.id,
       },
     });
 
@@ -106,6 +114,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
         address: 'Alexandria Station Square',
         latitude: 31.1927,
         longitude: 29.906,
+        governorateId: cairo.id,
       },
     });
 

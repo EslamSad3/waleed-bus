@@ -12,15 +12,27 @@ import {
 
 export class TripSearchQueryDto {
   @ApiProperty({ example: 'Cairo', description: 'Origin city or station' })
+  @IsOptional()
   @IsString()
-  origin!: string;
+  origin?: string;
 
   @ApiProperty({
     example: 'Alexandria',
     description: 'Destination city or station',
   })
+  @IsOptional()
   @IsString()
-  destination!: string;
+  destination?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Boarding stop id. Use with destinationStopId for stop-based passenger search.' })
+  @IsOptional()
+  @IsUUID()
+  originStopId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Drop-off stop id. Use with originStopId for stop-based passenger search.' })
+  @IsOptional()
+  @IsUUID()
+  destinationStopId?: string;
 
   @ApiProperty({
     example: '2026-09-15',
@@ -53,6 +65,31 @@ export class TripSearchQueryDto {
 export class TripSearchBusDto {
   @ApiProperty({ example: 'ق ب أ 1234' })
   plateNumber!: string;
+}
+
+export class TripSearchFleetOwnerDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'Waleed Transport' })
+  name!: string;
+
+  @ApiPropertyOptional({ example: 'El Waleed', nullable: true, description: 'Passenger-facing familiar name for the fleet owner.' })
+  nickname?: string | null;
+}
+
+export class TripSearchStopDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  address?: string | null;
+
+  @ApiProperty({ enum: ['BOARDING', 'LANDING', 'BOTH'] })
+  stopType!: string;
 }
 
 export class TripSearchResultItemDto {
@@ -94,6 +131,12 @@ export class TripSearchResultItemDto {
 
   @ApiProperty({ type: () => TripSearchBusDto })
   bus!: TripSearchBusDto;
+
+  @ApiProperty({ type: () => TripSearchFleetOwnerDto })
+  fleetOwner!: TripSearchFleetOwnerDto;
+
+  @ApiProperty({ type: () => [TripSearchStopDto] })
+  stops!: TripSearchStopDto[];
 }
 
 export class TripStationDto {

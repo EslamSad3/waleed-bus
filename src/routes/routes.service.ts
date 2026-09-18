@@ -10,6 +10,20 @@ const UUID_REGEX =
 export class RoutesService {
   constructor(private readonly system: SystemPrismaService) {}
 
+  /** Public, generic stop catalog. It deliberately exposes no fleet data. */
+  async listPublicStops() {
+    const stops = await this.system.station.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, address: true, latitude: true, longitude: true, governorate: true },
+    });
+    return stops.map((stop) => ({
+      ...stop,
+      latitude: stop.latitude === null ? null : Number(stop.latitude),
+      longitude: stop.longitude === null ? null : Number(stop.longitude),
+    }));
+  }
+
   /**
    * Resolves a route, ordered stations, and upcoming scheduled trips from a QR identifier, code, or UUID (spec 004 US8).
    * Unauthenticated public endpoint.
@@ -32,7 +46,7 @@ export class RoutesService {
         stations: {
           orderBy: { stopOrder: 'asc' },
           include: {
-            station: true,
+            station: { include: { governorate: true } },
           },
         },
       },
@@ -81,6 +95,7 @@ export class RoutesService {
       address: rs.station.address,
       latitude: rs.station.latitude ? Number(rs.station.latitude) : null,
       longitude: rs.station.longitude ? Number(rs.station.longitude) : null,
+      governorate: rs.station.governorate,
       stopOrder: rs.stopOrder,
       estimatedStopMinutes: rs.estimatedStopMinutes,
     }));

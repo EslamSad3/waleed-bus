@@ -161,6 +161,13 @@ export class TripsService {
   async searchTrips(
     query: TripSearchQueryDto,
   ): Promise<CursorPage<TripSearchResultItemDto>> {
+    const stopSearch = query.originStopId !== undefined || query.destinationStopId !== undefined;
+    if (stopSearch && (!query.originStopId || !query.destinationStopId)) {
+      throw new CodedException(422, 'VALIDATION_FAILED', 'Both stop ids are required for stop-based search.');
+    }
+    if (!stopSearch && (!query.origin?.trim() || !query.destination?.trim())) {
+      throw new CodedException(422, 'VALIDATION_FAILED', 'Origin and destination are required.');
+    }
     const { pageSize, ...cursorArgs } = buildCursorArgs({
       cursor: query.cursor,
       limit: query.limit !== undefined ? String(query.limit) : undefined,
@@ -171,8 +178,19 @@ export class TripsService {
 
     const trips = await this.system.trip.findMany({
       where: {
-        origin: { equals: query.origin, mode: 'insensitive' },
-        destination: { equals: query.destination, mode: 'insensitive' },
+        ...(stopSearch
+          ? {
+              route: {
+                AND: [
+                  { stations: { some: { stationId: query.originStopId, stopType: { in: ['BOARDING', 'BOTH'] } } } },
+                  { stations: { some: { stationId: query.destinationStopId, stopType: { in: ['LANDING', 'BOTH'] } } } },
+                ],
+              },
+            }
+          : {
+              origin: { equals: query.origin!.trim(), mode: 'insensitive' },
+              destination: { equals: query.destination!.trim(), mode: 'insensitive' },
+            }),
         status: 'SCHEDULED',
         departAt: {
           gte: dayStart,
@@ -194,8 +212,13 @@ export class TripsService {
             id: true,
             name: true,
             code: true,
+            stations: {
+              orderBy: { stopOrder: 'asc' },
+              select: { stationId: true, stopType: true, station: { select: { name: true, address: true } } },
+            },
           },
         },
+        fleet: { select: { owner: { select: { id: true, name: true, nickname: true } } } },
         bookings: {
           where: { status: 'CONFIRMED' },
           select: { seats: true },
@@ -203,7 +226,15 @@ export class TripsService {
       },
     });
 
-    const items: TripSearchResultItemDto[] = trips.map((t) => {
+    const servingTrips = stopSearch
+      ? trips.filter((trip) => {
+          const stations = trip.route?.stations ?? [];
+          const originIndex = stations.findIndex((station) => station.stationId === query.originStopId! && ['BOARDING', 'BOTH'].includes(station.stopType));
+          const destinationIndex = stations.findIndex((station) => station.stationId === query.destinationStopId! && ['LANDING', 'BOTH'].includes(station.stopType));
+          return originIndex >= 0 && destinationIndex >= 0 && originIndex < destinationIndex;
+        })
+      : trips;
+    const items: TripSearchResultItemDto[] = servingTrips.map((t) => {
       const bookedSeats = t.bookings.reduce((sum, b) => sum + b.seats, 0);
       const capacity = t.bus?.capacity ?? 0;
       const availableSeats = Math.max(0, capacity - bookedSeats);
@@ -222,6 +253,17 @@ export class TripsService {
         paymentMethods: ['CASH', 'VODAFONE_CASH'],
         bus: {
           plateNumber: t.bus?.plateNumber ?? '',
+        },
+        stops: (t.route?.stations ?? []).map((station) => ({
+          id: station.stationId,
+          name: station.station.name,
+          address: station.station.address,
+          stopType: station.stopType,
+        })),
+        fleetOwner: {
+          id: t.fleet.owner.id,
+          name: t.fleet.owner.name ?? 'Fleet owner',
+          nickname: t.fleet.owner.nickname,
         },
       };
     });

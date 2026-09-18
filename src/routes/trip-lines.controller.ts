@@ -4,7 +4,7 @@ import { Platform, RequirePermission } from '../authorization/decorators/permiss
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import { ApiAuthErrors, ApiConflict, ApiEnvelopeResponse, ApiNotFound, ApiUuidParam } from '../openapi/api-helpers.js';
-import { CreateStopDto, CreateTripLineDto, StationDto, UpdateDirectionalRouteStopsDto, UpdateStopDto, UpdateTripLineDto } from './dto/route.dto.js';
+import { CreateStopDto, CreateTripLineDto, GovernorateDto, StationDto, UpdateDirectionalRouteStopsDto, UpdateStopDto, UpdateTripLineDto } from './dto/route.dto.js';
 import { TripLinesService } from './trip-lines.service.js';
 
 @ApiTags('trip-lines')
@@ -14,6 +14,12 @@ import { TripLinesService } from './trip-lines.service.js';
 @Controller()
 export class TripLinesController {
   constructor(private readonly service: TripLinesService) {}
+
+  @Get('governorates')
+  @RequirePermission('stations.read')
+  @ApiOperation({ summary: 'List the built-in Egyptian governorates, localized in Arabic and English.' })
+  @ApiEnvelopeResponse(200, 'Egyptian governorates.', GovernorateDto, true)
+  findGovernorates() { return this.service.findGovernorates(); }
 
   @Get('stops')
   @RequirePermission('stations.read')
