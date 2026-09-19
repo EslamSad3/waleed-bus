@@ -22,6 +22,23 @@ const CATALOG: { key: string; resource: string; action: string; description: str
   { key: 'audit.read', resource: 'audit', action: 'read', description: 'read the audit trail' },
 ];
 
+const EGYPT_GOVERNORATES = [
+  ['ALEXANDRIA', 'الإسكندرية', 'Alexandria'], ['ASWAN', 'أسوان', 'Aswan'],
+  ['ASYUT', 'أسيوط', 'Asyut'], ['BEHEIRA', 'البحيرة', 'Beheira'],
+  ['BENI_SUEF', 'بني سويف', 'Beni Suef'], ['CAIRO', 'القاهرة', 'Cairo'],
+  ['DAKAHLIA', 'الدقهلية', 'Dakahlia'], ['DAMIETTA', 'دمياط', 'Damietta'],
+  ['FAYOUM', 'الفيوم', 'Fayoum'], ['GHARBIA', 'الغربية', 'Gharbia'],
+  ['GIZA', 'الجيزة', 'Giza'], ['ISMAILIA', 'الإسماعيلية', 'Ismailia'],
+  ['KAFR_EL_SHEIKH', 'كفر الشيخ', 'Kafr El Sheikh'], ['LUXOR', 'الأقصر', 'Luxor'],
+  ['MATROUH', 'مطروح', 'Matrouh'], ['MINYA', 'المنيا', 'Minya'],
+  ['MONUFIA', 'المنوفية', 'Monufia'], ['NEW_VALLEY', 'الوادي الجديد', 'New Valley'],
+  ['NORTH_SINAI', 'شمال سيناء', 'North Sinai'], ['PORT_SAID', 'بورسعيد', 'Port Said'],
+  ['QALYUBIA', 'القليوبية', 'Qalyubia'], ['QENA', 'قنا', 'Qena'],
+  ['RED_SEA', 'البحر الأحمر', 'Red Sea'], ['SHARQIA', 'الشرقية', 'Sharqia'],
+  ['SOHAG', 'سوهاج', 'Sohag'], ['SOUTH_SINAI', 'جنوب سيناء', 'South Sinai'],
+  ['SUEZ', 'السويس', 'Suez'],
+] as const;
+
 async function main(): Promise<void> {
   const systemUrl = process.env.DIRECT_URL;
   const adminEmail = process.env.SEED_SUPER_ADMIN_EMAIL;
@@ -130,6 +147,23 @@ async function main(): Promise<void> {
   } else {
     console.log(`✔ super admin already exists: ${existingAdmin.email}`);
   }
+  // Local fixture only: a familiar public-facing name for the sample fleet.
+  // Never overwrite a nickname an operator has chosen in the dashboard.
+  await prisma.user.updateMany({
+    where: { email: adminEmail.toLowerCase(), nickname: null },
+    data: { nickname: 'Waleed Transit' },
+  });
+
+  const governorateIds = new Map<string, string>();
+  for (const [code, nameAr, nameEn] of EGYPT_GOVERNORATES) {
+    const governorate = await prisma.governorate.upsert({
+      where: { code },
+      update: { nameAr, nameEn },
+      create: { code, nameAr, nameEn },
+    });
+    governorateIds.set(code, governorate.id);
+  }
+  console.log(`✔ ${EGYPT_GOVERNORATES.length} Egyptian governorates ensured`);
 
   // Local-only fixtures: fleets/buses consume the shared system stop + line catalog.
   let sampleFleet = await prisma.fleet.findFirst();
@@ -180,37 +214,40 @@ async function main(): Promise<void> {
 
     const ramses = await prisma.station.upsert({
       where: { id: '7f000001-91ea-13b2-8191-ea1c00000201' },
-      update: {},
+      update: { governorateId: governorateIds.get('CAIRO')! },
       create: {
         id: '7f000001-91ea-13b2-8191-ea1c00000201',
         name: 'Ramses Station',
         address: 'Ramses Square, Cairo',
         latitude: 30.0631,
         longitude: 31.2497,
+        governorateId: governorateIds.get('CAIRO')!,
       },
     });
 
     const banha = await prisma.station.upsert({
       where: { id: '7f000001-91ea-13b2-8191-ea1c00000202' },
-      update: {},
+      update: { governorateId: governorateIds.get('QALYUBIA')! },
       create: {
         id: '7f000001-91ea-13b2-8191-ea1c00000202',
         name: 'Banha Station',
         address: 'Banha Transit Hub',
         latitude: 30.466,
         longitude: 31.1853,
+        governorateId: governorateIds.get('QALYUBIA')!,
       },
     });
 
     const alex = await prisma.station.upsert({
       where: { id: '7f000001-91ea-13b2-8191-ea1c00000203' },
-      update: {},
+      update: { governorateId: governorateIds.get('ALEXANDRIA')! },
       create: {
         id: '7f000001-91ea-13b2-8191-ea1c00000203',
         name: 'Mahatet Masr (Alexandria)',
         address: 'Alexandria Station Square',
         latitude: 31.1927,
         longitude: 29.906,
+        governorateId: governorateIds.get('ALEXANDRIA')!,
       },
     });
 
@@ -338,6 +375,48 @@ async function main(): Promise<void> {
         isActive: true,
       },
     });
+
+    // The Sharm line was originally seeded only as a bare outbound Route.
+    // Keep demo data aligned with the parent-Line model: every line has two
+    // usable, independently editable directions and ordered stop points.
+    const sharm = await prisma.station.upsert({
+      where: { id: '7f000001-91ea-13b2-8191-ea1c00000204' },
+      update: { governorateId: governorateIds.get('SOUTH_SINAI')! },
+      create: {
+        id: '7f000001-91ea-13b2-8191-ea1c00000204',
+        name: 'Sharm El Sheikh Station',
+        address: 'Peace Road, Sharm El Sheikh',
+        latitude: 27.9158,
+        longitude: 34.3299,
+        governorateId: governorateIds.get('SOUTH_SINAI')!,
+      },
+    });
+    const routeSharmReturn = await prisma.route.upsert({
+      where: { code: 'SSH-CAI-01' },
+      update: {},
+      create: {
+        lineId: routeSharm.lineId,
+        direction: 'RETURN',
+        name: 'Sharm El Sheikh - Cairo Return',
+        code: 'SSH-CAI-01',
+        origin: 'Sharm El Sheikh',
+        destination: 'Cairo',
+        qrIdentifier: 'qr_route_ssh_cai_01',
+        isActive: true,
+      },
+    });
+    for (const [routeId, stops] of [
+      [routeSharm.id, [ramses.id, sharm.id]],
+      [routeSharmReturn.id, [sharm.id, ramses.id]],
+    ] as const) {
+      for (const [index, stationId] of stops.entries()) {
+        await prisma.routeStation.upsert({
+          where: { routeId_stopOrder: { routeId, stopOrder: index + 1 } },
+          update: { stationId, stopType: 'BOTH' },
+          create: { routeId, stationId, stopOrder: index + 1, estimatedStopMinutes: index * 240, stopType: 'BOTH' },
+        });
+      }
+    }
 
     // Ensure return route: Alexandria -> Cairo
     const routeReturn = await prisma.route.upsert({
@@ -688,6 +767,29 @@ async function main(): Promise<void> {
         status: 'SCHEDULED',
       },
     });
+
+    // Passenger-facing local schedule: one open trip for every day in the
+    // seven-day booking window, covering both directions and both sample lines.
+    const localSchedule = [
+      { route: route, bus: bus, origin: 'Cairo', destination: 'Alexandria', hour: 16, fare: 65 },
+      { route: routeReturn, bus: bus, origin: 'Alexandria', destination: 'Cairo', hour: 17, fare: 65 },
+      { route: routeSharm, bus: bus2, origin: 'Cairo', destination: 'Sharm El Sheikh', hour: 7, fare: 240 },
+      { route: routeSharmReturn, bus: bus2, origin: 'Sharm El Sheikh', destination: 'Cairo', hour: 8, fare: 240 },
+      { route: route, bus: bus, origin: 'Cairo', destination: 'Alexandria', hour: 14, fare: 70 },
+      { route: routeReturn, bus: bus, origin: 'Alexandria', destination: 'Cairo', hour: 15, fare: 70 },
+      { route: routeSharm, bus: bus2, origin: 'Cairo', destination: 'Sharm El Sheikh', hour: 6, fare: 245 },
+    ];
+    for (const [index, item] of localSchedule.entries()) {
+      const departure = new Date(now);
+      departure.setUTCDate(now.getUTCDate() + index + 1);
+      departure.setUTCHours(item.hour, 0, 0, 0);
+      const id = `a0000001-0000-0000-0000-${String(101 + index).padStart(12, '0')}`;
+      await prisma.trip.upsert({
+        where: { id },
+        update: { routeId: item.route.id, busId: item.bus.id, origin: item.origin, destination: item.destination, departAt: departure, fare: item.fare, status: 'SCHEDULED' },
+        create: { id, fleetId: sampleFleet.id, routeId: item.route.id, busId: item.bus.id, origin: item.origin, destination: item.destination, departAt: departure, fare: item.fare, status: 'SCHEDULED' },
+      });
+    }
 
     console.log('✔ 10 distinct testing trips and test user fixtures created successfully:');
     console.log('  1. Case 1: Standard open trip (14 available)');

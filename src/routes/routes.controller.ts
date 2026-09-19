@@ -11,6 +11,14 @@ export class RoutesController {
   constructor(private readonly routesService: RoutesService) {}
 
   @Public()
+  @Get('stops')
+  @ApiOperation({ summary: 'List active system stop points for the passenger trip planner.' })
+  @ApiEnvelopeResponse(200, 'Active stop points available for public trip search.')
+  stops() {
+    return this.routesService.listPublicStops();
+  }
+
+  @Public()
   @Get(':identifier')
   @ApiOperation({
     summary:

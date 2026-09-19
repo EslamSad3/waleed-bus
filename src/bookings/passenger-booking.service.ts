@@ -57,9 +57,10 @@ export class PassengerBookingService {
           capacity: number;
           origin: string;
           destination: string;
+          route_id: string | null;
         }>
       >`
-        SELECT t.id, t.fleet_id, t.bus_id, t.status, t.depart_at, t.fare, b.capacity, t.origin, t.destination
+        SELECT t.id, t.fleet_id, t.bus_id, t.status, t.depart_at, t.fare, t.route_id, b.capacity, t.origin, t.destination
         FROM trips t
         JOIN buses b ON b.id = t.bus_id
         WHERE t.id = ${input.tripId}::uuid
@@ -85,6 +86,20 @@ export class PassengerBookingService {
           'TRIP_ALREADY_STARTED',
           'Trip has already departed.',
         );
+      }
+
+      if (!trip.route_id) {
+        throw new CodedException(409, 'TRIP_ROUTE_MISSING', 'Trip does not have a bookable route.');
+      }
+      const routeStops = await tx.routeStation.findMany({
+        where: { routeId: trip.route_id },
+        orderBy: { stopOrder: 'asc' },
+        select: { stationId: true, stopOrder: true, stopType: true },
+      });
+      const boarding = routeStops.find((stop) => stop.stationId === input.boardingStationId);
+      const landing = routeStops.find((stop) => stop.stationId === input.landingStationId);
+      if (!boarding || !['BOARDING', 'BOTH'].includes(boarding.stopType) || !landing || !['LANDING', 'BOTH'].includes(landing.stopType) || boarding.stopOrder >= landing.stopOrder) {
+        throw new CodedException(422, 'INVALID_TRIP_STOPS', 'Choose a boarding stop before a landing stop that this trip serves.');
       }
 
       // US3: Duplicate-time overlap detection (±2 hours window)
@@ -144,6 +159,12 @@ export class PassengerBookingService {
           passengerUserId: actor.id,
           passengerName: caller.name ?? 'Passenger',
           passengerPhone: caller.phoneNumber,
+          boardingStationId: input.boardingStationId,
+          landingStationId: input.landingStationId,
+          pickupAddress: input.pickupAddress?.trim() || null,
+          pickupLatitude: input.pickupLatitude,
+          pickupLongitude: input.pickupLongitude,
+          pickupLocationConfirmed: input.pickupLocationConfirmed ?? false,
           seats: input.seatCount,
           status: 'CONFIRMED',
           paymentMethod: input.paymentMethod,
@@ -172,6 +193,8 @@ export class PassengerBookingService {
           seats: input.seatCount,
           paymentMethod: input.paymentMethod,
           totalAmount,
+          boardingStationId: input.boardingStationId,
+          landingStationId: input.landingStationId,
         },
       });
 
@@ -234,6 +257,13 @@ export class PassengerBookingService {
             destination: true,
             departAt: true,
             status: true,
+            bus: {
+              select: {
+                id: true,
+                plateNumber: true,
+                registrationNumber: true,
+              },
+            },
           },
         },
       },
@@ -260,6 +290,13 @@ export class PassengerBookingService {
         destination: b.trip.destination,
         departAt: b.trip.departAt,
         status: b.trip.status,
+        bus: b.trip.bus
+          ? {
+              id: b.trip.bus.id,
+              plateNumber: b.trip.bus.plateNumber,
+              registrationNumber: b.trip.bus.registrationNumber,
+            }
+          : null,
       },
     }));
 

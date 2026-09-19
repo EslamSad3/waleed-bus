@@ -7,7 +7,7 @@ import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { CreateStopDto, CreateTripLineDto, TripLineStopDto, UpdateStopDto, UpdateTripLineDto } from './dto/route.dto.js';
 
 const routeInclude = {
-  stations: { orderBy: { stopOrder: 'asc' as const }, include: { station: true } },
+  stations: { orderBy: { stopOrder: 'asc' as const }, include: { station: { include: { governorate: true } } } },
 };
 const lineInclude = { directions: { orderBy: { direction: 'asc' as const }, include: routeInclude } };
 
@@ -16,7 +16,14 @@ export class TripLinesService {
   constructor(private readonly system: SystemPrismaService, private readonly audit: AuditService) {}
 
   async findStops() {
-    return this.system.station.findMany({ orderBy: [{ isActive: 'desc' }, { name: 'asc' }] });
+    return this.system.station.findMany({
+      orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+      include: { governorate: true },
+    });
+  }
+
+  async findGovernorates() {
+    return this.system.governorate.findMany({ orderBy: { nameEn: 'asc' } });
   }
 
   async findStop(id: string) {
@@ -24,14 +31,16 @@ export class TripLinesService {
   }
 
   async createStop(dto: CreateStopDto, actorUserId: string) {
-    const stop = await this.system.station.create({ data: dto });
+    await this.ensureGovernorate(dto.governorateId);
+    const stop = await this.system.station.create({ data: dto, include: { governorate: true } });
     await this.audit.log({ actorUserId, action: 'stop.create', resource: 'station', resourceId: stop.id, metadata: { name: stop.name } });
     return stop;
   }
 
   async updateStop(id: string, dto: UpdateStopDto, actorUserId: string) {
     await this.getStop(id);
-    const stop = await this.system.station.update({ where: { id }, data: dto });
+    if (dto.governorateId) await this.ensureGovernorate(dto.governorateId);
+    const stop = await this.system.station.update({ where: { id }, data: dto, include: { governorate: true } });
     await this.audit.log({ actorUserId, action: 'stop.update', resource: 'station', resourceId: id, metadata: { ...dto } });
     return stop;
   }
@@ -54,7 +63,7 @@ export class TripLinesService {
     const outbound = await this.resolveStops(dto.outboundStops); const inbound = await this.resolveStops(dto.returnStops);
     const line = await this.system.$transaction(async (tx) => {
       const parent = await tx.line.create({ data: { name: dto.name, code: dto.code, isActive: dto.isActive ?? true } });
-      const createDirection = (direction: string, stops: typeof outbound, inputs: TripLineStopDto[]) => tx.route.create({ data: { lineId: parent.id, direction, name: dto.name, code: `${dto.code}-${direction === 'OUTBOUND' ? 'OUT' : 'RET'}`, isActive: dto.isActive ?? true, origin: stops[0].name, destination: stops.at(-1)!.name, qrIdentifier: `line_${randomUUID()}`, stations: { create: stops.map((stop, index) => ({ stationId: stop.id, stopOrder: index + 1, estimatedStopMinutes: inputs[index].estimatedStopMinutes })) } } });
+      const createDirection = (direction: string, stops: typeof outbound, inputs: TripLineStopDto[]) => tx.route.create({ data: { lineId: parent.id, direction, name: dto.name, code: `${dto.code}-${direction === 'OUTBOUND' ? 'OUT' : 'RET'}`, isActive: dto.isActive ?? true, origin: stops[0].name, destination: stops.at(-1)!.name, qrIdentifier: `line_${randomUUID()}`, stations: { create: stops.map((stop, index) => ({ stationId: stop.id, stopOrder: index + 1, estimatedStopMinutes: inputs[index].estimatedStopMinutes, stopType: inputs[index].stopType ?? 'BOTH' })) } } });
       await createDirection('OUTBOUND', outbound, dto.outboundStops); await createDirection('RETURN', inbound, dto.returnStops);
       return tx.line.findUniqueOrThrow({ where: { id: parent.id }, include: lineInclude });
     }).catch((error) => { throw translatePrismaError(error, 'Trip line'); });
@@ -83,7 +92,7 @@ export class TripLinesService {
         data: {
           origin: stops[0].name,
           destination: stops.at(-1)!.name,
-          stations: { create: stops.map((stop, index) => ({ stationId: stop.id, stopOrder: index + 1, estimatedStopMinutes: stopInputs[index].estimatedStopMinutes })) },
+          stations: { create: stops.map((stop, index) => ({ stationId: stop.id, stopOrder: index + 1, estimatedStopMinutes: stopInputs[index].estimatedStopMinutes, stopType: stopInputs[index].stopType ?? 'BOTH' })) },
         },
       });
       return tx.line.findUniqueOrThrow({ where: { id: lineId }, include: lineInclude });
@@ -100,9 +109,14 @@ export class TripLinesService {
   }
 
   private async getStop(id: string) {
-    const stop = await this.system.station.findUnique({ where: { id } });
+    const stop = await this.system.station.findUnique({ where: { id }, include: { governorate: true } });
     if (!stop) throw new NotFoundException('Stop not found');
     return stop;
+  }
+
+  private async ensureGovernorate(id: string) {
+    const exists = await this.system.governorate.count({ where: { id } });
+    if (!exists) throw new CodedException(422, 'INVALID_GOVERNORATE', 'المحافظة المختارة غير متاحة.');
   }
 
   private async getTripLine(id: string) {

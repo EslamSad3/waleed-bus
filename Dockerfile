@@ -12,11 +12,12 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
-COPY prisma ./prisma
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
+COPY prisma ./prisma
 COPY . .
-RUN pnpm build \
+RUN pnpm db:generate \
+    && pnpm build \
     && find dist/generated/prisma -type f -name '*.js' -exec sed -i -e 's/\.ts"/.js"/g' -e "s/\.ts'/.js'/g" {} +
 
 EXPOSE 3000

@@ -8,12 +8,27 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsIn,
   Length,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class GovernorateDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'CAIRO' })
+  code!: string;
+
+  @ApiProperty({ example: 'القاهرة' })
+  nameAr!: string;
+
+  @ApiProperty({ example: 'Cairo' })
+  nameEn!: string;
+}
 
 export class StationDto {
   @ApiProperty({ format: 'uuid' })
@@ -36,6 +51,9 @@ export class StationDto {
 
   @ApiPropertyOptional({ example: 0 })
   estimatedStopMinutes?: number | null;
+
+  @ApiPropertyOptional({ type: () => GovernorateDto })
+  governorate?: GovernorateDto;
 }
 
 export class RouteDto {
@@ -110,7 +128,7 @@ export class CreateStationDto {
   @IsOptional()
   @IsString()
   @Length(1, 500)
-  address?: string;
+  address?: string | null;
 
   @ApiPropertyOptional({ example: 30.0631 })
   @IsOptional()
@@ -147,10 +165,11 @@ export class CreateStopDto {
   @Length(1, 255)
   name!: string;
 
-  @ApiProperty({ example: 'ميدان رمسيس، القاهرة' })
+  @ApiPropertyOptional({ example: 'ميدان رمسيس، القاهرة' })
+  @IsOptional()
   @IsString()
   @Length(1, 500)
-  address!: string;
+  address?: string | null;
 
   @ApiProperty({ example: 30.0626, minimum: -90, maximum: 90 })
   @IsNumber()
@@ -163,6 +182,10 @@ export class CreateStopDto {
   @Min(-180)
   @Max(180)
   longitude!: number;
+
+  @ApiProperty({ format: 'uuid', description: 'Egyptian governorate for this stop.' })
+  @IsUUID()
+  governorateId!: string;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()
@@ -181,7 +204,7 @@ export class UpdateStopDto {
   @IsOptional()
   @IsString()
   @Length(1, 500)
-  address?: string;
+  address?: string | null;
 
   @ApiPropertyOptional({ example: 30.0626, minimum: -90, maximum: 90 })
   @IsOptional()
@@ -197,6 +220,11 @@ export class UpdateStopDto {
   @Max(180)
   longitude?: number;
 
+  @ApiPropertyOptional({ format: 'uuid', description: 'Egyptian governorate for this stop.' })
+  @IsOptional()
+  @IsUUID()
+  governorateId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
@@ -207,6 +235,12 @@ export class TripLineStopDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   stopId!: string;
+
+  @ApiPropertyOptional({ enum: ['BOARDING', 'LANDING', 'BOTH'], default: 'BOTH', description: 'Whether passengers may board, land, or both at this stop.' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['BOARDING', 'LANDING', 'BOTH'])
+  stopType?: 'BOARDING' | 'LANDING' | 'BOTH';
 
   @ApiPropertyOptional({ example: 5, minimum: 0 })
   @IsOptional()
