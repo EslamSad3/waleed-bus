@@ -137,6 +137,7 @@ describe('OpenAPI document', () => {
       'get /trips/{id}',
       'post /public/trip-shares/{shareId}/verify',
       'get /public/routes/{identifier}',
+      'get /public/routes/stops',
     ]);
     for (const [path, method, op] of operations()) {
       const key = `${method} ${path}`;

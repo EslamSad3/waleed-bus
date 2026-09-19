@@ -27,6 +27,9 @@ describe('TripsService - Public Trip Search & Details (US1)', () => {
         },
         bus: { plateNumber: 'ق ب أ 1234', capacity: 14 },
         bookings: [{ seats: 3 }, { seats: 2 }],
+        fleet: {
+          owner: { id: 'owner-1', name: 'Fleet Owner', nickname: null },
+        },
       },
     ];
 

@@ -20,6 +20,16 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
   let passengerToken: string;
   let passengerUserId: string;
   let passengerBookingId: string;
+  let boardingStationId: string;
+  let landingStationId: string;
+  // Dynamic departure dates keep the suite valid regardless of the wall clock:
+  // main trip departs tomorrow, contention trip the day after (>±2h duplicate
+  // window), overlap trip 30 minutes after the main one.
+  let tripDepartAt: Date;
+  let overlapDepartAt: Date;
+  let contentionDepartAt: Date;
+  let searchDate: string;
+  let emptySearchDate: string;
 
   const api = () => request(t.app.getHttpServer());
 
@@ -28,6 +38,14 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
     const system = t.system;
     await resetDatabase(loadConfig(process.env).database.systemUrl);
     await ensureFleetDriverRoles(system);
+
+    tripDepartAt = new Date(Date.now() + 24 * 3600 * 1000);
+    overlapDepartAt = new Date(tripDepartAt.getTime() + 30 * 60 * 1000);
+    contentionDepartAt = new Date(Date.now() + 48 * 3600 * 1000);
+    searchDate = tripDepartAt.toISOString().slice(0, 10);
+    emptySearchDate = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 10);
 
     // Ensure passenger role exists
     const passengerRole = await system.role.upsert({
@@ -65,10 +83,20 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
       data: { plateNumber: 'ق ب أ 1234' },
     });
 
-    // Create route and stations
+    // Create trip line, route direction, and stations
+    // (routes are global, owned by a Line; stations are global, tied to a governorate)
+    const line = await system.line.create({
+      data: {
+        name: 'Cairo - Alexandria Express Line',
+        code: 'LINE-CAI-ALX-01',
+        isActive: true,
+      },
+    });
+
     const route = await system.route.create({
       data: {
-        fleetId,
+        lineId: line.id,
+        direction: 'OUTBOUND',
         name: 'Cairo - Alexandria Express',
         code: 'CAI-ALX-01',
         origin: 'Cairo',
@@ -87,7 +115,6 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
 
     const st1 = await system.station.create({
       data: {
-        fleetId,
         name: 'Ramses Station',
         address: 'Ramses Square, Cairo',
         latitude: 30.0631,
@@ -98,7 +125,6 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
 
     const st2 = await system.station.create({
       data: {
-        fleetId,
         name: 'Banha Station',
         address: 'Banha Transit Hub',
         latitude: 30.466,
@@ -109,7 +135,6 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
 
     const st3 = await system.station.create({
       data: {
-        fleetId,
         name: 'Mahatet Masr (Alexandria)',
         address: 'Alexandria Station Square',
         latitude: 31.1927,
@@ -117,25 +142,24 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
         governorateId: cairo.id,
       },
     });
+    boardingStationId = st1.id;
+    landingStationId = st3.id;
 
     await system.routeStation.createMany({
       data: [
         {
-          fleetId,
           routeId,
           stationId: st1.id,
           stopOrder: 1,
           estimatedStopMinutes: 0,
         },
         {
-          fleetId,
           routeId,
           stationId: st2.id,
           stopOrder: 2,
           estimatedStopMinutes: 45,
         },
         {
-          fleetId,
           routeId,
           stationId: st3.id,
           stopOrder: 3,
@@ -152,7 +176,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
         routeId,
         origin: 'Cairo',
         destination: 'Alexandria',
-        departAt: new Date('2026-09-15T08:00:00.000Z'),
+        departAt: tripDepartAt,
         fare: 50.0,
         status: 'SCHEDULED',
       },
@@ -192,7 +216,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
       const res = await api().get('/trips/search').query({
         origin: 'Cairo',
         destination: 'Alexandria',
-        date: '2026-09-15',
+        date: searchDate,
       });
 
       expect(res.status).toBe(200);
@@ -216,7 +240,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
       const res = await api().get('/trips/search').query({
         origin: 'Cairo',
         destination: 'Alexandria',
-        date: '2026-09-20',
+        date: emptySearchDate,
       });
 
       expect(res.status).toBe(200);
@@ -279,7 +303,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           routeId,
           origin: 'Cairo',
           destination: 'Alexandria',
-          departAt: new Date('2026-09-16T10:00:00.000Z'),
+          departAt: contentionDepartAt,
           fare: 50.0,
           status: 'SCHEDULED',
         },
@@ -317,6 +341,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           tripId,
           seatCount: 2,
           paymentMethod: 'CASH',
+          boardingStationId,
+          landingStationId,
         });
 
       expect(res.status).toBe(201);
@@ -371,6 +397,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           tripId: contentionTripId,
           seatCount: 1,
           paymentMethod: 'CASH',
+          boardingStationId,
+          landingStationId,
         });
 
       // Now both passengers concurrently race for the last remaining seat
@@ -382,6 +410,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
             tripId: contentionTripId,
             seatCount: 1,
             paymentMethod: 'CASH',
+            boardingStationId,
+            landingStationId,
             confirmTimeConflict: true,
           }),
         api()
@@ -391,6 +421,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
             tripId: contentionTripId,
             seatCount: 1,
             paymentMethod: 'CASH',
+            boardingStationId,
+            landingStationId,
             confirmTimeConflict: true,
           }),
       ]);
@@ -407,7 +439,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
     let overlapTripId: string;
 
     beforeAll(async () => {
-      // Trip departing 30 mins after tripId (2026-09-15 08:30 vs 08:00)
+      // Trip departing 30 mins after tripId
       const trip = await t.system.trip.create({
         data: {
           fleetId,
@@ -415,7 +447,7 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           routeId,
           origin: 'Cairo',
           destination: 'Alexandria',
-          departAt: new Date('2026-09-15T08:30:00.000Z'),
+          departAt: overlapDepartAt,
           fare: 50.0,
           status: 'SCHEDULED',
         },
@@ -431,6 +463,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           tripId: overlapTripId,
           seatCount: 1,
           paymentMethod: 'CASH',
+          boardingStationId,
+          landingStationId,
           confirmTimeConflict: false,
         });
 
@@ -448,6 +482,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           tripId: overlapTripId,
           seatCount: 1,
           paymentMethod: 'CASH',
+          boardingStationId,
+          landingStationId,
           confirmTimeConflict: true,
         });
 
@@ -551,6 +587,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           tripId,
           seatCount: 2,
           paymentMethod: 'CASH',
+          boardingStationId,
+          landingStationId,
           confirmTimeConflict: true,
         });
       cancellableBookingId = res.body.data.id;
@@ -848,6 +886,8 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           tripId,
           seatCount: 1,
           paymentMethod: 'CASH',
+          boardingStationId,
+          landingStationId,
           confirmTimeConflict: true,
         });
       shareBookingId = res.body.data.id;

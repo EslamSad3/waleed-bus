@@ -48,7 +48,13 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         capacity: 14,
         origin: 'Cairo',
         destination: 'Alexandria',
+        route_id: 'route-1',
       },
+    ];
+
+    const routeStops = [
+      { stationId: 'station-boarding-1', stopOrder: 1, stopType: 'BOTH' },
+      { stationId: 'station-landing-1', stopOrder: 2, stopType: 'BOTH' },
     ];
 
     const mockBookingCreate = vi.fn(
@@ -74,6 +80,9 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
 
     const tx = {
       $queryRaw: vi.fn(async () => tripRows),
+      routeStation: {
+        findMany: vi.fn(async () => routeStops),
+      },
       booking: {
         findFirst: vi.fn(async () => opts.duplicateBooking ?? null),
         aggregate: vi.fn(async () => ({
@@ -113,6 +122,8 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         tripId: 'trip-1',
         seatCount: 1,
         paymentMethod: 'CASH',
+        boardingStationId: 'station-boarding-1',
+        landingStationId: 'station-landing-1',
       })
       .catch((e: unknown) => e);
 
@@ -129,6 +140,8 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
       tripId: 'trip-1',
       seatCount: 2,
       paymentMethod: 'CASH',
+      boardingStationId: 'station-boarding-1',
+      landingStationId: 'station-landing-1',
     });
 
     expect(result).toMatchObject({
@@ -153,6 +166,8 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         tripId: 'trip-1',
         seatCount: 2, // requesting 2
         paymentMethod: 'CASH',
+        boardingStationId: 'station-boarding-1',
+        landingStationId: 'station-landing-1',
       })
       .catch((e: unknown) => e);
 
@@ -172,6 +187,8 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
         tripId: 'trip-1',
         seatCount: 1,
         paymentMethod: 'CASH',
+        boardingStationId: 'station-boarding-1',
+        landingStationId: 'station-landing-1',
         confirmTimeConflict: false,
       })
       .catch((e: unknown) => e);
@@ -195,6 +212,8 @@ describe('BookingsService - Passenger Booking (US2 & US3)', () => {
       tripId: 'trip-1',
       seatCount: 1,
       paymentMethod: 'CASH',
+      boardingStationId: 'station-boarding-1',
+      landingStationId: 'station-landing-1',
       confirmTimeConflict: true,
     });
 

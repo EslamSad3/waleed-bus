@@ -67,6 +67,7 @@ describe('BusLifecycleService', () => {
     expect(tx.bus.update).toHaveBeenCalledWith({
       where: { id: 'bus-1' },
       data: { isActive: false },
+      include: { line: true },
     });
     expect(result).toMatchObject({ id: 'bus-1', isActive: false });
   });
@@ -101,6 +102,7 @@ describe('BusLifecycleService', () => {
     expect(tx.bus.update).toHaveBeenCalledWith({
       where: { id: 'bus-1' },
       data: { isActive: true },
+      include: { line: true },
     });
     expect(result).toMatchObject({ id: 'bus-1', isActive: true });
   });
