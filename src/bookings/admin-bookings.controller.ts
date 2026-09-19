@@ -35,7 +35,6 @@ import {
 import { AdminResolveReportDto } from './dto/admin-report.dto.js';
 import {
   AdminBookingDetailDto,
-  AdminBookingListItemDto,
   AdminBookingListResponseDto,
   AdminFailPaymentResponseDto,
   AdminForceCancelResponseDto,

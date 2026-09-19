@@ -3210,6 +3210,26 @@
             }
           },
           {
+            "name": "originStopId",
+            "required": false,
+            "in": "query",
+            "description": "Boarding stop id. Use with destinationStopId for stop-based passenger search.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "destinationStopId",
+            "required": false,
+            "in": "query",
+            "description": "Drop-off stop id. Use with originStopId for stop-based passenger search.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
             "name": "date",
             "required": true,
             "in": "query",
@@ -3324,6 +3344,42 @@
         ]
       }
     },
+    "/public/routes/stops": {
+      "get": {
+        "operationId": "RoutesController_stops",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active stop points available for public trip search.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "List active system stop points for the passenger trip planner.",
+        "tags": [
+          "routes"
+        ]
+      }
+    },
     "/public/routes/{identifier}": {
       "get": {
         "operationId": "RoutesController_resolve",
@@ -3368,6 +3424,707 @@
         "summary": "Resolve route details, ordered stations, and upcoming scheduled trips from a QR identifier, code, or UUID.",
         "tags": [
           "routes"
+        ]
+      }
+    },
+    "/governorates": {
+      "get": {
+        "operationId": "TripLinesController_findGovernorates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Egyptian governorates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GovernorateDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the built-in Egyptian governorates, localized in Arabic and English.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/stops": {
+      "get": {
+        "operationId": "TripLinesController_findStops",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Stop points with their governorates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StationDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List an operator fleet’s reusable stop points.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "post": {
+        "operationId": "TripLinesController_createStop",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStopDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stop created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StationDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a reusable stop point with a precise location.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/stops/{id}": {
+      "get": {
+        "operationId": "TripLinesController_findStop",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Stop id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stop details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StationDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Stop not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one stop point by id.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "patch": {
+        "operationId": "TripLinesController_updateStop",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Stop id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStopDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stop updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StationDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a stop point.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "delete": {
+        "operationId": "TripLinesController_removeStop",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Stop id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stop deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A stop used by a trip line cannot be deleted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a stop point that is not used by any trip line.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/trip-lines": {
+      "get": {
+        "operationId": "TripLinesController_findTripLines",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Trip lines with both directions and ordered stops.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List an operator fleet’s trip lines and their ordered stops.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "post": {
+        "operationId": "TripLinesController_createTripLine",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTripLineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Trip line created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a trip line from at least two ordered stop points.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/trip-lines/{id}": {
+      "get": {
+        "operationId": "TripLinesController_findTripLine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip line id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trip line details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Trip line not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one trip line with both directions and ordered stops.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "patch": {
+        "operationId": "TripLinesController_updateTripLine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip line id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTripLineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trip line updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename or toggle a trip line.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "delete": {
+        "operationId": "TripLinesController_removeTripLine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Trip line id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trip line deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A trip line with trips cannot be deleted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a trip line that has no trips.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/trip-lines/{id}/directions/{directionId}/stops": {
+      "patch": {
+        "operationId": "TripLinesController_updateDirectionStops",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDirectionalRouteStopsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trip line with the direction’s replaced stops.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A direction with scheduled or historical trips cannot be changed."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the ordered stops for one direction of a trip line.",
+        "tags": [
+          "trip-lines"
         ]
       }
     },
@@ -5031,6 +5788,85 @@
         ]
       }
     },
+    "/drivers": {
+      "get": {
+        "operationId": "FleetOwnerController_listSystemDrivers",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of system driver memberships.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List every driver membership for platform operations, with fleet, owner, and active bus assignment.",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
     "/fleet/buses": {
       "get": {
         "operationId": "FleetOwnerController_listBuses",
@@ -6230,6 +7066,104 @@
         ]
       }
     },
+    "/fleet/buses/{busId}/trip-line": {
+      "post": {
+        "operationId": "FleetOwnerController_assignTripLine",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignTripLineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign a platform-defined trip line to a bus.",
+        "tags": [
+          "fleet-owner"
+        ]
+      },
+      "delete": {
+        "operationId": "FleetOwnerController_unassignTripLine",
+        "parameters": [
+          {
+            "name": "x-fleet-id",
+            "in": "header",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "busId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove the current trip line from a bus.",
+        "tags": [
+          "fleet-owner"
+        ]
+      }
+    },
     "/fleet/reports": {
       "get": {
         "operationId": "FleetOwnerController_getReports",
@@ -6324,6 +7258,260 @@
         "summary": "Read fleet reports + rating summary (clarify Q4-A shape).",
         "tags": [
           "fleet-owner"
+        ]
+      }
+    },
+    "/fleet-owners": {
+      "get": {
+        "operationId": "FleetOwnersAdminController_findAll",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of fleet owner accounts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all fleet owners across the system.",
+        "tags": [
+          "fleet-owners"
+        ]
+      },
+      "post": {
+        "operationId": "FleetOwnersAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFleetOwnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Fleet owner account with its initial fleet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a fleet-owner account and its first fleet atomically.",
+        "tags": [
+          "fleet-owners"
+        ]
+      }
+    },
+    "/fleet-owners/{id}": {
+      "get": {
+        "operationId": "FleetOwnersAdminController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet owner user id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fleet owner account with owned fleets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet owner not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a fleet owner and all fleets they own.",
+        "tags": [
+          "fleet-owners"
+        ]
+      },
+      "patch": {
+        "operationId": "FleetOwnersAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet owner user id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFleetOwnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fleet owner account updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet owner not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a fleet-owner account.",
+        "tags": [
+          "fleet-owners"
         ]
       }
     },
@@ -8608,6 +9796,58 @@
           "plateNumber"
         ]
       },
+      "TripSearchFleetOwnerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Waleed Transport"
+          },
+          "nickname": {
+            "type": "object",
+            "example": "El Waleed",
+            "nullable": true,
+            "description": "Passenger-facing familiar name for the fleet owner."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "TripSearchStopDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "object",
+            "nullable": true
+          },
+          "stopType": {
+            "type": "string",
+            "enum": [
+              "BOARDING",
+              "LANDING",
+              "BOTH"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "stopType"
+        ]
+      },
       "TripSearchResultItemDto": {
         "type": "object",
         "properties": {
@@ -8666,6 +9906,15 @@
           },
           "bus": {
             "$ref": "#/components/schemas/TripSearchBusDto"
+          },
+          "fleetOwner": {
+            "$ref": "#/components/schemas/TripSearchFleetOwnerDto"
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripSearchStopDto"
+            }
           }
         },
         "required": [
@@ -8678,7 +9927,9 @@
           "capacity",
           "availableSeats",
           "paymentMethods",
-          "bus"
+          "bus",
+          "fleetOwner",
+          "stops"
         ]
       },
       "TripStationDto": {
@@ -8830,6 +10081,33 @@
           "bus"
         ]
       },
+      "GovernorateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "CAIRO"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "القاهرة"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Cairo"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameEn"
+        ]
+      },
       "StationDto": {
         "type": "object",
         "properties": {
@@ -8860,6 +10138,9 @@
           "estimatedStopMinutes": {
             "type": "object",
             "example": 0
+          },
+          "governorate": {
+            "$ref": "#/components/schemas/GovernorateDto"
           }
         },
         "required": [
@@ -8961,6 +10242,174 @@
           "qrIdentifier",
           "stations",
           "upcomingTrips"
+        ]
+      },
+      "CreateStopDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "ميدان رمسيس"
+          },
+          "address": {
+            "type": "object",
+            "example": "ميدان رمسيس، القاهرة"
+          },
+          "latitude": {
+            "type": "number",
+            "example": 30.0626,
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "example": 31.2467,
+            "minimum": -180,
+            "maximum": 180
+          },
+          "governorateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Egyptian governorate for this stop."
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "latitude",
+          "longitude",
+          "governorateId"
+        ]
+      },
+      "UpdateStopDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "ميدان رمسيس"
+          },
+          "address": {
+            "type": "object",
+            "example": "ميدان رمسيس، القاهرة"
+          },
+          "latitude": {
+            "type": "number",
+            "example": 30.0626,
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "example": 31.2467,
+            "minimum": -180,
+            "maximum": 180
+          },
+          "governorateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Egyptian governorate for this stop."
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TripLineStopDto": {
+        "type": "object",
+        "properties": {
+          "stopId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stopType": {
+            "type": "string",
+            "enum": [
+              "BOARDING",
+              "LANDING",
+              "BOTH"
+            ],
+            "default": "BOTH",
+            "description": "Whether passengers may board, land, or both at this stop."
+          },
+          "estimatedStopMinutes": {
+            "type": "number",
+            "example": 5,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "stopId"
+        ]
+      },
+      "CreateTripLineDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "القاهرة – بني سويف"
+          },
+          "code": {
+            "type": "string",
+            "example": "CAI-BNS-01"
+          },
+          "outboundStops": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripLineStopDto"
+            }
+          },
+          "returnStops": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripLineStopDto"
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "code",
+          "outboundStops",
+          "returnStops"
+        ]
+      },
+      "UpdateTripLineDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "القاهرة – بني سويف"
+          },
+          "code": {
+            "type": "string",
+            "example": "CAI-BNS-01"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateDirectionalRouteStopsDto": {
+        "type": "object",
+        "properties": {
+          "stops": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripLineStopDto"
+            }
+          }
+        },
+        "required": [
+          "stops"
         ]
       },
       "BookingDto": {
@@ -9230,6 +10679,36 @@
             "example": "CASH",
             "description": "Payment method for this reservation"
           },
+          "boardingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Boarding stop selected from this trip line."
+          },
+          "landingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Landing stop selected from this trip line."
+          },
+          "pickupAddress": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Passenger pickup address shown to the driver."
+          },
+          "pickupLatitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "pickupLongitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "pickupLocationConfirmed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Passenger confirmed that the supplied current location is their pickup location."
+          },
           "confirmTimeConflict": {
             "type": "boolean",
             "example": false,
@@ -9240,7 +10719,9 @@
         "required": [
           "tripId",
           "seatCount",
-          "paymentMethod"
+          "paymentMethod",
+          "boardingStationId",
+          "landingStationId"
         ]
       },
       "CancelledBookingResponseDto": {
@@ -10542,9 +12023,25 @@
             "type": "string",
             "example": "Karim Driver"
           },
+          "nickname": {
+            "type": "string",
+            "example": "Karim",
+            "maxLength": 100
+          },
           "phone": {
             "type": "string",
             "example": "01001234567"
+          },
+          "nationalId": {
+            "type": "string",
+            "example": "29801011234567",
+            "minLength": 14,
+            "maxLength": 14
+          },
+          "picture": {
+            "type": "string",
+            "example": "https://cdn.example.com/drivers/karim.jpg",
+            "maxLength": 1024
           },
           "password": {
             "type": "string",
@@ -10589,6 +12086,94 @@
         "required": [
           "driverUserId"
         ]
+      },
+      "AssignTripLineDto": {
+        "type": "object",
+        "properties": {
+          "tripLineId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Active system trip-line id."
+          }
+        },
+        "required": [
+          "tripLineId"
+        ]
+      },
+      "CreateFleetOwnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "محمد نعماني",
+            "maxLength": 255
+          },
+          "nickname": {
+            "type": "string",
+            "example": "محمد",
+            "maxLength": 100
+          },
+          "phone": {
+            "type": "string",
+            "example": "01001234567"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "أسطول النيل",
+            "maxLength": 255
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "nationalId": {
+            "type": "string",
+            "example": "29801011234567",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        },
+        "required": [
+          "name",
+          "nickname",
+          "phone",
+          "password",
+          "fleetName"
+        ]
+      },
+      "UpdateFleetOwnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "nickname": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "phone": {
+            "type": "string",
+            "example": "01001234567"
+          },
+          "picture": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "nationalId": {
+            "type": "string",
+            "minLength": 14,
+            "maxLength": 14
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
       },
       "UpdateDriverProfileDto": {
         "type": "object",

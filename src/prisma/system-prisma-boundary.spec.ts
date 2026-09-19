@@ -44,6 +44,11 @@ describe('SystemPrisma Architectural Boundary', () => {
     'routes/routes.service.ts',
     'trips/trips.service.ts',
     'users/users.service.ts',
+
+    // Global Commercial Catalog (lines/routes/stations are platform-wide, not fleet-scoped)
+    'fleet-owner/bus-trip-line.service.ts',
+    'fleet-owner/fleet-owners-admin.service.ts',
+    'routes/trip-lines.service.ts',
   ]);
 
   function collectTsFiles(dir: string): string[] {

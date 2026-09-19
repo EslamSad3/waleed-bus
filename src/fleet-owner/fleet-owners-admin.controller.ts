@@ -35,6 +35,7 @@ export class FleetOwnersAdminController {
   @Get(':id')
   @RequirePermission('users.read')
   @ApiOperation({ summary: 'Get a fleet owner and all fleets they own.' })
+  @ApiEnvelopeResponse(200, 'Fleet owner account with owned fleets.')
   @ApiUuidParam('id', 'Fleet owner user id.')
   @ApiNotFound('Fleet owner not found.')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -44,6 +45,7 @@ export class FleetOwnersAdminController {
   @Patch(':id')
   @RequirePermission('users.update')
   @ApiOperation({ summary: 'Update a fleet-owner account.' })
+  @ApiEnvelopeResponse(200, 'Fleet owner account updated.')
   @ApiUuidParam('id', 'Fleet owner user id.')
   @ApiNotFound('Fleet owner not found.')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateFleetOwnerDto, @CurrentUser() actor: RequestUser) {
