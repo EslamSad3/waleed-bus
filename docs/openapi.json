@@ -3121,6 +3121,86 @@
         ]
       }
     },
+    "/fleets/{fleetId}/uploads/bus-image": {
+      "post": {
+        "operationId": "UploadsController_uploadBusImage",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "image"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Public image URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet not found in this context."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a bus image (JPEG/PNG/WebP, ≤5 MB) to Supabase Storage and get its public URL.",
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
     "/fleets/{fleetId}/trips": {
       "post": {
         "operationId": "TripsController_create",

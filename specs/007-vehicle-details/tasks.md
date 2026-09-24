@@ -12,5 +12,8 @@
 - [x] E2E `test/vehicle-details.e2e-spec.ts` (9 tests)
 - [x] `typecheck + lint + test` (242 unit) green; `docs:generate` regenerated
 - [ ] Dashboard: bus form fields + brands page (bus_dashboard branch)
-- [ ] Follow-up: Supabase Storage bucket + upload flow for `imageUrl` (no infra exists yet)
+- [x] Supabase Storage via CLI: `supabase/` linked project + migration `bus_images_bucket` (public-read bucket, 5MB, jpeg/png/webp) pushed with `supabase db push`
+- [x] API `POST /fleets/:fleetId/uploads/bus-image` (fleet-scoped, `buses.update`): multer memory upload → magic-byte check → sharp compress (1600px max, q80/mozjpeg, png-9) → service_role upload → public URL; `STORAGE_NOT_CONFIGURED` 503 without keys
+- [x] Deps: `@supabase/supabase-js`, `multer@2.2.0`, `sharp`, `@types/multer`; `.env.example` documents `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`
+- [x] Unit (6, sharp mocked) + e2e `test/uploads.e2e-spec.ts` (3, incl. real sharp decode) green
 - [ ] Follow-up: backfill existing buses (plate/color/image) → NOT NULL enforcement

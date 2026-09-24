@@ -40,6 +40,11 @@ export interface AppConfig {
     appleJwksUri: string;
   };
   observe: ObserveConfig;
+  storage: {
+    /** Supabase Storage for bus images; undefined until configured. */
+    supabaseUrl?: string;
+    supabaseServiceRoleKey?: string;
+  };
 }
 
 const DURATION_PATTERN = /^\d+([smhd])?$/;
@@ -141,6 +146,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     observe: resolveObserveCredentials(env) ?? {
       serviceId: env.OBSERVE_SERVICE_ID ?? 'bus',
+    },
+    storage: {
+      supabaseUrl: env.SUPABASE_URL || undefined,
+      supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || undefined,
     },
   };
 }
