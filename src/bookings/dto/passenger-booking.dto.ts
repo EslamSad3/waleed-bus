@@ -103,6 +103,30 @@ export class CreatePassengerBookingDto {
   @IsOptional()
   @IsBoolean()
   confirmTimeConflict?: boolean;
+
+  @ApiPropertyOptional({ enum: ['SELF', 'OTHER'], default: 'SELF', description: 'Who travels: the booker or someone else.' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['SELF', 'OTHER'])
+  bookingFor?: 'SELF' | 'OTHER';
+
+  @ApiPropertyOptional({ example: 'Mona Ahmed', maxLength: 255, description: 'Required when bookingFor is OTHER; ignored for SELF (snapshot comes from the account).' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  passengerName?: string;
+
+  @ApiPropertyOptional({ example: '01012345678', maxLength: 30, description: 'Required when bookingFor is OTHER.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 30)
+  passengerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Wait near the bridge.', maxLength: 1000, description: 'Free-form note visible to the driver/operator.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 1000)
+  note?: string;
 }
 
 export class CancelPassengerBookingDto {
@@ -200,6 +224,9 @@ export class PassengerBookingItemDto {
   @ApiProperty({ format: 'uuid' })
   tripId!: string;
 
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  passengerUserId?: string | null;
+
   @ApiProperty({ example: 'Ahmed Hassan' })
   passengerName!: string;
 
@@ -220,6 +247,12 @@ export class PassengerBookingItemDto {
 
   @ApiPropertyOptional({ example: '100.00' })
   totalAmount?: string | null;
+
+  @ApiProperty({ enum: ['SELF', 'OTHER'], example: 'SELF' })
+  bookingFor!: string;
+
+  @ApiPropertyOptional({ example: 'Wait near the bridge.', nullable: true })
+  note?: string | null;
 
   @ApiProperty({ format: 'date-time' })
   confirmedAt!: Date;

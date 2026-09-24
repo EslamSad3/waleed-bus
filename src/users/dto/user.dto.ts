@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsInt,
   IsOptional,
   IsString,
   Length,
@@ -26,6 +27,19 @@ export class UserDto {
 
   @ApiProperty({ example: true })
   isActive!: boolean;
+
+  @ApiPropertyOptional({
+    example: 8,
+    nullable: true,
+    description: 'Per-user seat override; null means the platform default (5).',
+  })
+  maxBookingSeats?: number | null;
+
+  @ApiProperty({
+    example: 5,
+    description: 'Effective per-booking seat limit (override ?? platform default).',
+  })
+  effectiveMaxBookingSeats!: number;
 
   @ApiProperty({
     example: 1,
@@ -172,6 +186,15 @@ export class UpdateUserDto {
   @MinLength(8)
   @MaxLength(128)
   password?: string;
+
+  @ApiPropertyOptional({
+    example: 8,
+    nullable: true,
+    description: 'Per-user seat override (must be ≥ 1); null clears back to the platform default (5).',
+  })
+  @IsOptional()
+  @IsInt()
+  maxBookingSeats?: number | null;
 }
 
 export class SetUserRolesDto {

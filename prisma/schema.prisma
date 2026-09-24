@@ -21,6 +21,8 @@ model User {
   nationalId      String?   @map("national_id") @db.VarChar(14)
   phoneVerifiedAt DateTime? @map("phone_verified_at")
   picture         String?   @db.VarChar(1024)
+  /// Per-user booking seat override (spec 010); null = platform default (5).
+  maxBookingSeats Int?      @map("max_booking_seats")
   isActive        Boolean   @default(true) @map("is_active")
   authVersion     Int       @default(1) @map("auth_version")
   createdAt       DateTime  @default(now()) @map("created_at")
@@ -271,6 +273,10 @@ model Booking {
   tripId         String   @map("trip_id") @db.Uuid
   passengerName  String   @map("passenger_name") @db.VarChar(255)
   passengerPhone String?  @map("passenger_phone") @db.VarChar(30)
+  /// SELF | OTHER (validated in the application layer)
+  bookingFor     String   @default("SELF") @map("booking_for") @db.VarChar(20)
+  /// Free-form note visible wherever booking details are authorized.
+  note           String?  @db.VarChar(1000)
   boardingStationId String? @map("boarding_station_id") @db.Uuid
   landingStationId String? @map("landing_station_id") @db.Uuid
   pickupAddress String? @map("pickup_address") @db.VarChar(500)

@@ -22,6 +22,12 @@ export class AdminBookingListItemDto {
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   passengerUserId!: string | null;
 
+  @ApiProperty({ enum: ['SELF', 'OTHER'], example: 'SELF' })
+  bookingFor!: string;
+
+  @ApiPropertyOptional({ type: String, example: 'Wait near the bridge.', nullable: true })
+  note!: string | null;
+
   @ApiProperty({ example: 2 })
   seats!: number;
 
@@ -173,6 +179,27 @@ export class AdminBookingDetailDto {
 
   @ApiProperty({ example: 2 })
   seats!: number;
+
+  @ApiProperty({ example: 'Ahmed Hassan' })
+  passengerName!: string;
+
+  @ApiPropertyOptional({ type: String, example: '+201000000000', nullable: true })
+  passengerPhone!: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  passengerUserId!: string | null;
+
+  @ApiProperty({ enum: ['SELF', 'OTHER'], example: 'SELF' })
+  bookingFor!: string;
+
+  @ApiPropertyOptional({ type: String, example: 'Wait near the bridge.', nullable: true })
+  note!: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  boardingStationId!: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  landingStationId!: string | null;
 
   @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;

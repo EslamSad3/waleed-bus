@@ -10913,6 +10913,17 @@
             "type": "boolean",
             "example": true
           },
+          "maxBookingSeats": {
+            "type": "object",
+            "example": 8,
+            "nullable": true,
+            "description": "Per-user seat override; null means the platform default (5)."
+          },
+          "effectiveMaxBookingSeats": {
+            "type": "number",
+            "example": 5,
+            "description": "Effective per-booking seat limit (override ?? platform default)."
+          },
           "authVersion": {
             "type": "number",
             "example": 1,
@@ -10931,6 +10942,7 @@
           "id",
           "email",
           "isActive",
+          "effectiveMaxBookingSeats",
           "authVersion",
           "createdAt",
           "updatedAt"
@@ -10993,6 +11005,12 @@
             "format": "password",
             "minLength": 8,
             "maxLength": 128
+          },
+          "maxBookingSeats": {
+            "type": "object",
+            "example": 8,
+            "nullable": true,
+            "description": "Per-user seat override (must be ≥ 1); null clears back to the platform default (5)."
           }
         }
       },
@@ -12427,6 +12445,11 @@
             "type": "string",
             "format": "uuid"
           },
+          "passengerUserId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
           "passengerName": {
             "type": "string",
             "example": "Ahmed Hassan"
@@ -12454,6 +12477,19 @@
           "totalAmount": {
             "type": "object",
             "example": "100.00"
+          },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "example": "SELF"
+          },
+          "note": {
+            "type": "object",
+            "example": "Wait near the bridge.",
+            "nullable": true
           },
           "confirmedAt": {
             "format": "date-time",
@@ -12489,6 +12525,7 @@
           "passengerName",
           "seats",
           "status",
+          "bookingFor",
           "confirmedAt",
           "trip"
         ]
@@ -12555,6 +12592,33 @@
             "example": false,
             "default": false,
             "description": "Set to true to override a DUPLICATE_TIME_BOOKING conflict"
+          },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "default": "SELF",
+            "description": "Who travels: the booker or someone else."
+          },
+          "passengerName": {
+            "type": "string",
+            "example": "Mona Ahmed",
+            "maxLength": 255,
+            "description": "Required when bookingFor is OTHER; ignored for SELF (snapshot comes from the account)."
+          },
+          "passengerPhone": {
+            "type": "string",
+            "example": "01012345678",
+            "maxLength": 30,
+            "description": "Required when bookingFor is OTHER."
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "maxLength": 1000,
+            "description": "Free-form note visible to the driver/operator."
           }
         },
         "required": [
@@ -12941,6 +13005,19 @@
             "format": "uuid",
             "nullable": true
           },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "example": "SELF"
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "nullable": true
+          },
           "seats": {
             "type": "number",
             "example": 2
@@ -13015,6 +13092,7 @@
           "fleetName",
           "tripId",
           "passengerName",
+          "bookingFor",
           "seats",
           "status",
           "refundedAmount",
@@ -13219,6 +13297,43 @@
             "type": "number",
             "example": 2
           },
+          "passengerName": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "passengerPhone": {
+            "type": "string",
+            "example": "+201000000000",
+            "nullable": true
+          },
+          "passengerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "example": "SELF"
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "nullable": true
+          },
+          "boardingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "landingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
           "totalAmount": {
             "type": "string",
             "example": "100.00",
@@ -13331,6 +13446,8 @@
           "fleetName",
           "status",
           "seats",
+          "passengerName",
+          "bookingFor",
           "refundedAmount",
           "trip",
           "ratings",

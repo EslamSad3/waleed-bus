@@ -19,6 +19,18 @@ import type {
   PassengerBookingListQueryDto,
 } from './dto/passenger-booking.dto.js';
 
+/**
+ * Platform-wide default when a user has no personal override (spec 010).
+ * Shown in the dashboard as the default next to the per-user override.
+ */
+export const PLATFORM_DEFAULT_MAX_BOOKING_SEATS = 5;
+
+export function effectiveMaxBookingSeats(
+  maxBookingSeats: number | null | undefined,
+): number {
+  return maxBookingSeats ?? PLATFORM_DEFAULT_MAX_BOOKING_SEATS;
+}
+
 @Injectable()
 export class PassengerBookingService {
   constructor(
@@ -134,6 +146,38 @@ export class PassengerBookingService {
         );
       }
 
+      const bookingFor = input.bookingFor ?? 'SELF';
+      const seatLimit = effectiveMaxBookingSeats(caller.maxBookingSeats);
+      if (input.seatCount > seatLimit) {
+        throw new CodedException(
+          422,
+          'BOOKING_SEAT_LIMIT_EXCEEDED',
+          `You can book at most ${seatLimit} seats per booking.`,
+        );
+      }
+
+      let passengerUserId: string | null = actor.id;
+      let passengerName = caller.name ?? 'Passenger';
+      let passengerPhone: string | null = caller.phoneNumber;
+      if (bookingFor === 'OTHER') {
+        const otherName = input.passengerName?.trim();
+        const otherPhone = input.passengerPhone?.trim();
+        if (!otherName || !otherPhone) {
+          throw new CodedException(
+            400,
+            'VALIDATION_FAILED',
+            'passengerName and passengerPhone are required when booking for someone else.',
+          );
+        }
+        const otherAccount = await tx.user.findFirst({
+          where: { phoneNumber: otherPhone, isActive: true },
+          select: { id: true },
+        });
+        passengerUserId = otherAccount?.id ?? null;
+        passengerName = otherName;
+        passengerPhone = otherPhone;
+      }
+
       // Aggregate confirmed seats
       const bookedSeatsAgg = await tx.booking.aggregate({
         where: { tripId: trip.id, status: 'CONFIRMED' },
@@ -156,9 +200,11 @@ export class PassengerBookingService {
         data: {
           fleetId: trip.fleet_id,
           tripId: trip.id,
-          passengerUserId: actor.id,
-          passengerName: caller.name ?? 'Passenger',
-          passengerPhone: caller.phoneNumber,
+          passengerUserId,
+          passengerName,
+          passengerPhone,
+          bookingFor,
+          note: input.note?.trim() || null,
           boardingStationId: input.boardingStationId,
           landingStationId: input.landingStationId,
           pickupAddress: input.pickupAddress?.trim() || null,
@@ -201,8 +247,11 @@ export class PassengerBookingService {
       return {
         id: booking.id,
         tripId: booking.tripId,
+        passengerUserId: booking.passengerUserId,
         passengerName: booking.passengerName,
         passengerPhone: booking.passengerPhone,
+        bookingFor: booking.bookingFor,
+        note: booking.note,
         seats: booking.seats,
         status: booking.status,
         paymentMethod: booking.paymentMethod,
@@ -272,8 +321,11 @@ export class PassengerBookingService {
     const items: PassengerBookingItemDto[] = bookings.map((b) => ({
       id: b.id,
       tripId: b.tripId,
+      passengerUserId: b.passengerUserId,
       passengerName: b.passengerName,
       passengerPhone: b.passengerPhone,
+      bookingFor: b.bookingFor,
+      note: b.note,
       seats: b.seats,
       status: b.status,
       paymentMethod: b.paymentMethod,
@@ -340,8 +392,11 @@ export class PassengerBookingService {
     return {
       id: booking.id,
       tripId: booking.tripId,
+      passengerUserId: booking.passengerUserId,
       passengerName: booking.passengerName,
       passengerPhone: booking.passengerPhone,
+      bookingFor: booking.bookingFor,
+      note: booking.note,
       seats: booking.seats,
       status: booking.status,
       paymentMethod: booking.paymentMethod,

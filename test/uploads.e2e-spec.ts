@@ -63,18 +63,34 @@ describe('Uploads (e2e, spec 007 follow-up)', () => {
     expect(res.body.code).toBe('INVALID_IMAGE_TYPE');
   });
 
-  it('returns STORAGE_NOT_CONFIGURED for valid images when keys are absent', async () => {
-    // Test env carries no SUPABASE_* keys, so a decodable image must 503
-    // after passing validation. Minimal 1x1 PNG.
+  it('uploads a valid image when keys are present, else 503', async () => {
+    // Minimal 1x1 PNG. Keyless environments (CI) take the 503 path;
+    // configured environments exercise the live upload + cleanup path.
     const png = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
       'base64',
     );
+    const configured = Boolean(
+      process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
+    );
     const res = await api()
       .post(`/fleets/${fleetId}/uploads/bus-image`)
       .set({ Authorization: `Bearer ${adminToken}` })
-      .attach('image', png, 'tiny.png')
-      .expect(503);
-    expect(res.body.code).toBe('STORAGE_NOT_CONFIGURED');
+      .attach('image', png, 'tiny.png');
+    if (!configured) {
+      expect(res.status).toBe(503);
+      expect(res.body.code).toBe('STORAGE_NOT_CONFIGURED');
+      return;
+    }
+    expect(res.status).toBe(201);
+    expect(res.body.data.url).toContain('bus-images');
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL as string,
+      process.env.SUPABASE_SERVICE_ROLE_KEY as string,
+    );
+    const path = new URL(res.body.data.url).pathname.split('/bus-images/')[1];
+    const { error } = await supabase.storage.from('bus-images').remove([path]);
+    expect(error).toBeNull();
   });
 });
