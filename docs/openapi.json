@@ -10948,6 +10948,150 @@
           "passenger-favorites"
         ]
       }
+    },
+    "/config/customer-service": {
+      "get": {
+        "operationId": "ServiceConfigController_listPublic",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Customer service entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceConfigEntryDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public mobile read: active entries in order.",
+        "tags": [
+          "service-config"
+        ]
+      }
+    },
+    "/platform/config/customer-service": {
+      "get": {
+        "operationId": "PlatformServiceConfigController_listAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceConfigEntryDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Platform read: full list including inactive.",
+        "tags": [
+          "platform-service-config"
+        ]
+      },
+      "put": {
+        "operationId": "PlatformServiceConfigController_replace",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceServiceConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Entries replaced.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceConfigEntryDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the whole ordered list (client order wins).",
+        "tags": [
+          "platform-service-config"
+        ]
+      }
     }
   },
   "info": {
@@ -15652,6 +15796,97 @@
             "description": "Set null to clear."
           }
         }
+      },
+      "ServiceConfigEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string",
+            "example": "Contact customer service"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PHONE",
+              "WHATSAPP",
+              "WEBSITE"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "0111234567"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "type",
+          "value",
+          "isActive",
+          "sortOrder"
+        ]
+      },
+      "ServiceConfigEntryInputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Omit to create; unknown ids are rejected, never auto-created."
+          },
+          "text": {
+            "type": "string",
+            "example": "Contact customer service",
+            "maxLength": 200
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PHONE",
+              "WHATSAPP",
+              "WEBSITE"
+            ],
+            "example": "PHONE"
+          },
+          "value": {
+            "type": "string",
+            "example": "0111234567"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "value"
+        ]
+      },
+      "ReplaceServiceConfigDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "description": "Full ordered list; array position wins.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceConfigEntryInputDto"
+            }
+          }
+        },
+        "required": [
+          "entries"
+        ]
       }
     }
   }

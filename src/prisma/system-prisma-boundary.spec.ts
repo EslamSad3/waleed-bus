@@ -56,6 +56,7 @@ describe('SystemPrisma Architectural Boundary', () => {
     'notifications/platform-notifications.controller.ts',
     'promotions/promotions.service.ts',
     'promotions/platform-promotions.controller.ts',
+    'service-config/service-config.service.ts',
     'routes/geography.service.ts',
     'routes/trip-lines.service.ts',
   ]);

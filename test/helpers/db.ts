@@ -37,6 +37,7 @@ const ALL_TABLES = [
   'promotion_targets',
   'promotion_usages',
   'notifications',
+  'service_config_entries',
   // Platform catalog (except seeded governorates): suites create their own
   // lines/stations per run, so truncate them for hermetic re-runs.
   'lines',

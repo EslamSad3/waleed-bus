@@ -266,6 +266,8 @@ REVOKE ALL ON public.vip_tiers FROM app_tenant;
 -- Spec 011: promotions catalog + usages + targets are platform-managed via the
 -- system path (never fleet-scoped); app_tenant gets no grants.
 REVOKE ALL ON public.promotions, public.promotion_targets, public.promotion_usages FROM app_tenant;
+-- Spec 013: service-config entries are platform-managed catalog rows too.
+REVOKE ALL ON public.service_config_entries FROM app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.trip_shares TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.phone_verification_challenges, public.user_auth_providers TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO app_tenant;

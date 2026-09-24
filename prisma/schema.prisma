@@ -548,6 +548,23 @@ model Notification {
   @@map("notifications")
 }
 
+/// Dashboard-managed customer-service / ads entries (spec 013). Single global
+/// ordered list; `type` is PHONE | WHATSAPP | WEBSITE (validated app-layer).
+/// Platform-managed catalog: no RLS policy (see check-rls exclusions).
+model ServiceConfigEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  text      String   @db.VarChar(200)
+  type      String   @db.VarChar(20)
+  value     String   @db.VarChar(500)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, sortOrder])
+  @@map("service_config_entries")
+}
+
 /// Generic DB-backed rate-limit bucket. Keys: login:phone:<n>,
 /// login:ip:<ip>, otp:send:<phone>, otp:verify:<challengeId>.
 model ThrottleCounter {
