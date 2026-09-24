@@ -251,6 +251,8 @@ REVOKE ALL ON public.lines, public.routes, public.stations, public.route_station
 REVOKE ALL ON public.markazes, public.localities FROM app_tenant;
 -- Spec 007: vehicle brand dictionary is platform-owned catalog data too.
 REVOKE ALL ON public.vehicle_brands FROM app_tenant;
+-- Spec 008: VIP tiers are platform-owned catalog data too.
+REVOKE ALL ON public.vip_tiers FROM app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.trip_shares TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.phone_verification_challenges, public.user_auth_providers TO app_tenant;
 

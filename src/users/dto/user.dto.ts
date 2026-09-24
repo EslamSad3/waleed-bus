@@ -96,6 +96,9 @@ export class FleetDto {
   @ApiProperty({ example: true })
   isActive!: boolean;
 
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  vipTierId?: string | null;
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;
 

@@ -1043,6 +1043,77 @@
         ]
       }
     },
+    "/fleets/{id}/vip": {
+      "patch": {
+        "operationId": "FleetsController_assignVip",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignFleetVipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fleet with VIP tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign or clear the VIP tier of a fleet (platform path).",
+        "tags": [
+          "fleets"
+        ]
+      }
+    },
     "/fleets/{fleetId}/members": {
       "post": {
         "operationId": "MembersController_add",
@@ -8228,6 +8299,359 @@
         ]
       }
     },
+    "/public/discovery/fleet-owners": {
+      "get": {
+        "operationId": "DiscoveryController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Owner, fleet, or geography fragment (Arabic supported).",
+            "schema": {
+              "example": "Halem",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cursor page of fleet owners grouped with VIP rank.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FleetOwnerSearchItemDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Discover fleet owners by name or route geography, VIP-ordered. No seat-availability filter.",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/public/discovery/fleet-owners/{fleetId}/buses": {
+      "get": {
+        "operationId": "DiscoveryController_fleetBuses",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active buses of the fleet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BusDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fleet not found."
+          }
+        },
+        "summary": "List active buses of one fleet with vehicle details and assigned driver.",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/vip-tiers": {
+      "get": {
+        "operationId": "VipTiersController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active VIP tiers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VipTierDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active VIP tiers ordered by rank.",
+        "tags": [
+          "vip-tiers"
+        ]
+      },
+      "post": {
+        "operationId": "VipTiersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVipTierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tier created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VipTierDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A tier with this name or rank already exists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a VIP tier.",
+        "tags": [
+          "vip-tiers"
+        ]
+      }
+    },
+    "/vip-tiers/{id}": {
+      "get": {
+        "operationId": "VipTiersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Tier id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tier details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VipTierDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Tier not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one VIP tier by id.",
+        "tags": [
+          "vip-tiers"
+        ]
+      },
+      "patch": {
+        "operationId": "VipTiersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Tier id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVipTierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tier updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VipTierDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a VIP tier (name, rank, active flag).",
+        "tags": [
+          "vip-tiers"
+        ]
+      }
+    },
     "/driver/me": {
       "patch": {
         "operationId": "DriverOpsController_updateMe",
@@ -9709,6 +10133,11 @@
             "type": "boolean",
             "example": true
           },
+          "vipTierId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -9792,6 +10221,17 @@
           "isActive": {
             "type": "boolean",
             "example": true
+          }
+        }
+      },
+      "AssignFleetVipDto": {
+        "type": "object",
+        "properties": {
+          "vipTierId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "VIP tier to assign; null clears the assignment."
           }
         }
       },
@@ -13236,6 +13676,97 @@
             "type": "string",
             "minLength": 14,
             "maxLength": 14
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "VipTierDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "VIP 1"
+          },
+          "rank": {
+            "type": "number",
+            "example": 1
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rank",
+          "isActive"
+        ]
+      },
+      "FleetOwnerSearchItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Halem Fleet"
+          },
+          "ownerName": {
+            "type": "object",
+            "example": "Halem"
+          },
+          "vipTier": {
+            "$ref": "#/components/schemas/VipTierDto"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CreateVipTierDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "VIP 1",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "rank": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "rank"
+        ]
+      },
+      "UpdateVipTierDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "VIP 1"
+          },
+          "rank": {
+            "type": "number",
+            "example": 1
           },
           "isActive": {
             "type": "boolean"

@@ -31,6 +31,7 @@ import {
   MyMembershipDto,
   UpdateFleetDto,
 } from '../users/dto/user.dto.js';
+import { AssignFleetVipDto } from '../fleet-owner/dto/discovery.dto.js';
 
 @ApiTags('fleets')
 @ApiSecurity('bearer')
@@ -110,6 +111,21 @@ export class FleetsController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.fleetsService.update(id, dto, actor.id);
+  }
+
+  @Platform()
+  @Patch(':id/vip')
+  @RequirePermission('fleets.update')
+  @ApiOperation({ summary: 'Assign or clear the VIP tier of a fleet (platform path).' })
+  @ApiUuidParam('id', 'Fleet id (uuid).')
+  @ApiEnvelopeResponse(200, 'Fleet with VIP tier.')
+  @ApiNotFound('Fleet not found.')
+  assignVip(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignFleetVipDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.fleetsService.assignVipTier(id, dto.vipTierId, actor.id);
   }
 
   @Platform()
