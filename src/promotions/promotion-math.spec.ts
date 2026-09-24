@@ -38,21 +38,10 @@ describe('normalizePromoCode', () => {
 });
 
 describe('computePromoDiscount', () => {
-  it('computes percentage of gross rounded to 2 decimals', () => {
+  it('applies the fixed EGP amount rounded to 2 decimals', () => {
     expect(
-      computePromoDiscount({ type: 'PERCENTAGE', value: 10, gross: 199.99 }),
-    ).toBe(20);
-  });
-
-  it('caps percentage discounts at maxDiscountAmount', () => {
-    expect(
-      computePromoDiscount({
-        type: 'PERCENTAGE',
-        value: 50,
-        maxDiscountAmount: 30,
-        gross: 200,
-      }),
-    ).toBe(30);
+      computePromoDiscount({ type: 'FIXED', value: 50, gross: 199.99 }),
+    ).toBe(50);
   });
 
   it('floors fixed discounts at gross (never negative totals)', () => {
@@ -61,15 +50,23 @@ describe('computePromoDiscount', () => {
     ).toBe(120);
   });
 
-  it('rejects out-of-range percentage values', () => {
+  it('rejects non-positive fixed values', () => {
     expect(
       codeOf(() =>
-        computePromoDiscount({ type: 'PERCENTAGE', value: 0, gross: 100 }),
+        computePromoDiscount({ type: 'FIXED', value: 0, gross: 100 }),
       ),
     ).toBe('INVALID_PROMO_VALUE');
     expect(
       codeOf(() =>
-        computePromoDiscount({ type: 'PERCENTAGE', value: 101, gross: 100 }),
+        computePromoDiscount({ type: 'FIXED', value: -5, gross: 100 }),
+      ),
+    ).toBe('INVALID_PROMO_VALUE');
+  });
+
+  it('rejects any non-FIXED type', () => {
+    expect(
+      codeOf(() =>
+        computePromoDiscount({ type: 'PERCENTAGE', value: 10, gross: 100 }),
       ),
     ).toBe('INVALID_PROMO_VALUE');
   });

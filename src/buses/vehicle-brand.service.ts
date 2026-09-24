@@ -15,9 +15,14 @@ export class VehicleBrandService {
     private readonly audit: AuditService,
   ) {}
 
-  async listBrands() {
+  /**
+   * Admin list. Selection endpoints stay active-only; pass
+   * includeInactive for the management screen so deactivated rows can be
+   * reactivated. Platform-scoped — never exposed to passengers.
+   */
+  async listBrands(includeInactive = false) {
     return this.system.vehicleBrand.findMany({
-      where: { isActive: true },
+      where: includeInactive ? {} : { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }

@@ -1,6 +1,6 @@
 import { CodedException } from '../common/filters/coded.exception.js';
 
-export type PromotionType = 'PERCENTAGE' | 'FIXED';
+export type PromotionType = 'FIXED';
 
 export type PromoWindowStatus =
   | 'OK'
@@ -27,32 +27,16 @@ export function normalizePromoCode(raw: string): string {
 }
 
 /**
- * Computes the discount for a gross amount. Percentage discounts use
- * `value` as 1-100 and are capped by `maxDiscountAmount` when set; fixed
- * discounts never exceed the gross (totals floor at 0).
+ * Computes the fixed-EGP discount for a gross amount (call §39: fixed
+ * monetary amount, never percentage-based). The discount never exceeds the
+ * gross — totals floor at 0.
  */
 export function computePromoDiscount(args: {
   type: PromotionType | string;
   value: number | string | { toString(): string };
-  maxDiscountAmount?: number | string | { toString(): string } | null;
   gross: number;
 }): number {
   const gross = Math.max(0, args.gross);
-  if (args.type === 'PERCENTAGE') {
-    const pct = Number(args.value);
-    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-      throw new CodedException(
-        422,
-        'INVALID_PROMO_VALUE',
-        'Percentage value must be between 1 and 100.',
-      );
-    }
-    let discount = Math.round(((gross * pct) / 100 + Number.EPSILON) * 100) / 100;
-    if (args.maxDiscountAmount != null) {
-      discount = Math.min(discount, Math.max(0, Number(args.maxDiscountAmount)));
-    }
-    return Math.min(discount, gross);
-  }
   if (args.type === 'FIXED') {
     const fixed = Number(args.value);
     if (!Number.isFinite(fixed) || fixed <= 0) {
@@ -67,7 +51,7 @@ export function computePromoDiscount(args: {
   throw new CodedException(
     422,
     'INVALID_PROMO_VALUE',
-    'Promo type must be PERCENTAGE or FIXED.',
+    'Promo type must be FIXED.',
   );
 }
 

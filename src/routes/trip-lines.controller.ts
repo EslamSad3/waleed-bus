@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -24,10 +24,12 @@ export class TripLinesController {
 
   @Get('governorates/:id/markaz')
   @RequirePermission('stations.read')
-  @ApiOperation({ summary: 'List active markaz for one governorate (dependent selector).' })
-  @ApiEnvelopeResponse(200, 'Active markaz of the governorate.', MarkazDto, true)
+  @ApiOperation({ summary: 'List markaz for one governorate (active only unless includeInactive=true).' })
+  @ApiEnvelopeResponse(200, 'Markaz of the governorate.', MarkazDto, true)
   @ApiUuidParam('id', 'Governorate id.')
-  findMarkaz(@Param('id', ParseUUIDPipe) id: string) { return this.geography.listMarkaz(id); }
+  findMarkaz(@Param('id', ParseUUIDPipe) id: string, @Query('includeInactive') includeInactive?: string) {
+    return this.geography.listMarkaz(id, includeInactive === 'true');
+  }
 
   @Post('markaz')
   @RequirePermission('stations.create')
@@ -52,10 +54,12 @@ export class TripLinesController {
 
   @Get('markaz/:id/localities')
   @RequirePermission('stations.read')
-  @ApiOperation({ summary: 'List active cities/villages for one markaz (dependent selector).' })
-  @ApiEnvelopeResponse(200, 'Active localities of the markaz.', LocalityDto, true)
+  @ApiOperation({ summary: 'List cities/villages for one markaz (active only unless includeInactive=true).' })
+  @ApiEnvelopeResponse(200, 'Localities of the markaz.', LocalityDto, true)
   @ApiUuidParam('id', 'Markaz id.')
-  findLocalities(@Param('id', ParseUUIDPipe) id: string) { return this.geography.listLocalities(id); }
+  findLocalities(@Param('id', ParseUUIDPipe) id: string, @Query('includeInactive') includeInactive?: string) {
+    return this.geography.listLocalities(id, includeInactive === 'true');
+  }
 
   @Post('localities')
   @RequirePermission('stations.create')

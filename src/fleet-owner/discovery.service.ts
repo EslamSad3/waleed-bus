@@ -1,10 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { CodedException } from '../common/filters/coded.exception.js';
-import {
-  buildCursorArgs,
-  toCursorPage,
-  type CursorPage,
-} from '../common/pagination.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 
@@ -13,15 +8,22 @@ const fleetSearchInclude = {
   vipTier: { select: { id: true, name: true, rank: true } },
 } satisfies Prisma.FleetInclude;
 
-type FleetSearchRow = Prisma.FleetGetPayload<{
-  include: typeof fleetSearchInclude;
-}>;
-
-export type FleetOwnerSearchItem = {
+export type FleetOwnerSearchFleet = {
   id: string;
   name: string;
-  ownerName: string | null;
   vipTier: { id: string; name: string; rank: number } | null;
+};
+
+/**
+ * One item per fleet OWNER (call §§13-14: "Group results by fleet owner").
+ * An owner with N fleets appears exactly once with nested fleets; vipRank is
+ * the best (min) tier rank across their fleets, null when untiered.
+ */
+export type FleetOwnerSearchItem = {
+  fleetOwnerId: string;
+  fleetOwnerName: string | null;
+  vipRank: number | null;
+  fleets: FleetOwnerSearchFleet[];
 };
 
 const busDiscoveryInclude = {
@@ -45,12 +47,22 @@ const busDiscoveryInclude = {
 export class DiscoveryService {
   constructor(private readonly system: SystemPrismaService) {}
 
+  /**
+   * Owner-grouped directory search (call §§13-15). Fleets match on fleet
+   * name, owner name/nickname, or route geography; results collapse to one
+   * item per owner ordered by best VIP rank (untiered last), then owner name.
+   * The directory is small and search-scoped, so grouping runs in memory over
+   * a bounded fleet fetch instead of cursor pagination.
+   */
   async searchFleetOwners(query: {
     q?: string;
-    cursor?: string;
     limit?: string;
-  }): Promise<CursorPage<FleetOwnerSearchItem>> {
-    const { pageSize, ...args } = buildCursorArgs(query);
+  }): Promise<{ items: FleetOwnerSearchItem[] }> {
+    const rawLimit = Number(query.limit);
+    const pageSize =
+      Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(Math.floor(rawLimit), 100)
+        : 20;
     const term = query.q?.trim();
     const contains = term
       ? { contains: term, mode: 'insensitive' as const }
@@ -112,7 +124,7 @@ export class DiscoveryService {
       : undefined;
 
     const rows = await this.system.fleet.findMany({
-      ...args,
+      take: pageSize * 5,
       where: {
         isActive: true,
         owner: { isActive: true },
@@ -127,10 +139,39 @@ export class DiscoveryService {
             }
           : undefined),
       },
+      // Note: PostgreSQL ASC sorts NULLS LAST, so untiered fleets trail
+      // ranked ones; the owner-level sort below is explicitly nulls-last.
       orderBy: [{ vipTier: { rank: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
       include: fleetSearchInclude,
     });
-    return toCursorPage(rows.map((row) => this.present(row)), pageSize);
+
+    const groups = new Map<string, FleetOwnerSearchItem>();
+    for (const row of rows) {
+      let group = groups.get(row.owner.id);
+      if (!group) {
+        group = {
+          fleetOwnerId: row.owner.id,
+          fleetOwnerName: row.owner.name ?? row.owner.nickname,
+          vipRank: null,
+          fleets: [],
+        };
+        groups.set(row.owner.id, group);
+      }
+      group.fleets.push({ id: row.id, name: row.name, vipTier: row.vipTier });
+      if (row.vipTier && (group.vipRank === null || row.vipTier.rank < group.vipRank)) {
+        group.vipRank = row.vipTier.rank;
+      }
+    }
+    const items = [...groups.values()]
+      .sort((a, b) => {
+        if (a.vipRank === null && b.vipRank === null) return 0;
+        if (a.vipRank === null) return 1;
+        if (b.vipRank === null) return -1;
+        if (a.vipRank !== b.vipRank) return a.vipRank - b.vipRank;
+        return (a.fleetOwnerName ?? '').localeCompare(b.fleetOwnerName ?? '');
+      })
+      .slice(0, pageSize);
+    return { items };
   }
 
   async fleetBuses(fleetId: string) {
@@ -164,14 +205,5 @@ export class DiscoveryService {
       modelYear: bus.modelYear,
       driver: bus.assignments[0]?.driver ?? null,
     }));
-  }
-
-  private present(row: FleetSearchRow): FleetOwnerSearchItem {
-    return {
-      id: row.id,
-      name: row.name,
-      ownerName: row.owner.name ?? row.owner.nickname,
-      vipTier: row.vipTier,
-    };
   }
 }

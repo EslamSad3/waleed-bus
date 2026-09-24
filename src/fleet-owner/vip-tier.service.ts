@@ -15,9 +15,10 @@ export class VipTierService {
     private readonly audit: AuditService,
   ) {}
 
-  async listTiers() {
+  /** Admin list; includeInactive reveals deactivated tiers for reactivation. Platform-scoped. */
+  async listTiers(includeInactive = false) {
     return this.system.vipTier.findMany({
-      where: { isActive: true },
+      where: includeInactive ? {} : { isActive: true },
       orderBy: { rank: 'asc' },
     });
   }

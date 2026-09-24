@@ -66,27 +66,33 @@ export class FleetOwnerSearchQueryDto {
   @IsString()
   q?: string;
 
-  @ApiPropertyOptional({ description: 'Opaque cursor from the previous page.' })
-  @IsOptional()
-  @IsString()
-  cursor?: string;
-
-  @ApiPropertyOptional({ example: 20 })
+  @ApiPropertyOptional({ example: 20, description: 'Max owner groups (1-100, default 20).' })
   @IsOptional()
   @IsString()
   limit?: string;
 }
 
-export class FleetOwnerSearchItemDto {
+export class FleetOwnerSearchFleetDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ example: 'Halem Fleet' })
+  @ApiProperty({ example: 'Halem Travel' })
   name!: string;
-
-  @ApiPropertyOptional({ example: 'Halem' })
-  ownerName!: string | null;
 
   @ApiPropertyOptional({ type: () => VipTierDto })
   vipTier!: VipTierDto | null;
+}
+
+export class FleetOwnerSearchItemDto {
+  @ApiProperty({ format: 'uuid', description: 'Owner user id — the grouping key.' })
+  fleetOwnerId!: string;
+
+  @ApiPropertyOptional({ example: 'Halem' })
+  fleetOwnerName!: string | null;
+
+  @ApiPropertyOptional({ example: 1, description: 'Best VIP rank across the owner fleets; null = untiered (sorts last).' })
+  vipRank!: number | null;
+
+  @ApiProperty({ type: () => FleetOwnerSearchFleetDto, isArray: true })
+  fleets!: FleetOwnerSearchFleetDto[];
 }

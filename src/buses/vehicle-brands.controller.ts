@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -17,9 +17,11 @@ export class VehicleBrandsController {
 
   @Get()
   @RequirePermission('buses.read')
-  @ApiOperation({ summary: 'List active vehicle brands ordered for selection.' })
-  @ApiEnvelopeResponse(200, 'Active vehicle brands.', VehicleBrandDto, true)
-  findAll() { return this.brands.listBrands(); }
+  @ApiOperation({ summary: 'List vehicle brands (active only unless includeInactive=true for the management screen).' })
+  @ApiEnvelopeResponse(200, 'Vehicle brands.', VehicleBrandDto, true)
+  findAll(@Query('includeInactive') includeInactive?: string) {
+    return this.brands.listBrands(includeInactive === 'true');
+  }
 
   @Post()
   @RequirePermission('buses.create')

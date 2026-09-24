@@ -3,7 +3,6 @@ import { AuditService } from '../audit/audit.service.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
 import { PromotionsService } from '../promotions/promotions.service.js';
 import {
   buildCursorArgs,
@@ -39,7 +38,6 @@ export class PassengerBookingService {
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
     private readonly promotions: PromotionsService,
-    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -314,45 +312,8 @@ export class PassengerBookingService {
         },
       };
 
-      // Spec 012 triggers fire AFTER commit (see below) — never inside the tx,
-      // so a rolled-back booking can never emit a phantom notification.
-      return {
-        booking: created,
-        notifyBooker: { userId: actor.id, bookingId: booking.id, tripId: trip.id },
-        notifyTraveler:
-          bookingFor === 'OTHER' &&
-          booking.passengerUserId &&
-          booking.passengerUserId !== actor.id
-            ? {
-                userId: booking.passengerUserId,
-                bookingId: booking.id,
-                tripId: trip.id,
-              }
-            : null,
-        tripOrigin: booking.trip.origin,
-        tripDestination: booking.trip.destination,
-        seats: created.seats,
-      };
+      return { booking: created };
     }).then((result) => {
-      // Best-effort post-commit emits; failures are logged, never thrown.
-      void this.notifications.notifyBestEffort({
-        userId: result.notifyBooker.userId,
-        category: 'BOOKING',
-        title: 'تم تأكيد حجزك',
-        body: `حجز ${result.seats} مقعد من ${result.tripOrigin} إلى ${result.tripDestination} برقم ${result.notifyBooker.bookingId.slice(0, 8)}.`,
-        data: { bookingId: result.notifyBooker.bookingId, tripId: result.notifyBooker.tripId },
-        dedupeKey: `booking:${result.notifyBooker.bookingId}:confirmed`,
-      });
-      if (result.notifyTraveler) {
-        void this.notifications.notifyBestEffort({
-          userId: result.notifyTraveler.userId,
-          category: 'BOOKING',
-          title: 'تم حجز مقعد لك',
-          body: `تم حجز ${result.seats} مقعد باسمك من ${result.tripOrigin} إلى ${result.tripDestination}.`,
-          data: { bookingId: result.notifyTraveler.bookingId, tripId: result.notifyTraveler.tripId },
-          dedupeKey: `booking:${result.notifyTraveler.bookingId}:confirmed:traveler`,
-        });
-      }
       return result.booking;
     });
   }
@@ -623,32 +584,8 @@ export class PassengerBookingService {
           cancelledAt: updated.cancelledAt!,
           cancellationReason: updated.cancellationReason,
         },
-        routing: {
-          bookerId: booking.bookedByUserId ?? actor.id,
-          travelerId: booking.passengerUserId,
-          bookingId: booking.id,
-        },
       };
     }).then((result) => {
-      // Spec 012: cancellation notice to the booker + linked traveler.
-      void this.notifications.notifyBestEffort({
-        userId: result.routing.bookerId,
-        category: 'BOOKING',
-        title: 'تم إلغاء الحجز',
-        body: `تم إلغاء ${result.response.cancelledSeats} مقعد من الحجز ${result.routing.bookingId.slice(0, 8)}.`,
-        data: { bookingId: result.routing.bookingId },
-        dedupeKey: `booking:${result.routing.bookingId}:cancelled`,
-      });
-      if (result.routing.travelerId && result.routing.travelerId !== result.routing.bookerId) {
-        void this.notifications.notifyBestEffort({
-          userId: result.routing.travelerId,
-          category: 'BOOKING',
-          title: 'تم إلغاء حجزك',
-          body: `تم إلغاء الحجز ${result.routing.bookingId.slice(0, 8)} المحجوز باسمك.`,
-          data: { bookingId: result.routing.bookingId },
-          dedupeKey: `booking:${result.routing.bookingId}:cancelled:traveler`,
-        });
-      }
       return result.response;
     });
   }

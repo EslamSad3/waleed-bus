@@ -261,6 +261,7 @@ model Trip {
   route    Route?    @relation(fields: [routeId], references: [id])
   bookings Booking[]
   reports  PassengerReport[]
+  notifications Notification[]
 
   @@index([fleetId])
   @@index([busId])
@@ -471,10 +472,11 @@ model Promotion {
   id                String    @id @default(uuid()) @db.Uuid
   /// Normalized UPPER-TRIM at write time; unique across the platform.
   code              String    @unique @db.VarChar(32)
+  /// FIXED only (call §39: fixed EGP amount, never percentage-based).
+  /// Enforced by CHECK promotions_type_check + DTO validation.
   type              String    @db.VarChar(20)
+  /// Fixed EGP discount amount (positive).
   value             Decimal   @db.Decimal(10, 2)
-  /// Caps PERCENTAGE discounts; null = uncapped.
-  maxDiscountAmount Decimal?  @map("max_discount_amount") @db.Decimal(10, 2)
   /// True = every user may consume (each up to maxUsesPerUser). False =
   /// only listed PromotionTarget users (no oracle: others see UNKNOWN).
   isGlobal          Boolean   @default(true) @map("is_global")
@@ -492,6 +494,7 @@ model Promotion {
   targets PromotionTarget[]
   usages  PromotionUsage[]
   bookings Booking[] @relation("PromotionBookings")
+  notifications Notification[] @relation("PromotionNotifications")
 
   @@index([isActive, isGlobal])
   @@map("promotions")
@@ -531,11 +534,14 @@ model PromotionUsage {
 model Notification {
   id        String    @id @default(uuid()) @db.Uuid
   userId    String    @map("user_id") @db.Uuid
+  /// Call §43: TEXT (no refs) | TRIP (tripId) | DISCOUNT_CODE (promotionId).
   category  String    @db.VarChar(20)
   title     String    @db.VarChar(200)
   body      String    @db.VarChar(2000)
-  /// Id-only payload (bookingId/tripId/code); no extra PII.
-  data      Json?     @db.JsonB
+  /// Set for TRIP; null otherwise. Trip deletion keeps the row (SET NULL).
+  tripId    String?   @map("trip_id") @db.Uuid
+  /// Set for DISCOUNT_CODE; null otherwise. Promotion deletion keeps the row.
+  promotionId String? @map("promotion_id") @db.Uuid
   /// Idempotency key; re-emit with the same key returns the existing row.
   dedupeKey String?   @unique @map("dedupe_key") @db.VarChar(128)
   isRead    Boolean   @default(false) @map("is_read")
@@ -543,6 +549,8 @@ model Notification {
   createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  promotion Promotion? @relation("PromotionNotifications", fields: [promotionId], references: [id], onDelete: SetNull)
 
   @@index([userId, isRead, createdAt])
   @@map("notifications")

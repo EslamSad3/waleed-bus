@@ -72,6 +72,11 @@ describe('Discovery + VIP (e2e, spec 008)', () => {
     const halemFleet = await t.system.fleet.create({
       data: { name: 'Halem Travel', ownerId: halem.id },
     });
+    // Second fleet for the same owner: owner search must group, not duplicate.
+    const halemFleet2 = await t.system.fleet.create({
+      data: { name: 'Halem Express', ownerId: halem.id },
+    });
+    void halemFleet2;
     const vipFleet = await t.system.fleet.create({
       data: { name: 'Apex Lines', ownerId: vipOwner.id },
     });
@@ -162,43 +167,51 @@ describe('Discovery + VIP (e2e, spec 008)', () => {
     expect(res.body.code).toBe('VIP_TIER_NOT_AVAILABLE');
   });
 
-  it('finds an owner by name fragment exactly once', async () => {
+  it('finds an owner by name fragment exactly once, with nested fleets', async () => {
     const res = await api()
       .get('/public/discovery/fleet-owners?q=halem')
       .expect(200);
-    const items = res.body.data.items as { id: string }[];
-    expect(items.filter((i) => i.id === halemFleetId)).toHaveLength(1);
+    const items = res.body.data.items as {
+      fleetOwnerId: string;
+      fleetOwnerName: string | null;
+      vipRank: number | null;
+      fleets: { id: string }[];
+    }[];
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ vipRank: 2 });
+    expect(items[0].fleets.map((f) => f.id).sort()).toEqual(
+      [halemFleetId, (await t.system.fleet.findFirstOrThrow({ where: { name: 'Halem Express' } })).id].sort(),
+    );
   });
 
-  it('finds fleets by Arabic geography fragment', async () => {
+  it('finds owners by Arabic geography fragment', async () => {
     const res = await api()
       .get('/public/discovery/fleet-owners?q=بنها')
       .expect(200);
-    const items = res.body.data.items as { id: string }[];
-    expect(items.some((i) => i.id === halemFleetId)).toBe(true);
+    const items = res.body.data.items as { fleetOwnerId: string }[];
+    const halemOwner = (await t.system.fleet.findUniqueOrThrow({ where: { id: halemFleetId } })).ownerId;
+    expect(items.some((i) => i.fleetOwnerId === halemOwner)).toBe(true);
   });
 
-  it('orders by VIP rank then name', async () => {
+  it('orders owners by best VIP rank then name (untiered last)', async () => {
     const res = await api()
       .get('/public/discovery/fleet-owners?limit=100')
       .expect(200);
-    const items = res.body.data.items as { id: string }[];
-    const order = [vipFleetId, halemFleetId, plainFleetId].map((id) =>
-      items.findIndex((i) => i.id === id),
+    const items = res.body.data.items as { fleetOwnerId: string; vipRank: number | null }[];
+    const ownerOf = async (fleetId: string) =>
+      (await t.system.fleet.findUniqueOrThrow({ where: { id: fleetId } })).ownerId;
+    const order = [await ownerOf(vipFleetId), await ownerOf(halemFleetId), await ownerOf(plainFleetId)].map(
+      (ownerId) => items.findIndex((i) => i.fleetOwnerId === ownerId),
     );
     expect(order.every((idx) => idx >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it('paginates with cursor without duplicates', async () => {
-    const first = await api()
+  it('bounds results with limit', async () => {
+    const res = await api()
       .get('/public/discovery/fleet-owners?limit=1')
       .expect(200);
-    expect(first.body.data.nextCursor).toBeTypeOf('string');
-    const second = await api()
-      .get(`/public/discovery/fleet-owners?limit=1&cursor=${first.body.data.nextCursor}`)
-      .expect(200);
-    expect(second.body.data.items[0].id).not.toBe(first.body.data.items[0].id);
+    expect((res.body.data.items as unknown[]).length).toBeLessThanOrEqual(1);
   });
 
   it('returns active buses with driver info, excluding inactive buses', async () => {

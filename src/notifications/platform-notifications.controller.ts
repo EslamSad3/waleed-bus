@@ -41,6 +41,8 @@ export class PlatformNotificationsController {
         userId: true,
         category: true,
         title: true,
+        tripId: true,
+        promotionId: true,
         isRead: true,
         createdAt: true,
       },

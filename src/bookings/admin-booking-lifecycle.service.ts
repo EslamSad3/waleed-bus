@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type {
@@ -20,7 +19,6 @@ export class AdminBookingLifecycleService {
   constructor(
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
-    private readonly notifications: NotificationsService,
   ) {}
 
   async forceCancel(
@@ -116,34 +114,8 @@ export class AdminBookingLifecycleService {
           paymentStatus: updated.paymentStatus,
           seatsRestored,
         },
-        routing: {
-          booker: booking.bookedByUserId ?? booking.passengerUserId,
-          traveler: booking.passengerUserId,
-          bookingId: id,
-        },
       };
     }).then((result) => {
-      // Spec 012: force-cancel notice to the booker + linked traveler.
-      if (result.routing.booker) {
-        void this.notifications.notifyBestEffort({
-          userId: result.routing.booker,
-          category: 'BOOKING',
-          title: 'تم إلغاء الحجز',
-          body: `تم إلغاء الحجز ${result.routing.bookingId.slice(0, 8)} من قبل الإدارة.`,
-          data: { bookingId: result.routing.bookingId },
-          dedupeKey: `booking:${result.routing.bookingId}:cancelled`,
-        });
-      }
-      if (result.routing.traveler && result.routing.traveler !== result.routing.booker) {
-        void this.notifications.notifyBestEffort({
-          userId: result.routing.traveler,
-          category: 'BOOKING',
-          title: 'تم إلغاء حجزك',
-          body: `تم إلغاء الحجز ${result.routing.bookingId.slice(0, 8)} المحجوز باسمك من قبل الإدارة.`,
-          data: { bookingId: result.routing.bookingId },
-          dedupeKey: `booking:${result.routing.bookingId}:cancelled:traveler`,
-        });
-      }
       return result.response;
     });
   }

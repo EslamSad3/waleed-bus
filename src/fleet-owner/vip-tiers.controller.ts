@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Platform, RequirePermission } from '../authorization/decorators/permissions.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -17,9 +17,11 @@ export class VipTiersController {
 
   @Get()
   @RequirePermission('fleets.read')
-  @ApiOperation({ summary: 'List active VIP tiers ordered by rank.' })
-  @ApiEnvelopeResponse(200, 'Active VIP tiers.', VipTierDto, true)
-  findAll() { return this.tiers.listTiers(); }
+  @ApiOperation({ summary: 'List VIP tiers (active only unless includeInactive=true for the management screen).' })
+  @ApiEnvelopeResponse(200, 'VIP tiers.', VipTierDto, true)
+  findAll(@Query('includeInactive') includeInactive?: string) {
+    return this.tiers.listTiers(includeInactive === 'true');
+  }
 
   @Post()
   @RequirePermission('fleets.create')

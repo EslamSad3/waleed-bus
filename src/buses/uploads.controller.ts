@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -58,11 +59,19 @@ export class UploadsController {
     }),
   )
   uploadBusImage(
-    @Param('fleetId', ParseUUIDPipe) _fleetId: string,
+    @Param('fleetId', ParseUUIDPipe) fleetId: string,
     @CurrentFleet() fleetContext: FleetContext,
     @Body() _body: Record<string, unknown>,
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
+    // Defense in depth: the verified context derives from this same route
+    // param (TenantContextGuard), so a mismatch is impossible — but assert it
+    // explicitly so the resource path and the operation can never diverge.
+    if (fleetContext.fleetId !== fleetId) {
+      throw new ForbiddenException(
+        'Fleet context does not match the requested fleet.',
+      );
+    }
     return this.uploads.uploadBusImage(fleetContext.fleetId, file);
   }
 }

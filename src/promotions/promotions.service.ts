@@ -9,6 +9,7 @@ import {
 } from '../common/pagination.js';
 import { ConfigService } from '../config/config.module.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import {
   computePromoDiscount,
@@ -43,7 +44,6 @@ function toDto(p: {
   code: string;
   type: string;
   value: { toString(): string };
-  maxDiscountAmount: { toString(): string } | null;
   isGlobal: boolean;
   maxUsesPerUser: number;
   maxTotalUses: number | null;
@@ -56,7 +56,6 @@ function toDto(p: {
     code: p.code,
     type: p.type,
     value: p.value.toString(),
-    maxDiscountAmount: p.maxDiscountAmount ? p.maxDiscountAmount.toString() : null,
     isGlobal: p.isGlobal,
     maxUsesPerUser: p.maxUsesPerUser,
     maxTotalUses: p.maxTotalUses,
@@ -78,6 +77,7 @@ export class PromotionsService {
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
     private readonly configs: ConfigService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private get enforceOncePerUser(): boolean {
@@ -88,8 +88,11 @@ export class PromotionsService {
 
   async createPromotion(actor: RequestUser, dto: CreatePromotionDto) {
     const code = normalizePromoCode(dto.code);
-    if (dto.type === 'PERCENTAGE' && (dto.value <= 0 || dto.value > 100)) {
-      throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Percentage value must be between 1 and 100.');
+    if (dto.type !== 'FIXED') {
+      throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Promo type must be FIXED.');
+    }
+    if (!(dto.value > 0)) {
+      throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Fixed value must be a positive amount.');
     }
     if (dto.startsAt && dto.expiresAt && new Date(dto.startsAt) >= new Date(dto.expiresAt)) {
       throw new CodedException(422, 'INVALID_PROMO_WINDOW', 'startsAt must be before expiresAt.');
@@ -102,9 +105,8 @@ export class PromotionsService {
       const created = await this.system.promotion.create({
         data: {
           code,
-          type: dto.type,
+          type: 'FIXED',
           value: dto.value,
-          maxDiscountAmount: dto.maxDiscountAmount ?? null,
           isGlobal,
           maxUsesPerUser: dto.maxUsesPerUser ?? 1,
           maxTotalUses: dto.maxTotalUses ?? null,
@@ -125,8 +127,23 @@ export class PromotionsService {
         action: 'promotion.create',
         resource: 'promotion',
         resourceId: created.id,
-        metadata: { code, type: dto.type },
+        metadata: { code, type: 'FIXED' },
       });
+      // Call §42: a USER-scoped code assigned to specific users emits one
+      // DISCOUNT_CODE notification per target (post-commit, best-effort).
+      // Global/public codes need no automatic notification.
+      if (!isGlobal) {
+        for (const userId of dto.targetUserIds ?? []) {
+          void this.notifications.notifyBestEffort({
+            userId,
+            category: 'DISCOUNT_CODE',
+            title: 'كود خصم جديد لك',
+            body: `تم تخصيص كود الخصم ${code} لك. انسخه واستخدمه عند الحجز.`,
+            promotionId: created.id,
+            dedupeKey: `promo:${created.id}:assigned:${userId}`,
+          });
+        }
+      }
       return toDto(created);
     } catch (err) {
       if (typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002') {
@@ -141,8 +158,8 @@ export class PromotionsService {
     if (!existing) {
       throw new CodedException(404, 'PROMOTION_NOT_FOUND', 'Promotion not found.');
     }
-    if (dto.value !== undefined && existing.type === 'PERCENTAGE' && (dto.value <= 0 || dto.value > 100)) {
-      throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Percentage value must be between 1 and 100.');
+    if (dto.value !== undefined && !(dto.value > 0)) {
+      throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Fixed value must be a positive amount.');
     }
     const startsAt = dto.startsAt !== undefined ? (dto.startsAt ? new Date(dto.startsAt) : null) : existing.startsAt;
     const expiresAt = dto.expiresAt !== undefined ? (dto.expiresAt ? new Date(dto.expiresAt) : null) : existing.expiresAt;
@@ -162,7 +179,6 @@ export class PromotionsService {
         where: { id },
         data: {
           ...(dto.value !== undefined ? { value: dto.value } : {}),
-          ...(dto.maxDiscountAmount !== undefined ? { maxDiscountAmount: dto.maxDiscountAmount } : {}),
           ...(dto.maxUsesPerUser !== undefined ? { maxUsesPerUser: dto.maxUsesPerUser } : {}),
           ...(dto.maxTotalUses !== undefined ? { maxTotalUses: dto.maxTotalUses } : {}),
           ...(dto.startsAt !== undefined ? { startsAt } : {}),
@@ -238,7 +254,6 @@ export class PromotionsService {
         code: true,
         type: true,
         value: true,
-        maxDiscountAmount: true,
         expiresAt: true,
       },
     });
@@ -246,7 +261,6 @@ export class PromotionsService {
       code: r.code,
       type: r.type,
       value: r.value.toString(),
-      maxDiscountAmount: r.maxDiscountAmount ? r.maxDiscountAmount.toString() : null,
       expiresAt: r.expiresAt ? r.expiresAt.toISOString() : null,
     }));
   }
@@ -311,7 +325,6 @@ export class PromotionsService {
         code: string;
         type: string;
         value: unknown;
-        max_discount_amount: unknown;
         is_global: boolean;
         max_uses_per_user: number;
         max_total_uses: number | null;
@@ -319,7 +332,7 @@ export class PromotionsService {
         expires_at: Date | null;
         is_active: boolean;
       }>
-    >`SELECT id, code, type, value, max_discount_amount, is_global, max_uses_per_user, max_total_uses, starts_at, expires_at, is_active FROM promotions WHERE code = ${code} FOR UPDATE`;
+    >`SELECT id, code, type, value, is_global, max_uses_per_user, max_total_uses, starts_at, expires_at, is_active FROM promotions WHERE code = ${code} FOR UPDATE`;
     if (locked.length === 0) return none('UNKNOWN');
     const promo = locked[0];
 
@@ -358,7 +371,6 @@ export class PromotionsService {
     const discountAmount = computePromoDiscount({
       type: promo.type,
       value: promo.value as number,
-      maxDiscountAmount: promo.max_discount_amount as number | null,
       gross,
     });
     void forWrite;

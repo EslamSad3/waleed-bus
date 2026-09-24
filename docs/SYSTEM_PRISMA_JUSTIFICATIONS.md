@@ -102,7 +102,7 @@ Any direct injection or usage of `SystemPrismaService` outside of `FleetPathServ
 - **Justification**: `vehicle_brands` is platform-global catalog data with no `fleet_id` column (same trust level as §7). All endpoints are `@Platform()`-guarded with `buses.*` permissions; mutations are audit-logged. Bus assignment validation is a read-only existence/`isActive` check before the fleet-scoped bus mutation.
 
 ### 11. Passenger Discovery + VIP Tiers (`fleet-owner/discovery.service.ts`, `fleet-owner/vip-tier.service.ts`)
-- **Operations**: Public fleet-owner search (name/geography match, VIP-ordered, cursor-paginated), public per-fleet active-bus listing with driver enrichment, VIP tier CRUD.
+- **Operations**: Public owner-grouped search (name/geography match, best-VIP-rank ordered, untiered last), public per-fleet active-bus listing with driver enrichment, VIP tier CRUD.
 - **Justification**: Discovery serves passengers who hold no fleet membership, so the fleet-member-scoped tenant path cannot serve it; the directory (`fleets`, `users`) and catalog (`stations`, `localities`, `markazes`, `governorates`, `vip_tiers`, `vehicle_brands`) rows are read-only projections that expose no seats, payments, or secrets. Writes (tier CRUD, fleet assignment) are `@Platform()`-guarded with `fleets.*` permissions and audit-logged.
 
 ### 12. Passenger Favorites (`favorites/favorites.service.ts`)
@@ -114,7 +114,7 @@ Any direct injection or usage of `SystemPrismaService` outside of `FleetPathServ
 - **Justification**: `promotions`/`promotion_targets`/`promotion_usages` are platform-global catalog rows with no `fleet_id` (same trust level as §7/§10); no tenant-path query can resolve a cross-fleet checkout code. Defense in depth: passenger reads expose no usage internals, unknown/ineligible codes uniformly surface as UNKNOWN (no oracle), per-code caps serialize on a locked promotion row, and platform mutations are audit-logged.
 
 ### 14. Notifications (`notifications/notifications.service.ts`, `notifications/platform-notifications.controller.ts`)
-- **Operations**: Server-side inbox emits (booking/payment/cancel/refund triggers), passenger inbox CRUD strictly scoped to `actor.id`, platform read-only ops listing.
+- **Operations**: Server-side inbox emits (USER-scoped promo-assignment trigger per call §42), passenger inbox CRUD strictly scoped to `actor.id`, platform read-only ops listing. Categories are TEXT/TRIP/DISCOUNT_CODE with explicit `trip_id`/`promotion_id` references (call §§43-44).
 - **Justification**: Same family as §3/§12 — triggers address users (booker vs traveler) who may belong to no common fleet, so the fleet-member-scoped tenant path cannot serve cross-user emits. Defense in depth: emit path is server-side only (no client-supplied recipient), inbox reads/deletes scope to `actor.id`, foreign ids uniformly 404 (no oracle), plus a database-level `owner_notifications` self-access RLS policy on `public.notifications`. Emits are best-effort and never fail the originating transaction.
 
 ### 15. Service Config (`service-config/service-config.service.ts`)

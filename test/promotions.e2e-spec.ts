@@ -111,29 +111,37 @@ describe('Promotions (e2e, spec 011)', () => {
     await t?.close();
   });
 
-  it('creates a global percentage code', async () => {
+  it('creates a global fixed-amount code (FIXED only)', async () => {
     const res = await api()
       .post('/platform/promotions')
       .set(admin())
-      .send({ code: 'global10', type: 'PERCENTAGE', value: 10 })
+      .send({ code: 'global20', type: 'FIXED', value: 20 })
       .expect(201);
-    expect(res.body.data).toMatchObject({ code: 'GLOBAL10', type: 'PERCENTAGE', isGlobal: true });
+    expect(res.body.data).toMatchObject({ code: 'GLOBAL20', type: 'FIXED', isGlobal: true });
+  });
+
+  it('rejects non-FIXED types at the validation boundary', async () => {
+    const res = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({ code: 'PERC10', type: 'PERCENTAGE', value: 10 });
+    expect(res.status).toBe(400);
   });
 
   it('rejects duplicate codes with PROMO_CODE_EXISTS', async () => {
     const res = await api()
       .post('/platform/promotions')
       .set(admin())
-      .send({ code: 'GLOBAL10', type: 'FIXED', value: 5 })
+      .send({ code: 'GLOBAL20', type: 'FIXED', value: 5 })
       .expect(409);
     expect(res.body.code).toBe('PROMO_CODE_EXISTS');
   });
 
   it('applies the global code once per user with a stored snapshot', async () => {
-    // Fare 100 x 2 seats = 200 gross; 10% = 20 discount; pays 180.
-    const res = await book(tokenA, { ...baseBooking(), promoCode: 'global10' }).expect(201);
+    // Fare 100 x 2 seats = 200 gross; fixed 20 discount; pays 180.
+    const res = await book(tokenA, { ...baseBooking(), promoCode: 'global20' }).expect(201);
     expect(res.body.data).toMatchObject({
-      promoCode: 'GLOBAL10',
+      promoCode: 'GLOBAL20',
       promoStatus: 'OK',
       discountAmount: '20.00',
       totalAmount: '180.00',
@@ -145,13 +153,13 @@ describe('Promotions (e2e, spec 011)', () => {
   });
 
   it('rejects reuse by the same user with PROMO_ALREADY_USED', async () => {
-    const res = await book(tokenA, { ...baseBooking(), promoCode: 'GLOBAL10' });
+    const res = await book(tokenA, { ...baseBooking(), promoCode: 'GLOBAL20' });
     expect(res.status).toBe(422);
     expect(res.body.code).toBe('PROMO_ALREADY_USED');
   });
 
   it('lets a second user consume the same global code', async () => {
-    const res = await book(tokenB, { ...baseBooking(), promoCode: 'GLOBAL10' }).expect(201);
+    const res = await book(tokenB, { ...baseBooking(), promoCode: 'GLOBAL20' }).expect(201);
     expect(res.body.data).toMatchObject({ promoStatus: 'OK', discountAmount: '20.00' });
   });
 
@@ -159,7 +167,7 @@ describe('Promotions (e2e, spec 011)', () => {
     await api()
       .post('/platform/promotions')
       .set(admin())
-      .send({ code: 'OLD20', type: 'PERCENTAGE', value: 20, expiresAt: new Date(Date.now() - 3600000).toISOString() })
+      .send({ code: 'OLD20', type: 'FIXED', value: 20, expiresAt: new Date(Date.now() - 3600000).toISOString() })
       .expect(201);
     const res = await book(tokenB, { ...baseBooking(), promoCode: 'OLD20' }).expect(201);
     expect(res.body.data).toMatchObject({
@@ -190,14 +198,14 @@ describe('Promotions (e2e, spec 011)', () => {
     await api()
       .post('/platform/promotions')
       .set(admin())
-      .send({ code: 'PREVIEW7', type: 'PERCENTAGE', value: 7 })
+      .send({ code: 'PREVIEW7', type: 'FIXED', value: 7 })
       .expect(201);
     const res = await api()
       .post('/promotions/validate')
       .set({ Authorization: `Bearer ${tokenB}` })
       .send({ code: 'PREVIEW7', tripId, seatCount: 1 })
       .expect(200);
-    // Fare 100 x 1 seat at 7% = 7 discount; dry run writes no usage row.
+    // Fare 100 x 1 seat with fixed 7 discount; dry run writes no usage row.
     expect(res.body.data).toMatchObject({
       promoCode: 'PREVIEW7',
       promoStatus: 'OK',
@@ -211,7 +219,7 @@ describe('Promotions (e2e, spec 011)', () => {
     const reused = await api()
       .post('/promotions/validate')
       .set({ Authorization: `Bearer ${tokenB}` })
-      .send({ code: 'GLOBAL10', tripId, seatCount: 1 });
+      .send({ code: 'GLOBAL20', tripId, seatCount: 1 });
     expect(reused.status).toBe(422);
     expect(reused.body.code).toBe('PROMO_ALREADY_USED');
   });
@@ -229,7 +237,7 @@ describe('Promotions (e2e, spec 011)', () => {
 
   it('exposes a per-code usage dashboard', async () => {
     const list = await api().get('/platform/promotions').set(admin()).expect(200);
-    const global = (list.body.data.items as Array<{ code: string; id: string }>).find((p) => p.code === 'GLOBAL10');
+    const global = (list.body.data.items as Array<{ code: string; id: string }>).find((p) => p.code === 'GLOBAL20');
     expect(global).toBeDefined();
     const usages = await api().get(`/platform/promotions/${global!.id}/usages`).set(admin()).expect(200);
     expect(usages.body.data.items.length).toBe(2);
@@ -238,7 +246,7 @@ describe('Promotions (e2e, spec 011)', () => {
   it('lists active global codes readonly for passengers', async () => {
     const res = await api().get('/promotions/active').set({ Authorization: `Bearer ${tokenA}` }).expect(200);
     const codes = (res.body.data as Array<{ code: string }>).map((p) => p.code);
-    expect(codes).toContain('GLOBAL10');
+    expect(codes).toContain('GLOBAL20');
     expect(codes).not.toContain('DYING5');
   });
 });

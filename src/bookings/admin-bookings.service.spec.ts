@@ -95,12 +95,10 @@ describe('AdminBookingsService', () => {
     const paymentService = new AdminPaymentService(
       mockSystem as never,
       mockAudit as never,
-      { notifyBestEffort: vi.fn(async () => null) } as never,
     );
     const lifecycleService = new AdminBookingLifecycleService(
       mockSystem as never,
       mockAudit as never,
-      { notifyBestEffort: vi.fn(async () => null) } as never,
     );
     const reportService = new AdminReportService(
       mockSystem as never,

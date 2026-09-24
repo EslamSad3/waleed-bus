@@ -9,7 +9,6 @@ CREATE TABLE "promotions" (
     "code" VARCHAR(32) NOT NULL,
     "type" VARCHAR(20) NOT NULL,
     "value" DECIMAL(10,2) NOT NULL,
-    "max_discount_amount" DECIMAL(10,2),
     "is_global" BOOLEAN NOT NULL DEFAULT true,
     "max_uses_per_user" INTEGER NOT NULL DEFAULT 1,
     "max_total_uses" INTEGER,
@@ -19,7 +18,9 @@ CREATE TABLE "promotions" (
     "created_by_user_id" UUID,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "promotions_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "promotions_pkey" PRIMARY KEY ("id"),
+    -- Call §39: fixed monetary amount, never percentage-based.
+    CONSTRAINT "promotions_type_check" CHECK ("type" = 'FIXED')
 );
 -- CreateTable
 CREATE TABLE "promotion_targets" (
@@ -38,18 +39,21 @@ CREATE TABLE "promotion_usages" (
     CONSTRAINT "promotion_usages_pkey" PRIMARY KEY ("id")
 );
 -- CreateTable
+-- Call §§43-44: TEXT (no refs), TRIP (trip_id), DISCOUNT_CODE (promotion_id).
 CREATE TABLE "notifications" (
     "id" UUID NOT NULL,
     "user_id" UUID NOT NULL,
     "category" VARCHAR(20) NOT NULL,
     "title" VARCHAR(200) NOT NULL,
     "body" VARCHAR(2000) NOT NULL,
-    "data" JSONB,
+    "trip_id" UUID,
+    "promotion_id" UUID,
     "dedupe_key" VARCHAR(128),
     "is_read" BOOLEAN NOT NULL DEFAULT false,
     "read_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "notifications_category_check" CHECK ("category" IN ('TEXT', 'TRIP', 'DISCOUNT_CODE'))
 );
 -- CreateIndex
 CREATE UNIQUE INDEX "promotions_code_key" ON "promotions"("code");
@@ -75,3 +79,7 @@ ALTER TABLE "promotion_targets" ADD CONSTRAINT "promotion_targets_promotion_id_f
 ALTER TABLE "promotion_usages" ADD CONSTRAINT "promotion_usages_promotion_id_fkey" FOREIGN KEY ("promotion_id") REFERENCES "promotions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 -- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_trip_id_fkey" FOREIGN KEY ("trip_id") REFERENCES "trips"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_promotion_id_fkey" FOREIGN KEY ("promotion_id") REFERENCES "promotions"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import type {
   AdminFailPaymentDto,
@@ -19,7 +18,6 @@ export class AdminPaymentService {
   constructor(
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
-    private readonly notifications: NotificationsService,
   ) {}
 
   async verifyPayment(
@@ -108,24 +106,8 @@ export class AdminPaymentService {
           paidAt: updated.paidAt,
           paymentMarkedBy: updated.paymentMarkedBy,
         },
-        routing: {
-          booker: booking.bookedByUserId ?? booking.passengerUserId,
-          bookingId: id,
-          total: Number(booking.totalAmount ?? 0).toFixed(2),
-        },
       };
     }).then((result) => {
-      // Spec 012: payment-confirmed notice to the booker (post-commit).
-      if (result.routing.booker) {
-        void this.notifications.notifyBestEffort({
-          userId: result.routing.booker,
-          category: 'PAYMENT',
-          title: 'تم تأكيد الدفع',
-          body: `تم تأكيد دفع الحجز ${result.routing.bookingId.slice(0, 8)} بمبلغ ${result.routing.total} جنيه.`,
-          data: { bookingId: result.routing.bookingId },
-          dedupeKey: `booking:${result.routing.bookingId}:paid`,
-        });
-      }
       return result.response;
     });
   }
@@ -286,24 +268,8 @@ export class AdminPaymentService {
           refundReference: updated.refundReference,
           updatedAt: updated.updatedAt,
         },
-        routing: {
-          booker: bookingRows[0].bookedByUserId ?? bookingRows[0].passengerUserId,
-          bookingId: id,
-          amount: Number(dto.refundAmount).toFixed(2),
-        },
       };
     }).then((result) => {
-      // Spec 012: refund-issued notice to the booker (post-commit).
-      if (result.routing.booker) {
-        void this.notifications.notifyBestEffort({
-          userId: result.routing.booker,
-          category: 'PAYMENT',
-          title: 'تم إصدار استرداد',
-          body: `تم إصدار استرداد بمبلغ ${result.routing.amount} جنيه للحجز ${result.routing.bookingId.slice(0, 8)}.`,
-          data: { bookingId: result.routing.bookingId },
-          dedupeKey: `booking:${result.routing.bookingId}:refund:${result.response.refundReference ?? result.response.updatedAt}`,
-        });
-      }
       return result.response;
     });
   }

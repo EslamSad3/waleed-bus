@@ -10,18 +10,21 @@
 
 ## Decisions (scoped per user: DB table + inbox ops)
 
-- Model: `Notification` — `userId`, `category` (BOOKING | PAYMENT | TRIP | PROMO | SYSTEM),
-  `title`, `body` (Arabic-first strings composed by the trigger site), optional `data` JSON
-  (bookingId/tripId/code — ids only, no PII beyond what the inbox owner already sees),
+- Model: `Notification` — `userId`, `category` (TEXT | TRIP | DISCOUNT_CODE per call §§43-44;
+  corrected on external review — the earlier BOOKING/PAYMENT/PROMO/SYSTEM set plus `data` JSONB
+  diverged from the required contract and have been replaced by explicit nullable `tripId` /
+  `promotionId` references with FKs, plus a `notifications_category_check` CHECK constraint),
+  `title`, `body` (Arabic-first strings composed by the trigger site),
   optional `dedupeKey` `@@unique` (idempotency: re-emit with same key = no-op, returns existing),
   `isRead` default false + `readAt?`, timestamps. `@@index([userId, isRead, createdAt])`.
 - `NotificationService.notify()` is the single emit path (system path; triggers are server-side
   events, never client-supplied userIds). All emits best-effort: wrapped so a notify failure
   NEVER fails the originating booking/payment transaction (catch + log).
-- Triggers wired now: booking confirmed (booker + traveler when `passengerUserId ≠ booker`),
-  payment marked PAID (booker), booking cancelled (booker + traveler), refund issued (booker).
-  Dedupe keys: `booking:{id}:confirmed`, `booking:{id}:paid`, `booking:{id}:cancelled`,
-  `booking:{id}:refund`. Traveler variants suffix `:traveler`.
+- Only trigger wired now: call §42 USER-scoped promo assignment — creating a non-global
+  promotion emits one DISCOUNT_CODE row per target user (post-commit, best-effort,
+  dedupeKey `promo:{promotionId}:assigned:{userId}`). Global codes emit nothing.
+  (Earlier booking/payment/cancel/refund triggers removed on external review: outside
+  the call contract.)
 - Passenger inbox API (verified-phone users, actor-scoped, cursor pagination):
   `GET /notifications` (filter `unread=true|false`), `GET /notifications/unread-count`,
   `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, `DELETE /notifications/:id`,
@@ -32,7 +35,7 @@
   service uses the system path with strict actor scoping (cross-user triggers: booker vs traveler).
 - No audit logging (user-private high-volume; same rationale as favorites).
 - Out of scope (later): WhatsApp/SMS providers, templates engine, scheduling/retries/DLQ,
-  preference center, campaigns. The `category` + `data` shape is the forward-compatible seam.
+  preference center, campaigns. The `category` + explicit `tripId`/`promotionId` shape is the forward-compatible seam.
 
 ## Scenarios
 

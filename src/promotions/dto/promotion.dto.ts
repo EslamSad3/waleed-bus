@@ -20,21 +20,15 @@ export class CreatePromotionDto {
   @Matches(/^[A-Za-z0-9_-]{3,32}$/)
   code!: string;
 
-  @ApiProperty({ enum: ['PERCENTAGE', 'FIXED'], example: 'PERCENTAGE' })
+  @ApiProperty({ enum: ['FIXED'], example: 'FIXED', description: 'FIXED only (fixed EGP amount, never percentage).' })
   @IsString()
-  @IsIn(['PERCENTAGE', 'FIXED'])
-  type!: 'PERCENTAGE' | 'FIXED';
+  @IsIn(['FIXED'])
+  type!: 'FIXED';
 
-  @ApiProperty({ example: 10, description: 'Percent 1-100 or fixed EGP amount.' })
+  @ApiProperty({ example: 50, description: 'Fixed EGP discount amount (positive).' })
   @IsNumber()
   @IsPositive()
   value!: number;
-
-  @ApiPropertyOptional({ example: 50, description: 'Caps PERCENTAGE discounts.' })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  maxDiscountAmount?: number;
 
   @ApiPropertyOptional({ default: true, description: 'False = only targeted users.' })
   @IsOptional()
@@ -71,17 +65,11 @@ export class CreatePromotionDto {
 }
 
 export class UpdatePromotionDto {
-  @ApiPropertyOptional({ example: 15 })
+  @ApiPropertyOptional({ example: 50, description: 'Fixed EGP discount amount (positive).' })
   @IsOptional()
   @IsNumber()
   @IsPositive()
   value?: number;
-
-  @ApiPropertyOptional({ example: 50 })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  maxDiscountAmount?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -139,14 +127,11 @@ export class PromotionDto {
   @ApiProperty({ example: 'SAVE10' })
   code!: string;
 
-  @ApiProperty({ enum: ['PERCENTAGE', 'FIXED'] })
+  @ApiProperty({ enum: ['FIXED'], example: 'FIXED' })
   type!: string;
 
-  @ApiProperty({ example: '10.00' })
+  @ApiProperty({ example: '50.00', description: 'Fixed EGP discount amount.' })
   value!: string;
-
-  @ApiPropertyOptional({ example: '50.00' })
-  maxDiscountAmount!: string | null;
 
   @ApiProperty()
   isGlobal!: boolean;

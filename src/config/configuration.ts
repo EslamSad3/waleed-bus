@@ -48,8 +48,6 @@ export interface AppConfig {
   promotions: {
     /** Global kill-switch for per-user reuse counting (spec 011). Default ON. */
     enforceOncePerUser: boolean;
-    /** Default discount type preselected by the dashboard create form. */
-    defaultType: string;
   };
 }
 
@@ -159,7 +157,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     promotions: {
       enforceOncePerUser: env.PROMO_ENFORCE_ONCE_PER_USER !== 'false',
-      defaultType: env.PROMO_DEFAULT_TYPE ?? 'percentage',
     },
   };
 }

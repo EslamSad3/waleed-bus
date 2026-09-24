@@ -12,8 +12,11 @@
 
 - Models: `Promotion` (code unique, case-insensitive normalized to UPPER-TRIM) + `PromotionUsage`
   (one row per booking that consumed a code; `@@unique([promotionId, bookingId])`).
-- Types: `PERCENTAGE` (1–100) | `FIXED` (positive, EGP). Optional `maxDiscountAmount` caps
-  percentage discounts. Discount = min(computed, maxDiscountAmount, gross). Floor at 0.
+- Types: `FIXED` only — fixed EGP amount, never percentage-based (call §39; corrected on
+  external review — the earlier PERCENTAGE support + `PROMO_DEFAULT_TYPE` were a requirements
+  mismatch and have been removed, including the `max_discount_amount` column and the DB
+  `promotions_type_check` CHECK constraint enforcing `type = 'FIXED'`).
+  Discount = min(fixedAmount, gross). Floor at 0.
 - Scope: `isGlobal` (default true) — a global code is usable by every user; non-global codes carry
   an allowlist (`PromotionTarget` userIds) for user-segment assignment (§109). Non-targeted user
   attempting a targeted code → treated as unknown code (no oracle).

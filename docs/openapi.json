@@ -2893,10 +2893,19 @@
     "/brands": {
       "get": {
         "operationId": "VehicleBrandsController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Active vehicle brands.",
+            "description": "Vehicle brands.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2933,7 +2942,7 @@
             "bearer": []
           }
         ],
-        "summary": "List active vehicle brands ordered for selection.",
+        "summary": "List vehicle brands (active only unless includeInactive=true for the management screen).",
         "tags": [
           "vehicle-brands"
         ]
@@ -3871,11 +3880,19 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Active markaz of the governorate.",
+            "description": "Markaz of the governorate.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3912,7 +3929,7 @@
             "bearer": []
           }
         ],
-        "summary": "List active markaz for one governorate (dependent selector).",
+        "summary": "List markaz for one governorate (active only unless includeInactive=true).",
         "tags": [
           "trip-lines"
         ]
@@ -4112,11 +4129,19 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Active localities of the markaz.",
+            "description": "Localities of the markaz.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4153,7 +4178,7 @@
             "bearer": []
           }
         ],
-        "summary": "List active cities/villages for one markaz (dependent selector).",
+        "summary": "List cities/villages for one markaz (active only unless includeInactive=true).",
         "tags": [
           "trip-lines"
         ]
@@ -9281,30 +9306,19 @@
             }
           },
           {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
-            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "limit",
             "required": false,
             "in": "query",
-            "description": "Page size (default 20, max 100).",
+            "description": "Max owner groups (1-100, default 20).",
             "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
+              "example": 20,
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Cursor page of fleet owners grouped with VIP rank.",
+            "description": "Owner groups with nested fleets and best VIP rank.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9330,7 +9344,7 @@
             }
           }
         },
-        "summary": "Discover fleet owners by name or route geography, VIP-ordered. No seat-availability filter.",
+        "summary": "Discover fleet owners by name or route geography, grouped by owner and VIP-ordered. No seat-availability filter.",
         "tags": [
           "discovery"
         ]
@@ -9391,10 +9405,19 @@
     "/vip-tiers": {
       "get": {
         "operationId": "VipTiersController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Active VIP tiers.",
+            "description": "VIP tiers.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9431,7 +9454,7 @@
             "bearer": []
           }
         ],
-        "summary": "List active VIP tiers ordered by rank.",
+        "summary": "List VIP tiers (active only unless includeInactive=true for the management screen).",
         "tags": [
           "vip-tiers"
         ]
@@ -11430,6 +11453,11 @@
             "type": "object",
             "example": 60,
             "nullable": true
+          },
+          "effectiveMaxBookingSeats": {
+            "type": "number",
+            "example": 5,
+            "description": "Display-only seat cap (user override ?? platform default 5). Enforcement is server-side."
           }
         },
         "required": [
@@ -11437,7 +11465,8 @@
           "missingFields",
           "phoneVerified",
           "pendingPhoneNumber",
-          "expiresInSeconds"
+          "expiresInSeconds",
+          "effectiveMaxBookingSeats"
         ]
       },
       "VerifyOtpDto": {
@@ -14984,17 +15013,14 @@
           "type": {
             "type": "string",
             "enum": [
-              "PERCENTAGE",
               "FIXED"
-            ]
+            ],
+            "example": "FIXED"
           },
           "value": {
             "type": "string",
-            "example": "10.00"
-          },
-          "maxDiscountAmount": {
-            "type": "object",
-            "example": "50.00"
+            "example": "50.00",
+            "description": "Fixed EGP discount amount."
           },
           "isGlobal": {
             "type": "boolean"
@@ -15038,20 +15064,15 @@
           "type": {
             "type": "string",
             "enum": [
-              "PERCENTAGE",
               "FIXED"
             ],
-            "example": "PERCENTAGE"
+            "example": "FIXED",
+            "description": "FIXED only (fixed EGP amount, never percentage)."
           },
           "value": {
             "type": "number",
-            "example": 10,
-            "description": "Percent 1-100 or fixed EGP amount."
-          },
-          "maxDiscountAmount": {
-            "type": "number",
             "example": 50,
-            "description": "Caps PERCENTAGE discounts."
+            "description": "Fixed EGP discount amount (positive)."
           },
           "isGlobal": {
             "type": "boolean",
@@ -15097,11 +15118,8 @@
         "properties": {
           "value": {
             "type": "number",
-            "example": 15
-          },
-          "maxDiscountAmount": {
-            "type": "object",
-            "example": 50
+            "example": 50,
+            "description": "Fixed EGP discount amount (positive)."
           },
           "maxUsesPerUser": {
             "type": "number"
@@ -15415,7 +15433,7 @@
           "isActive"
         ]
       },
-      "FleetOwnerSearchItemDto": {
+      "FleetOwnerSearchFleetDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -15424,11 +15442,7 @@
           },
           "name": {
             "type": "string",
-            "example": "Halem Fleet"
-          },
-          "ownerName": {
-            "type": "object",
-            "example": "Halem"
+            "example": "Halem Travel"
           },
           "vipTier": {
             "$ref": "#/components/schemas/VipTierDto"
@@ -15437,6 +15451,35 @@
         "required": [
           "id",
           "name"
+        ]
+      },
+      "FleetOwnerSearchItemDto": {
+        "type": "object",
+        "properties": {
+          "fleetOwnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Owner user id — the grouping key."
+          },
+          "fleetOwnerName": {
+            "type": "object",
+            "example": "Halem"
+          },
+          "vipRank": {
+            "type": "object",
+            "example": 1,
+            "description": "Best VIP rank across the owner fleets; null = untiered (sorts last)."
+          },
+          "fleets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FleetOwnerSearchFleetDto"
+            }
+          }
+        },
+        "required": [
+          "fleetOwnerId",
+          "fleets"
         ]
       },
       "CreateVipTierDto": {

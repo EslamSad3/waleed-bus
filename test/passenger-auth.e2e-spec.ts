@@ -405,6 +405,7 @@ describe('Passenger auth (e2e)', () => {
           phoneVerified: true,
           pendingPhoneNumber: null,
           expiresInSeconds: null,
+          effectiveMaxBookingSeats: 5,
         },
       });
     });

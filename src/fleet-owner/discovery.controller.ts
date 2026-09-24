@@ -2,7 +2,6 @@ import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../common/decorators/public.decorator.js';
 import {
-  ApiCursorPagination,
   ApiEnvelopeResponse,
   ApiNotFound,
   ApiUuidParam,
@@ -20,12 +19,11 @@ export class DiscoveryController {
   @Get('fleet-owners')
   @ApiOperation({
     summary:
-      'Discover fleet owners by name or route geography, VIP-ordered. No seat-availability filter.',
+      'Discover fleet owners by name or route geography, grouped by owner and VIP-ordered. No seat-availability filter.',
   })
-  @ApiCursorPagination()
   @ApiEnvelopeResponse(
     200,
-    'Cursor page of fleet owners grouped with VIP rank.',
+    'Owner groups with nested fleets and best VIP rank.',
     FleetOwnerSearchItemDto,
     true,
   )

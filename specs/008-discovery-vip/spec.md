@@ -11,7 +11,7 @@
 ## Decisions (frozen)
 
 - VIP attaches to `Fleet` (`Fleet.vipTierId?`), ordered by tier rank ASC (nulls last), then fleet name, then id. Same-branch decision 2026-09-24.
-- Discovery search is **public** (same funnel as `GET /trips/search`, also public) — no seat-availability filter; grouped by fleet, never buses at top level.
+- Discovery search is **public** (same funnel as `GET /trips/search`, also public) — no seat-availability filter; grouped by fleet OWNER (one item per owner with nested fleets, never buses at top level; corrected on external review — the earlier one-row-per-fleet shape mixed the owner/fleet concepts). Owner order: best VIP rank across their fleets (untiered last), then owner name. Bounded `limit` (max 100), no cursor.
 - Bus discovery excludes inactive buses; booking search remains the separate bookability funnel (§49).
 
 ## User Scenarios

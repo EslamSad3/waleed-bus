@@ -57,7 +57,6 @@ function makeService(opts: {
     mockSystem as never,
     { log: vi.fn(async () => undefined) } as never,
     { resolveInTx: vi.fn(async () => ({ status: null, promotionId: null, promoCode: null, discountAmount: 0 })), recordUsage: vi.fn(async () => undefined) } as never,
-    { notifyBestEffort: vi.fn(async () => null) } as never,
   );
   const base = {
     tripId: 'trip-1',

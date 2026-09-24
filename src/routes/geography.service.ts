@@ -23,9 +23,10 @@ export class GeographyService {
 
   // --- Markaz ---
 
-  async listMarkaz(governorateId: string) {
+  /** Admin list; includeInactive reveals deactivated rows for reactivation. Platform-scoped. */
+  async listMarkaz(governorateId: string, includeInactive = false) {
     return this.system.markaz.findMany({
-      where: { governorateId, isActive: true },
+      where: { governorateId, ...(includeInactive ? {} : { isActive: true }) },
       orderBy: { nameEn: 'asc' },
       include: { governorate: true },
     });
@@ -76,9 +77,10 @@ export class GeographyService {
 
   // --- Locality ---
 
-  async listLocalities(markazId: string) {
+  /** Admin list; includeInactive reveals deactivated rows for reactivation. Platform-scoped. */
+  async listLocalities(markazId: string, includeInactive = false) {
     return this.system.locality.findMany({
-      where: { markazId, isActive: true },
+      where: { markazId, ...(includeInactive ? {} : { isActive: true }) },
       orderBy: { nameEn: 'asc' },
       include: localityWithChain,
     });
