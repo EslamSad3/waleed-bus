@@ -3,6 +3,8 @@ import { AuditService } from '../audit/audit.service.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
+import { PromotionsService } from '../promotions/promotions.service.js';
 import {
   buildCursorArgs,
   toCursorPage,
@@ -36,6 +38,8 @@ export class PassengerBookingService {
   constructor(
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
+    private readonly promotions: PromotionsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -196,11 +200,34 @@ export class PassengerBookingService {
       const totalAmount = Number(trip.fare) * input.seatCount;
       const paymentStatus = 'PENDING';
 
+      // Spec 011: promo resolution inside the booking tx (promotion row locked
+      // FOR UPDATE; soft failures fall back to full price with a status echo).
+      let promotionId: string | null = null;
+      let promoCode: string | null = null;
+      let discountAmount = 0;
+      let promoStatus: string | null = null;
+      if (input.promoCode?.trim()) {
+        const resolution = await this.promotions.resolveInTx(
+          tx,
+          input.promoCode,
+          actor.id,
+          totalAmount,
+          true,
+        );
+        promoStatus = resolution.status;
+        promotionId = resolution.promotionId;
+        promoCode = resolution.promoCode;
+        discountAmount = resolution.discountAmount;
+      }
+      const payableAmount =
+        Math.round((totalAmount - discountAmount + Number.EPSILON) * 100) / 100;
+
       const booking = await tx.booking.create({
         data: {
           fleetId: trip.fleet_id,
           tripId: trip.id,
           passengerUserId,
+          bookedByUserId: actor.id,
           passengerName,
           passengerPhone,
           bookingFor,
@@ -215,7 +242,10 @@ export class PassengerBookingService {
           status: 'CONFIRMED',
           paymentMethod: input.paymentMethod,
           paymentStatus,
-          totalAmount,
+          totalAmount: payableAmount,
+          promotionId,
+          promoCode,
+          discountAmount,
         },
         include: {
           trip: {
@@ -228,6 +258,15 @@ export class PassengerBookingService {
         },
       });
 
+      if (promotionId && promoStatus === 'OK') {
+        await this.promotions.recordUsage(tx, {
+          promotionId,
+          userId: actor.id,
+          bookingId: booking.id,
+          discountAmount,
+        });
+      }
+
       await this.audit.log({
         actorUserId: actor.id,
         actorFleetId: trip.fleet_id,
@@ -238,13 +277,16 @@ export class PassengerBookingService {
           tripId: trip.id,
           seats: input.seatCount,
           paymentMethod: input.paymentMethod,
-          totalAmount,
+          totalAmount: payableAmount,
           boardingStationId: input.boardingStationId,
           landingStationId: input.landingStationId,
+          ...(promotionId
+            ? { promotionId, promoCode, discountAmount }
+            : {}),
         },
       });
 
-      return {
+      const created = {
         id: booking.id,
         tripId: booking.tripId,
         passengerUserId: booking.passengerUserId,
@@ -259,6 +301,9 @@ export class PassengerBookingService {
         totalAmount: booking.totalAmount
           ? Number(booking.totalAmount).toFixed(2)
           : null,
+        promoCode: booking.promoCode,
+        discountAmount: Number(booking.discountAmount).toFixed(2),
+        promoStatus,
         confirmedAt: booking.confirmedAt,
         trip: {
           id: booking.tripId,
@@ -268,6 +313,47 @@ export class PassengerBookingService {
           status: trip.status,
         },
       };
+
+      // Spec 012 triggers fire AFTER commit (see below) — never inside the tx,
+      // so a rolled-back booking can never emit a phantom notification.
+      return {
+        booking: created,
+        notifyBooker: { userId: actor.id, bookingId: booking.id, tripId: trip.id },
+        notifyTraveler:
+          bookingFor === 'OTHER' &&
+          booking.passengerUserId &&
+          booking.passengerUserId !== actor.id
+            ? {
+                userId: booking.passengerUserId,
+                bookingId: booking.id,
+                tripId: trip.id,
+              }
+            : null,
+        tripOrigin: booking.trip.origin,
+        tripDestination: booking.trip.destination,
+        seats: created.seats,
+      };
+    }).then((result) => {
+      // Best-effort post-commit emits; failures are logged, never thrown.
+      void this.notifications.notifyBestEffort({
+        userId: result.notifyBooker.userId,
+        category: 'BOOKING',
+        title: 'تم تأكيد حجزك',
+        body: `حجز ${result.seats} مقعد من ${result.tripOrigin} إلى ${result.tripDestination} برقم ${result.notifyBooker.bookingId.slice(0, 8)}.`,
+        data: { bookingId: result.notifyBooker.bookingId, tripId: result.notifyBooker.tripId },
+        dedupeKey: `booking:${result.notifyBooker.bookingId}:confirmed`,
+      });
+      if (result.notifyTraveler) {
+        void this.notifications.notifyBestEffort({
+          userId: result.notifyTraveler.userId,
+          category: 'BOOKING',
+          title: 'تم حجز مقعد لك',
+          body: `تم حجز ${result.seats} مقعد باسمك من ${result.tripOrigin} إلى ${result.tripDestination}.`,
+          data: { bookingId: result.notifyTraveler.bookingId, tripId: result.notifyTraveler.tripId },
+          dedupeKey: `booking:${result.notifyTraveler.bookingId}:confirmed:traveler`,
+        });
+      }
+      return result.booking;
     });
   }
 
@@ -331,6 +417,8 @@ export class PassengerBookingService {
       paymentMethod: b.paymentMethod,
       paymentStatus: b.paymentStatus,
       totalAmount: b.totalAmount ? Number(b.totalAmount).toFixed(2) : null,
+      promoCode: b.promoCode,
+      discountAmount: Number(b.discountAmount).toFixed(2),
       confirmedAt: b.confirmedAt,
       boardedAt: b.boardedAt,
       droppedAt: b.droppedAt,
@@ -404,6 +492,8 @@ export class PassengerBookingService {
       totalAmount: booking.totalAmount
         ? Number(booking.totalAmount).toFixed(2)
         : null,
+      promoCode: booking.promoCode,
+      discountAmount: Number(booking.discountAmount).toFixed(2),
       confirmedAt: booking.confirmedAt,
       boardedAt: booking.boardedAt,
       droppedAt: booking.droppedAt,
@@ -524,14 +614,42 @@ export class PassengerBookingService {
       });
 
       return {
-        id: updated.id,
-        status: updated.status,
-        seats: updated.seats,
-        cancelledSeats: seatsToCancel,
-        paymentStatus: updated.paymentStatus ?? 'REFUND_PENDING',
-        cancelledAt: updated.cancelledAt!,
-        cancellationReason: updated.cancellationReason,
+        response: {
+          id: updated.id,
+          status: updated.status,
+          seats: updated.seats,
+          cancelledSeats: seatsToCancel,
+          paymentStatus: updated.paymentStatus ?? 'REFUND_PENDING',
+          cancelledAt: updated.cancelledAt!,
+          cancellationReason: updated.cancellationReason,
+        },
+        routing: {
+          bookerId: booking.bookedByUserId ?? actor.id,
+          travelerId: booking.passengerUserId,
+          bookingId: booking.id,
+        },
       };
+    }).then((result) => {
+      // Spec 012: cancellation notice to the booker + linked traveler.
+      void this.notifications.notifyBestEffort({
+        userId: result.routing.bookerId,
+        category: 'BOOKING',
+        title: 'تم إلغاء الحجز',
+        body: `تم إلغاء ${result.response.cancelledSeats} مقعد من الحجز ${result.routing.bookingId.slice(0, 8)}.`,
+        data: { bookingId: result.routing.bookingId },
+        dedupeKey: `booking:${result.routing.bookingId}:cancelled`,
+      });
+      if (result.routing.travelerId && result.routing.travelerId !== result.routing.bookerId) {
+        void this.notifications.notifyBestEffort({
+          userId: result.routing.travelerId,
+          category: 'BOOKING',
+          title: 'تم إلغاء حجزك',
+          body: `تم إلغاء الحجز ${result.routing.bookingId.slice(0, 8)} المحجوز باسمك.`,
+          data: { bookingId: result.routing.bookingId },
+          dedupeKey: `booking:${result.routing.bookingId}:cancelled:traveler`,
+        });
+      }
+      return result.response;
     });
   }
 

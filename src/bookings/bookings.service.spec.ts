@@ -13,7 +13,7 @@ function makeBookingsService(
 ): BookingsService {
   return new BookingsService(
     new FleetBookingService(fleetPath),
-    new PassengerBookingService(system, audit),
+    new PassengerBookingService(system, audit, { resolveInTx: async () => ({ status: null, promotionId: null, promoCode: null, discountAmount: 0 }), recordUsage: async () => undefined } as never, { notifyBestEffort: async () => null } as never),
     new PassengerRatingService(tenantContext, system),
   );
 }

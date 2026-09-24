@@ -67,7 +67,6 @@ export class CreatePassengerBookingDto {
     message: 'landingStationId must be a UUID',
   })
   landingStationId!: string;
-
   @ApiPropertyOptional({ maxLength: 500, description: 'Passenger pickup address shown to the driver.' })
   @IsOptional()
   @IsString()
@@ -127,6 +126,12 @@ export class CreatePassengerBookingDto {
   @IsString()
   @Length(1, 1000)
   note?: string;
+
+  @ApiPropertyOptional({ example: 'SAVE10', description: 'Promo code applied at checkout. Unknown/expired codes are ignored at full price; exhausted or already-used codes raise.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 32)
+  promoCode?: string;
 }
 
 export class CancelPassengerBookingDto {
@@ -247,6 +252,15 @@ export class PassengerBookingItemDto {
 
   @ApiPropertyOptional({ example: '100.00' })
   totalAmount?: string | null;
+
+  @ApiPropertyOptional({ example: 'SAVE10', nullable: true })
+  promoCode?: string | null;
+
+  @ApiProperty({ example: '10.00' })
+  discountAmount!: string;
+
+  @ApiPropertyOptional({ example: 'OK', nullable: true, description: 'Promo outcome echoed on create only.' })
+  promoStatus?: string | null;
 
   @ApiProperty({ enum: ['SELF', 'OTHER'], example: 'SELF' })
   bookingFor!: string;

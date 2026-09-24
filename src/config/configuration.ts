@@ -45,6 +45,12 @@ export interface AppConfig {
     supabaseUrl?: string;
     supabaseServiceRoleKey?: string;
   };
+  promotions: {
+    /** Global kill-switch for per-user reuse counting (spec 011). Default ON. */
+    enforceOncePerUser: boolean;
+    /** Default discount type preselected by the dashboard create form. */
+    defaultType: string;
+  };
 }
 
 const DURATION_PATTERN = /^\d+([smhd])?$/;
@@ -150,6 +156,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     storage: {
       supabaseUrl: env.SUPABASE_URL || undefined,
       supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || undefined,
+    },
+    promotions: {
+      enforceOncePerUser: env.PROMO_ENFORCE_ONCE_PER_USER !== 'false',
+      defaultType: env.PROMO_DEFAULT_TYPE ?? 'percentage',
     },
   };
 }

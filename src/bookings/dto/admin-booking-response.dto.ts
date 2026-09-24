@@ -204,6 +204,12 @@ export class AdminBookingDetailDto {
   @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;
 
+  @ApiPropertyOptional({ type: String, example: 'SAVE10', nullable: true })
+  promoCode!: string | null;
+
+  @ApiProperty({ example: '10.00' })
+  discountAmount!: string;
+
   @ApiProperty({ example: '0.00' })
   refundedAmount!: string;
 
@@ -309,7 +315,13 @@ export class AdminRefundPaymentResponseDto {
   @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;
 
-  @ApiProperty({ example: '100.00' })
+  @ApiPropertyOptional({ type: String, example: 'SAVE10', nullable: true })
+  promoCode!: string | null;
+
+  @ApiProperty({ example: '10.00' })
+  discountAmount!: string;
+
+  @ApiProperty({ example: '0.00' })
   refundedAmount!: string;
 
   @ApiProperty({ example: '0.00' })

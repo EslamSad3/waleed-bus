@@ -11,6 +11,8 @@ import { resolveObserveCredentials } from './config/configuration.js';
 import { ConfigModule } from './config/config.module.js';
 import { DriverOpsModule } from './driver-ops/driver-ops.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
+import { PromotionsModule } from './promotions/promotions.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { FleetsModule } from './fleets/fleets.module.js';
 import { FleetOwnerModule } from './fleet-owner/fleet-owner.module.js';
 import { HealthController, RootController } from './health.controller.js';
@@ -57,6 +59,8 @@ const observeCredentials = resolveObserveCredentials();
     FleetOwnerModule,
     DriverOpsModule,
     FavoritesModule,
+    PromotionsModule,
+    NotificationsModule,
   ],
   controllers: [HealthController, RootController],
   providers: [

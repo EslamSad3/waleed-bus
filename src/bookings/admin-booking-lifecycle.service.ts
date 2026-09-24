@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type {
@@ -19,6 +20,7 @@ export class AdminBookingLifecycleService {
   constructor(
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async forceCancel(
@@ -36,10 +38,13 @@ export class AdminBookingLifecycleService {
           paymentStatus: string;
           paymentMethod: string | null;
           departAt: Date;
+          passengerUserId: string | null;
+          bookedByUserId: string | null;
         }>
       >`
         SELECT b.id, b.trip_id as "tripId", b.status, b.payment_status as "paymentStatus",
-               b.payment_method as "paymentMethod", t.depart_at as "departAt"
+               b.payment_method as "paymentMethod", t.depart_at as "departAt",
+               b.passenger_user_id as "passengerUserId", b.booked_by_user_id as "bookedByUserId"
         FROM bookings b
         JOIN trips t ON t.id = b.trip_id
         WHERE b.id = ${id}::uuid
@@ -103,13 +108,43 @@ export class AdminBookingLifecycleService {
       });
 
       return {
-        id: updated.id,
-        status: updated.status,
-        cancellationReason: updated.cancellationReason,
-        cancelledAt: updated.cancelledAt,
-        paymentStatus: updated.paymentStatus,
-        seatsRestored,
+        response: {
+          id: updated.id,
+          status: updated.status,
+          cancellationReason: updated.cancellationReason,
+          cancelledAt: updated.cancelledAt,
+          paymentStatus: updated.paymentStatus,
+          seatsRestored,
+        },
+        routing: {
+          booker: booking.bookedByUserId ?? booking.passengerUserId,
+          traveler: booking.passengerUserId,
+          bookingId: id,
+        },
       };
+    }).then((result) => {
+      // Spec 012: force-cancel notice to the booker + linked traveler.
+      if (result.routing.booker) {
+        void this.notifications.notifyBestEffort({
+          userId: result.routing.booker,
+          category: 'BOOKING',
+          title: 'تم إلغاء الحجز',
+          body: `تم إلغاء الحجز ${result.routing.bookingId.slice(0, 8)} من قبل الإدارة.`,
+          data: { bookingId: result.routing.bookingId },
+          dedupeKey: `booking:${result.routing.bookingId}:cancelled`,
+        });
+      }
+      if (result.routing.traveler && result.routing.traveler !== result.routing.booker) {
+        void this.notifications.notifyBestEffort({
+          userId: result.routing.traveler,
+          category: 'BOOKING',
+          title: 'تم إلغاء حجزك',
+          body: `تم إلغاء الحجز ${result.routing.bookingId.slice(0, 8)} المحجوز باسمك من قبل الإدارة.`,
+          data: { bookingId: result.routing.bookingId },
+          dedupeKey: `booking:${result.routing.bookingId}:cancelled:traveler`,
+        });
+      }
+      return result.response;
     });
   }
 

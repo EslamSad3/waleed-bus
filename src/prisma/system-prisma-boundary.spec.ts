@@ -52,6 +52,10 @@ describe('SystemPrisma Architectural Boundary', () => {
     'fleet-owner/fleet-owners-admin.service.ts',
     'fleet-owner/discovery.service.ts',
     'fleet-owner/vip-tier.service.ts',
+    'notifications/notifications.service.ts',
+    'notifications/platform-notifications.controller.ts',
+    'promotions/promotions.service.ts',
+    'promotions/platform-promotions.controller.ts',
     'routes/geography.service.ts',
     'routes/trip-lines.service.ts',
   ]);

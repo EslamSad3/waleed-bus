@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthorizationModule } from '../authorization/authorization.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PassengerAuthModule } from '../passenger-auth/passenger-auth.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
+import { PromotionsModule } from '../promotions/promotions.module.js';
 import { AdminBookingsController } from './admin-bookings.controller.js';
 import { AdminBookingsService } from './admin-bookings.service.js';
 import { AdminBookingsQueryService } from './admin-bookings-query.service.js';
@@ -26,6 +28,8 @@ import { TripSharesService } from './trip-shares.service.js';
     PrismaModule,
     AuditModule,
     PassengerAuthModule,
+    PromotionsModule,
+    NotificationsModule,
   ],
   controllers: [
     BookingsController,

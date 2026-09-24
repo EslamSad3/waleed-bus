@@ -33,6 +33,10 @@ const ALL_TABLES = [
   'favorites',
   'vehicle_brands',
   'vip_tiers',
+  'promotions',
+  'promotion_targets',
+  'promotion_usages',
+  'notifications',
   // Platform catalog (except seeded governorates): suites create their own
   // lines/stations per run, so truncate them for hermetic re-runs.
   'lines',

@@ -6652,6 +6652,893 @@
         ]
       }
     },
+    "/promotions/active": {
+      "get": {
+        "operationId": "PromotionsController_listActive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active promos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Readonly list of active global promo codes.",
+        "tags": [
+          "passenger-promotions"
+        ]
+      }
+    },
+    "/promotions/validate": {
+      "post": {
+        "operationId": "PromotionsController_validate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidatePromoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Promo preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview a promo discount for a trip without writes.",
+        "tags": [
+          "passenger-promotions"
+        ]
+      }
+    },
+    "/promotions": {
+      "get": {
+        "operationId": "PromotionsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active promos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alias for active promos (mobile convenience).",
+        "tags": [
+          "passenger-promotions"
+        ]
+      }
+    },
+    "/platform/promotions": {
+      "post": {
+        "operationId": "PlatformPromotionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePromotionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Promotion created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PromotionDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a promo code (platform).",
+        "tags": [
+          "platform-promotions"
+        ]
+      },
+      "get": {
+        "operationId": "PlatformPromotionsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Promotions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PromotionDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List promo codes with cursor pagination.",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/platform/promotions/{id}": {
+      "patch": {
+        "operationId": "PlatformPromotionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Promotion id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromotionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Promotion updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PromotionDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Promotion not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a promo code (code itself is immutable).",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/platform/promotions/{id}/expire": {
+      "post": {
+        "operationId": "PlatformPromotionsController_expire",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Promotion id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Promotion expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PromotionDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Promotion not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force-expire a promo code (manual lifecycle).",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/platform/promotions/{id}/usages": {
+      "get": {
+        "operationId": "PlatformPromotionsController_usages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Promotion id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Promotion usages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Promotion not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Per-user consumption dashboard for a code.",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "My notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List my notifications (filter unread=true|false).",
+        "tags": [
+          "passenger-notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationsController_removeAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete all my notifications.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Unread count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unread badge count for the notification center.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all my notifications as read.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Notification not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one notification as read.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "operationId": "NotificationsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Notification not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete one notification.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/platform/notifications": {
+      "get": {
+        "operationId": "PlatformNotificationsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ops visibility into recent notifications (filter by userId/category).",
+        "tags": [
+          "platform-notifications"
+        ]
+      }
+    },
     "/drivers": {
       "get": {
         "operationId": "FleetOwnerController_listSystemDrivers",
@@ -12478,6 +13365,21 @@
             "type": "object",
             "example": "100.00"
           },
+          "promoCode": {
+            "type": "object",
+            "example": "SAVE10",
+            "nullable": true
+          },
+          "discountAmount": {
+            "type": "string",
+            "example": "10.00"
+          },
+          "promoStatus": {
+            "type": "object",
+            "example": "OK",
+            "nullable": true,
+            "description": "Promo outcome echoed on create only."
+          },
           "bookingFor": {
             "type": "string",
             "enum": [
@@ -12525,6 +13427,7 @@
           "passengerName",
           "seats",
           "status",
+          "discountAmount",
           "bookingFor",
           "confirmedAt",
           "trip"
@@ -12619,6 +13522,11 @@
             "example": "Wait near the bridge.",
             "maxLength": 1000,
             "description": "Free-form note visible to the driver/operator."
+          },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "description": "Promo code applied at checkout. Unknown/expired codes are ignored at full price; exhausted or already-used codes raise."
           }
         },
         "required": [
@@ -13339,6 +14247,15 @@
             "example": "100.00",
             "nullable": true
           },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "nullable": true
+          },
+          "discountAmount": {
+            "type": "string",
+            "example": "10.00"
+          },
           "refundedAmount": {
             "type": "string",
             "example": "0.00"
@@ -13448,6 +14365,7 @@
           "seats",
           "passengerName",
           "bookingFor",
+          "discountAmount",
           "refundedAmount",
           "trip",
           "ratings",
@@ -13582,9 +14500,18 @@
             "example": "100.00",
             "nullable": true
           },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "nullable": true
+          },
+          "discountAmount": {
+            "type": "string",
+            "example": "10.00"
+          },
           "refundedAmount": {
             "type": "string",
-            "example": "100.00"
+            "example": "0.00"
           },
           "remainingRefundableBalance": {
             "type": "string",
@@ -13602,6 +14529,7 @@
         },
         "required": [
           "bookingId",
+          "discountAmount",
           "refundedAmount",
           "remainingRefundableBalance",
           "updatedAt"
@@ -13875,6 +14803,189 @@
           "status",
           "resolutionNote"
         ]
+      },
+      "ValidatePromoDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "SAVE10"
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seatCount": {
+            "type": "number",
+            "example": 2
+          }
+        },
+        "required": [
+          "code",
+          "tripId",
+          "seatCount"
+        ]
+      },
+      "PromotionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "SAVE10"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PERCENTAGE",
+              "FIXED"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "10.00"
+          },
+          "maxDiscountAmount": {
+            "type": "object",
+            "example": "50.00"
+          },
+          "isGlobal": {
+            "type": "boolean"
+          },
+          "maxUsesPerUser": {
+            "type": "number"
+          },
+          "maxTotalUses": {
+            "type": "object"
+          },
+          "startsAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "value",
+          "isGlobal",
+          "maxUsesPerUser",
+          "isActive"
+        ]
+      },
+      "CreatePromotionDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "SAVE10",
+            "description": "3-32 chars A-Z 0-9 _ -; normalized UPPER-TRIM."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PERCENTAGE",
+              "FIXED"
+            ],
+            "example": "PERCENTAGE"
+          },
+          "value": {
+            "type": "number",
+            "example": 10,
+            "description": "Percent 1-100 or fixed EGP amount."
+          },
+          "maxDiscountAmount": {
+            "type": "number",
+            "example": 50,
+            "description": "Caps PERCENTAGE discounts."
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "default": true,
+            "description": "False = only targeted users."
+          },
+          "targetUserIds": {
+            "example": [
+              "user-uuid"
+            ],
+            "description": "Required when isGlobal=false.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxUsesPerUser": {
+            "type": "number",
+            "default": 1,
+            "description": "Max redemptions per user."
+          },
+          "maxTotalUses": {
+            "type": "object",
+            "description": "Null = unlimited platform-wide."
+          },
+          "startsAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "object",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "code",
+          "type",
+          "value"
+        ]
+      },
+      "UpdatePromotionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "example": 15
+          },
+          "maxDiscountAmount": {
+            "type": "object",
+            "example": 50
+          },
+          "maxUsesPerUser": {
+            "type": "number"
+          },
+          "maxTotalUses": {
+            "type": "object"
+          },
+          "startsAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "targetUserIds": {
+            "example": [
+              "user-uuid"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "OwnerProfileDto": {
         "type": "object",
