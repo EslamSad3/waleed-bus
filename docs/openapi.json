@@ -2819,6 +2819,237 @@
         ]
       }
     },
+    "/brands": {
+      "get": {
+        "operationId": "VehicleBrandsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active vehicle brands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VehicleBrandDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active vehicle brands ordered for selection.",
+        "tags": [
+          "vehicle-brands"
+        ]
+      },
+      "post": {
+        "operationId": "VehicleBrandsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleBrandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Brand created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VehicleBrandDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A brand with this name already exists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a vehicle brand.",
+        "tags": [
+          "vehicle-brands"
+        ]
+      }
+    },
+    "/brands/{id}": {
+      "get": {
+        "operationId": "VehicleBrandsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Brand id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brand details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VehicleBrandDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Brand not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one vehicle brand by id.",
+        "tags": [
+          "vehicle-brands"
+        ]
+      },
+      "patch": {
+        "operationId": "VehicleBrandsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Brand id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleBrandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Brand updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VehicleBrandDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a vehicle brand (name, order, active flag).",
+        "tags": [
+          "vehicle-brands"
+        ]
+      }
+    },
     "/fleets/{fleetId}/trips": {
       "post": {
         "operationId": "TripsController_create",
@@ -3471,6 +3702,488 @@
           }
         ],
         "summary": "List the built-in Egyptian governorates, localized in Arabic and English.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/governorates/{id}/markaz": {
+      "get": {
+        "operationId": "TripLinesController_findMarkaz",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Governorate id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active markaz of the governorate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MarkazDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active markaz for one governorate (dependent selector).",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/markaz": {
+      "post": {
+        "operationId": "TripLinesController_createMarkaz",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMarkazDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Markaz created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarkazDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a markaz/district under one governorate.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/markaz/{id}": {
+      "get": {
+        "operationId": "TripLinesController_findMarkazById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Markaz id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Markaz details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarkazDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Markaz not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one markaz by id.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "patch": {
+        "operationId": "TripLinesController_updateMarkaz",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Markaz id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMarkazDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Markaz updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarkazDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a markaz (names, active flag).",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/markaz/{id}/localities": {
+      "get": {
+        "operationId": "TripLinesController_findLocalities",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Markaz id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active localities of the markaz.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LocalityDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active cities/villages for one markaz (dependent selector).",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/localities": {
+      "post": {
+        "operationId": "TripLinesController_createLocality",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Locality created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LocalityDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a city/village locality under one markaz.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/localities/{id}": {
+      "get": {
+        "operationId": "TripLinesController_findLocalityById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Locality id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Locality details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LocalityDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Locality not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one locality by id.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "patch": {
+        "operationId": "TripLinesController_updateLocality",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Locality id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLocalityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Locality updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LocalityDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a locality (names, active flag).",
         "tags": [
           "trip-lines"
         ]
@@ -9527,6 +10240,33 @@
           "roleSlugs"
         ]
       },
+      "VehicleBrandDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Mercedes"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isActive",
+          "sortOrder"
+        ]
+      },
       "BusDto": {
         "type": "object",
         "properties": {
@@ -9545,9 +10285,33 @@
             "maxLength": 50
           },
           "plateNumber": {
-            "type": "string",
+            "type": "object",
             "example": "ABC-1234",
             "maxLength": 50
+          },
+          "color": {
+            "type": "object",
+            "example": "أبيض",
+            "maxLength": 50
+          },
+          "imageUrl": {
+            "type": "object",
+            "example": "https://example.com/buses/bus-1.jpg"
+          },
+          "brandId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/VehicleBrandDto"
+          },
+          "isAirConditioned": {
+            "type": "object",
+            "example": true
+          },
+          "modelYear": {
+            "type": "object",
+            "example": 2022
           },
           "capacity": {
             "type": "number",
@@ -9591,7 +10355,34 @@
           "plateNumber": {
             "type": "string",
             "example": "ABC-1234",
+            "minLength": 1,
             "maxLength": 50
+          },
+          "color": {
+            "type": "string",
+            "example": "أبيض",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://example.com/buses/bus-1.jpg",
+            "description": "Absolute HTTPS URL of the bus image (Supabase Storage URL; bucket provisioning is a follow-up)."
+          },
+          "brandId": {
+            "type": "object",
+            "format": "uuid",
+            "description": "Admin-managed vehicle brand. Must be active."
+          },
+          "isAirConditioned": {
+            "type": "boolean",
+            "example": true
+          },
+          "modelYear": {
+            "type": "number",
+            "example": 2022,
+            "minimum": 1980,
+            "maximum": 2100
           },
           "capacity": {
             "type": "number",
@@ -9602,6 +10393,9 @@
         },
         "required": [
           "registrationNumber",
+          "plateNumber",
+          "color",
+          "imageUrl",
           "capacity"
         ]
       },
@@ -9613,6 +10407,30 @@
             "example": "ABC-1234",
             "maxLength": 50
           },
+          "color": {
+            "type": "string",
+            "example": "أبيض",
+            "maxLength": 50
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://example.com/buses/bus-1.jpg"
+          },
+          "brandId": {
+            "type": "object",
+            "format": "uuid",
+            "description": "Admin-managed vehicle brand. Must be active."
+          },
+          "isAirConditioned": {
+            "type": "boolean",
+            "example": true
+          },
+          "modelYear": {
+            "type": "number",
+            "example": 2022,
+            "minimum": 1980,
+            "maximum": 2100
+          },
           "capacity": {
             "type": "number",
             "example": 45,
@@ -9622,6 +10440,44 @@
           "isActive": {
             "type": "boolean",
             "example": true
+          }
+        }
+      },
+      "CreateVehicleBrandDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Mercedes",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateVehicleBrandDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Mercedes"
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0
+          },
+          "isActive": {
+            "type": "boolean"
           }
         }
       },
@@ -10108,6 +10964,90 @@
           "nameEn"
         ]
       },
+      "MarkazDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "governorateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "BANHA"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "governorate": {
+            "$ref": "#/components/schemas/GovernorateDto"
+          }
+        },
+        "required": [
+          "id",
+          "governorateId",
+          "code",
+          "nameAr",
+          "nameEn",
+          "isActive"
+        ]
+      },
+      "LocalityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "markazId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CITY",
+              "VILLAGE"
+            ],
+            "example": "CITY"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "markaz": {
+            "$ref": "#/components/schemas/MarkazDto"
+          }
+        },
+        "required": [
+          "id",
+          "markazId",
+          "nameAr",
+          "nameEn",
+          "type",
+          "isActive"
+        ]
+      },
       "StationDto": {
         "type": "object",
         "properties": {
@@ -10141,6 +11081,14 @@
           },
           "governorate": {
             "$ref": "#/components/schemas/GovernorateDto"
+          },
+          "locality": {
+            "description": "Physical locality chain (locality → markaz → governorate).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocalityDto"
+              }
+            ]
           }
         },
         "required": [
@@ -10244,6 +11192,116 @@
           "upcomingTrips"
         ]
       },
+      "CreateMarkazDto": {
+        "type": "object",
+        "properties": {
+          "governorateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Governorate this markaz belongs to."
+          },
+          "code": {
+            "type": "string",
+            "example": "BANHA",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "governorateId",
+          "code",
+          "nameAr",
+          "nameEn"
+        ]
+      },
+      "UpdateMarkazDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateLocalityDto": {
+        "type": "object",
+        "properties": {
+          "markazId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Markaz this locality belongs to."
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CITY",
+              "VILLAGE"
+            ],
+            "example": "CITY"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "markazId",
+          "nameAr",
+          "nameEn",
+          "type"
+        ]
+      },
+      "UpdateLocalityDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
       "CreateStopDto": {
         "type": "object",
         "properties": {
@@ -10271,6 +11329,11 @@
             "type": "string",
             "format": "uuid",
             "description": "Egyptian governorate for this stop."
+          },
+          "localityId": {
+            "type": "object",
+            "format": "uuid",
+            "description": "City/village locality for this stop. Must belong to the stop governorate."
           },
           "isActive": {
             "type": "boolean",
@@ -10312,6 +11375,11 @@
             "format": "uuid",
             "description": "Egyptian governorate for this stop."
           },
+          "localityId": {
+            "type": "object",
+            "format": "uuid",
+            "description": "City/village locality for this stop. Must belong to the stop governorate."
+          },
           "isActive": {
             "type": "boolean"
           }
@@ -10328,11 +11396,9 @@
             "type": "string",
             "enum": [
               "BOARDING",
-              "LANDING",
-              "BOTH"
+              "LANDING"
             ],
-            "default": "BOTH",
-            "description": "Whether passengers may board, land, or both at this stop."
+            "description": "Whether passengers may board or land at this stop. Legacy BOTH rows remain readable but can no longer be written."
           },
           "estimatedStopMinutes": {
             "type": "number",
@@ -10341,7 +11407,8 @@
           }
         },
         "required": [
-          "stopId"
+          "stopId",
+          "stopType"
         ]
       },
       "CreateTripLineDto": {

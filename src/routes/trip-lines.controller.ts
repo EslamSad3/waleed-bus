@@ -4,7 +4,8 @@ import { Platform, RequirePermission } from '../authorization/decorators/permiss
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import { ApiAuthErrors, ApiConflict, ApiEnvelopeResponse, ApiNotFound, ApiUuidParam } from '../openapi/api-helpers.js';
-import { CreateStopDto, CreateTripLineDto, GovernorateDto, StationDto, UpdateDirectionalRouteStopsDto, UpdateStopDto, UpdateTripLineDto } from './dto/route.dto.js';
+import { CreateLocalityDto, CreateMarkazDto, CreateStopDto, CreateTripLineDto, GovernorateDto, LocalityDto, MarkazDto, StationDto, UpdateDirectionalRouteStopsDto, UpdateLocalityDto, UpdateMarkazDto, UpdateStopDto, UpdateTripLineDto } from './dto/route.dto.js';
+import { GeographyService } from './geography.service.js';
 import { TripLinesService } from './trip-lines.service.js';
 
 @ApiTags('trip-lines')
@@ -13,13 +14,69 @@ import { TripLinesService } from './trip-lines.service.js';
 @Platform()
 @Controller()
 export class TripLinesController {
-  constructor(private readonly service: TripLinesService) {}
+  constructor(private readonly service: TripLinesService, private readonly geography: GeographyService) {}
 
   @Get('governorates')
   @RequirePermission('stations.read')
   @ApiOperation({ summary: 'List the built-in Egyptian governorates, localized in Arabic and English.' })
   @ApiEnvelopeResponse(200, 'Egyptian governorates.', GovernorateDto, true)
   findGovernorates() { return this.service.findGovernorates(); }
+
+  @Get('governorates/:id/markaz')
+  @RequirePermission('stations.read')
+  @ApiOperation({ summary: 'List active markaz for one governorate (dependent selector).' })
+  @ApiEnvelopeResponse(200, 'Active markaz of the governorate.', MarkazDto, true)
+  @ApiUuidParam('id', 'Governorate id.')
+  findMarkaz(@Param('id', ParseUUIDPipe) id: string) { return this.geography.listMarkaz(id); }
+
+  @Post('markaz')
+  @RequirePermission('stations.create')
+  @ApiOperation({ summary: 'Create a markaz/district under one governorate.' })
+  @ApiEnvelopeResponse(201, 'Markaz created.', MarkazDto)
+  createMarkaz(@Body() dto: CreateMarkazDto, @CurrentUser() actor: RequestUser) { return this.geography.createMarkaz(dto, actor.id); }
+
+  @Get('markaz/:id')
+  @RequirePermission('stations.read')
+  @ApiOperation({ summary: 'Get one markaz by id.' })
+  @ApiEnvelopeResponse(200, 'Markaz details.', MarkazDto)
+  @ApiUuidParam('id', 'Markaz id.')
+  @ApiNotFound('Markaz not found.')
+  findMarkazById(@Param('id', ParseUUIDPipe) id: string) { return this.geography.findMarkaz(id); }
+
+  @Patch('markaz/:id')
+  @RequirePermission('stations.update')
+  @ApiOperation({ summary: 'Update a markaz (names, active flag).' })
+  @ApiEnvelopeResponse(200, 'Markaz updated.', MarkazDto)
+  @ApiUuidParam('id', 'Markaz id.')
+  updateMarkaz(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateMarkazDto, @CurrentUser() actor: RequestUser) { return this.geography.updateMarkaz(id, dto, actor.id); }
+
+  @Get('markaz/:id/localities')
+  @RequirePermission('stations.read')
+  @ApiOperation({ summary: 'List active cities/villages for one markaz (dependent selector).' })
+  @ApiEnvelopeResponse(200, 'Active localities of the markaz.', LocalityDto, true)
+  @ApiUuidParam('id', 'Markaz id.')
+  findLocalities(@Param('id', ParseUUIDPipe) id: string) { return this.geography.listLocalities(id); }
+
+  @Post('localities')
+  @RequirePermission('stations.create')
+  @ApiOperation({ summary: 'Create a city/village locality under one markaz.' })
+  @ApiEnvelopeResponse(201, 'Locality created.', LocalityDto)
+  createLocality(@Body() dto: CreateLocalityDto, @CurrentUser() actor: RequestUser) { return this.geography.createLocality(dto, actor.id); }
+
+  @Get('localities/:id')
+  @RequirePermission('stations.read')
+  @ApiOperation({ summary: 'Get one locality by id.' })
+  @ApiEnvelopeResponse(200, 'Locality details.', LocalityDto)
+  @ApiUuidParam('id', 'Locality id.')
+  @ApiNotFound('Locality not found.')
+  findLocalityById(@Param('id', ParseUUIDPipe) id: string) { return this.geography.findLocality(id); }
+
+  @Patch('localities/:id')
+  @RequirePermission('stations.update')
+  @ApiOperation({ summary: 'Update a locality (names, active flag).' })
+  @ApiEnvelopeResponse(200, 'Locality updated.', LocalityDto)
+  @ApiUuidParam('id', 'Locality id.')
+  updateLocality(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLocalityDto, @CurrentUser() actor: RequestUser) { return this.geography.updateLocality(id, dto, actor.id); }
 
   @Get('stops')
   @RequirePermission('stations.read')

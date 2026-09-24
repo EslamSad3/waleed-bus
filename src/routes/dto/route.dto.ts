@@ -54,6 +54,145 @@ export class StationDto {
 
   @ApiPropertyOptional({ type: () => GovernorateDto })
   governorate?: GovernorateDto;
+
+  @ApiPropertyOptional({ type: () => LocalityDto, description: 'Physical locality chain (locality → markaz → governorate).' })
+  locality?: LocalityDto | null;
+}
+
+export class MarkazDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  governorateId!: string;
+
+  @ApiProperty({ example: 'BANHA' })
+  code!: string;
+
+  @ApiProperty({ example: 'بنها' })
+  nameAr!: string;
+
+  @ApiProperty({ example: 'Banha' })
+  nameEn!: string;
+
+  @ApiProperty({ example: true })
+  isActive!: boolean;
+
+  @ApiPropertyOptional({ type: () => GovernorateDto })
+  governorate?: GovernorateDto;
+}
+
+export class CreateMarkazDto {
+  @ApiProperty({ format: 'uuid', description: 'Governorate this markaz belongs to.' })
+  @IsUUID()
+  governorateId!: string;
+
+  @ApiProperty({ example: 'BANHA', minLength: 1, maxLength: 50 })
+  @IsString()
+  @Length(1, 50)
+  code!: string;
+
+  @ApiProperty({ example: 'بنها', minLength: 1, maxLength: 100 })
+  @IsString()
+  @Length(1, 100)
+  nameAr!: string;
+
+  @ApiProperty({ example: 'Banha', minLength: 1, maxLength: 100 })
+  @IsString()
+  @Length(1, 100)
+  nameEn!: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateMarkazDto {
+  @ApiPropertyOptional({ example: 'بنها' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  nameAr?: string;
+
+  @ApiPropertyOptional({ example: 'Banha' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  nameEn?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class LocalityDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  markazId!: string;
+
+  @ApiProperty({ example: 'بنها' })
+  nameAr!: string;
+
+  @ApiProperty({ example: 'Banha' })
+  nameEn!: string;
+
+  @ApiProperty({ enum: ['CITY', 'VILLAGE'], example: 'CITY' })
+  type!: string;
+
+  @ApiProperty({ example: true })
+  isActive!: boolean;
+
+  @ApiPropertyOptional({ type: () => MarkazDto })
+  markaz?: MarkazDto;
+}
+
+export class CreateLocalityDto {
+  @ApiProperty({ format: 'uuid', description: 'Markaz this locality belongs to.' })
+  @IsUUID()
+  markazId!: string;
+
+  @ApiProperty({ example: 'بنها', minLength: 1, maxLength: 100 })
+  @IsString()
+  @Length(1, 100)
+  nameAr!: string;
+
+  @ApiProperty({ example: 'Banha', minLength: 1, maxLength: 100 })
+  @IsString()
+  @Length(1, 100)
+  nameEn!: string;
+
+  @ApiProperty({ enum: ['CITY', 'VILLAGE'], example: 'CITY' })
+  @IsString()
+  @IsIn(['CITY', 'VILLAGE'])
+  type!: 'CITY' | 'VILLAGE';
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateLocalityDto {
+  @ApiPropertyOptional({ example: 'بنها' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  nameAr?: string;
+
+  @ApiPropertyOptional({ example: 'Banha' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  nameEn?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class RouteDto {
@@ -187,6 +326,11 @@ export class CreateStopDto {
   @IsUUID()
   governorateId!: string;
 
+  @ApiPropertyOptional({ format: 'uuid', description: 'City/village locality for this stop. Must belong to the stop governorate.' })
+  @IsOptional()
+  @IsUUID()
+  localityId?: string | null;
+
   @ApiPropertyOptional({ default: true })
   @IsOptional()
   @IsBoolean()
@@ -225,6 +369,11 @@ export class UpdateStopDto {
   @IsUUID()
   governorateId?: string;
 
+  @ApiPropertyOptional({ format: 'uuid', description: 'City/village locality for this stop. Must belong to the stop governorate.' })
+  @IsOptional()
+  @IsUUID()
+  localityId?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
@@ -236,11 +385,10 @@ export class TripLineStopDto {
   @IsUUID()
   stopId!: string;
 
-  @ApiPropertyOptional({ enum: ['BOARDING', 'LANDING', 'BOTH'], default: 'BOTH', description: 'Whether passengers may board, land, or both at this stop.' })
-  @IsOptional()
+  @ApiProperty({ enum: ['BOARDING', 'LANDING'], description: 'Whether passengers may board or land at this stop. Legacy BOTH rows remain readable but can no longer be written.' })
   @IsString()
-  @IsIn(['BOARDING', 'LANDING', 'BOTH'])
-  stopType?: 'BOARDING' | 'LANDING' | 'BOTH';
+  @IsIn(['BOARDING', 'LANDING'])
+  stopType!: 'BOARDING' | 'LANDING';
 
   @ApiPropertyOptional({ example: 5, minimum: 0 })
   @IsOptional()

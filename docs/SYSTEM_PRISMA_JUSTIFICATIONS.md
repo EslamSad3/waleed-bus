@@ -89,13 +89,17 @@ Any direct injection or usage of `SystemPrismaService` outside of `FleetPathServ
 - **Justification**: The audit trail records security, governance, and observability events across all tenants. Writing via the system path ensures audit records cannot be tampered with or suppressed by tenant-level RLS restrictions. Reading audit logs is restricted to platform administration.
 - **Operational & Durability Semantics**: Audit logging is explicitly designed as non-blocking, non-transactional observability and governance logging. Audit writes occur over an independent database connection outside the business mutation transactions so that audit persistence failures never roll back user business transactions or compromise platform availability.
 
-### 7. Global Trip-Line Catalog (`routes/trip-lines.service.ts`, `routes/routes.service.ts`)
-- **Operations**: Stop (station) CRUD, governorate listing, trip-line (Line) CRUD, direction stop replacement, public stop/route resolution.
-- **Justification**: The commercial catalog — `governorates`, `stations`, `lines`, `routes`, `route_stations` — is platform-global reference data with no `fleet_id` column. Row-Level Security policies are fleet-scoped by design, so these tables are invisible to (and unguarded by) the tenant path. All mutating endpoints are `@Platform()`-guarded and require explicit `stations.*` / `routes.*` permissions; every mutation is audit-logged. Public read paths (`GET /public/routes/*`) expose only the generic catalog, never fleet data.
+### 7. Global Trip-Line Catalog (`routes/trip-lines.service.ts`, `routes/routes.service.ts`, `routes/geography.service.ts`)
+- **Operations**: Stop (station) CRUD, governorate listing, markaz/locality dictionary CRUD, trip-line (Line) CRUD, direction stop replacement, public stop/route resolution.
+- **Justification**: The commercial catalog — `governorates`, `markazes`, `localities`, `stations`, `lines`, `routes`, `route_stations` — is platform-global reference data with no `fleet_id` column. Row-Level Security policies are fleet-scoped by design, so these tables are invisible to (and unguarded by) the tenant path. All mutating endpoints are `@Platform()`-guarded and require explicit `stations.*` / `routes.*` permissions; every mutation is audit-logged. Public read paths (`GET /public/routes/*`) expose only the generic catalog, never fleet data.
 
 ### 8. Bus → Trip-Line Assignment Validation (`fleet-owner/bus-trip-line.service.ts`)
 - **Operations**: `assign()`, `unassign()`.
 - **Justification**: A fleet owner or super admin binds one of their buses to a commercial trip line. Buses are fleet-scoped and updated strictly inside `FleetPathService.run()` (tenant RLS path), but the target `lines` row is global catalog data that the tenant connection cannot see. The system path is used only for a read-only existence/`isActive` check of the trip line before the fleet-scoped mutation; a missing or inactive line fails closed with `409 TRIP_LINE_NOT_AVAILABLE`. The assignment itself is audit-logged.
+
+### 10. Vehicle Brand Dictionary (`buses/vehicle-brand.service.ts`)
+- **Operations**: Brand list/create/update, active-brand validation for bus assignment.
+- **Justification**: `vehicle_brands` is platform-global catalog data with no `fleet_id` column (same trust level as §7). All endpoints are `@Platform()`-guarded with `buses.*` permissions; mutations are audit-logged. Bus assignment validation is a read-only existence/`isActive` check before the fleet-scoped bus mutation.
 
 ### 9. Platform Fleet-Owner Administration (`fleet-owner/fleet-owners-admin.service.ts`)
 - **Operations**: Super-admin listing, inspection, and lifecycle management of fleet-owner accounts and their fleets.
