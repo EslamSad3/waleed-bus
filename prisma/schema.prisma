@@ -35,6 +35,7 @@ model User {
   driverAssignments BusAssignment[]    @relation("AssignmentDriver")
   filedReports   PassengerReport[]    @relation("ReportDriver")
   passengerBookings Booking[]         @relation("PassengerBookings")
+  favorites      Favorite[]
 
   @@map("users")
 }
@@ -422,6 +423,30 @@ model PassengerReport {
   @@index([bookingId])
   @@index([status])
   @@map("passenger_reports")
+}
+
+/// Passenger favorite: fleet owner or individual bus, with optional
+/// boarding/landing stop preferences (spec 009). User-owned rows scoped
+/// to actor.id at the service layer; RLS self-policy is defense in depth.
+/// `type` is FLEET | BUS, validated in the application layer.
+model Favorite {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  /// FLEET | BUS (validated in the application layer)
+  type              String   @db.VarChar(20)
+  fleetId           String?  @map("fleet_id") @db.Uuid
+  busId             String?  @map("bus_id") @db.Uuid
+  boardingStationId String?  @map("boarding_station_id") @db.Uuid
+  landingStationId  String?  @map("landing_station_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fleetId])
+  @@unique([userId, busId])
+  @@index([userId])
+  @@index([userId, type])
+  @@map("favorites")
 }
 
 /// Generic DB-backed rate-limit bucket. Keys: login:phone:<n>,

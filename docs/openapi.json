@@ -9727,6 +9727,260 @@
           "driver"
         ]
       }
+    },
+    "/favorites": {
+      "post": {
+        "operationId": "FavoritesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFavoriteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Favorite created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FavoriteDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Favorite a fleet or a bus, with optional stop prefs.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      },
+      "get": {
+        "operationId": "FavoritesController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "My favorites.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FavoriteDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List my favorites with target-activity flags.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      }
+    },
+    "/favorites/{id}": {
+      "patch": {
+        "operationId": "FavoritesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Favorite id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFavoriteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Favorite updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FavoriteDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Favorite not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update my favorite stop prefs.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      },
+      "delete": {
+        "operationId": "FavoritesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Favorite id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favorite deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Favorite not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete my favorite.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      }
     }
   },
   "info": {
@@ -13870,6 +14124,226 @@
         "required": [
           "note"
         ]
+      },
+      "FavoriteFleetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Halem Travel"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isActive"
+        ]
+      },
+      "FavoriteBusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationNumber": {
+            "type": "string",
+            "example": "BUS-A-001"
+          },
+          "plateNumber": {
+            "type": "object",
+            "example": "ABC-1234"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "Halem Travel"
+          },
+          "fleetActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "fleetId",
+          "registrationNumber",
+          "isActive",
+          "fleetName",
+          "fleetActive"
+        ]
+      },
+      "FavoriteStationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Banha Bridge"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "FavoriteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FLEET",
+              "BUS"
+            ]
+          },
+          "fleetId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "busId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "boardingStationId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "landingStationId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fleet": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteFleetDto"
+              }
+            ]
+          },
+          "bus": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteBusDto"
+              }
+            ]
+          },
+          "boardingStation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteStationDto"
+              }
+            ]
+          },
+          "landingStation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteStationDto"
+              }
+            ]
+          },
+          "isTargetActive": {
+            "type": "boolean",
+            "example": true,
+            "description": "False when the favorited fleet/bus was disabled after saving."
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "createdAt",
+          "isTargetActive"
+        ]
+      },
+      "CreateFavoriteDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FLEET",
+              "BUS"
+            ],
+            "example": "BUS"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for FLEET favorites."
+          },
+          "busId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for BUS favorites."
+          },
+          "boardingStationId": {
+            "type": "object",
+            "format": "uuid",
+            "description": "Optional boarding stop preference."
+          },
+          "landingStationId": {
+            "type": "object",
+            "format": "uuid",
+            "description": "Optional landing stop preference."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "UpdateFavoriteDto": {
+        "type": "object",
+        "properties": {
+          "boardingStationId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Set null to clear."
+          },
+          "landingStationId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Set null to clear."
+          }
+        }
       }
     }
   }

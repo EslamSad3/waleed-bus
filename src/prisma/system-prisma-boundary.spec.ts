@@ -47,6 +47,7 @@ describe('SystemPrisma Architectural Boundary', () => {
     'users/users.service.ts',
 
     // Global Commercial Catalog (lines/routes/stations are platform-wide, not fleet-scoped)
+    'favorites/favorites.service.ts',
     'fleet-owner/bus-trip-line.service.ts',
     'fleet-owner/fleet-owners-admin.service.ts',
     'fleet-owner/discovery.service.ts',

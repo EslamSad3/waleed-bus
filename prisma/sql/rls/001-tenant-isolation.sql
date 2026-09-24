@@ -171,6 +171,16 @@ CREATE POLICY self_providers ON public.user_auth_providers
   USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
   WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
 
+-- favorites: passenger-owned rows, self access only (spec 009). The
+-- service uses the system path with actor.id scoping; this policy is
+-- defense in depth for any future tenant-path use.
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS owner_favorites ON public.favorites;
+CREATE POLICY owner_favorites ON public.favorites
+  FOR ALL
+  USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
+
 -- trip_shares: readable/writable by members of the fleet owning the underlying booking
 ALTER TABLE public.trip_shares ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS booking_shares ON public.trip_shares;
@@ -255,6 +265,7 @@ REVOKE ALL ON public.vehicle_brands FROM app_tenant;
 REVOKE ALL ON public.vip_tiers FROM app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.trip_shares TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.phone_verification_challenges, public.user_auth_providers TO app_tenant;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO app_tenant;
 
 -- Spec 003: assignments are written by owner assignment flows (INSERT + status
 -- updates; no service path deletes — the DELETE grant keeps the family

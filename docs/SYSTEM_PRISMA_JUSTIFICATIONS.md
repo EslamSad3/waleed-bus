@@ -105,6 +105,10 @@ Any direct injection or usage of `SystemPrismaService` outside of `FleetPathServ
 - **Operations**: Public fleet-owner search (name/geography match, VIP-ordered, cursor-paginated), public per-fleet active-bus listing with driver enrichment, VIP tier CRUD.
 - **Justification**: Discovery serves passengers who hold no fleet membership, so the fleet-member-scoped tenant path cannot serve it; the directory (`fleets`, `users`) and catalog (`stations`, `localities`, `markazes`, `governorates`, `vip_tiers`, `vehicle_brands`) rows are read-only projections that expose no seats, payments, or secrets. Writes (tier CRUD, fleet assignment) are `@Platform()`-guarded with `fleets.*` permissions and audit-logged.
 
+### 12. Passenger Favorites (`favorites/favorites.service.ts`)
+- **Operations**: Fleet/bus favorite CRUD scoped to the authenticated passenger.
+- **Justification**: Same family as §3 — passengers hold no fleet membership, so the fleet-member-scoped tenant path cannot serve user-owned cross-fleet data. Defense in depth: verified-phone gate, all queries scoped to `actor.id`, foreign ids uniformly 404 (no oracle), plus a database-level `owner_favorites` self-access RLS policy on `public.favorites`.
+
 ### 9. Platform Fleet-Owner Administration (`fleet-owner/fleet-owners-admin.service.ts`)
 - **Operations**: Super-admin listing, inspection, and lifecycle management of fleet-owner accounts and their fleets.
 - **Justification**: `super_admin` platform administration operates across all fleets (same trust level as §2). The `users` table RLS policy is self-only (`id = app.user_id`), so no tenant-path query can enumerate other users; owner accounts are global rows. All operations run behind `@Platform()` + permission guards and are audit-logged.

@@ -30,6 +30,9 @@ const ALL_TABLES = [
   'throttle_counters',
   'markazes',
   'localities',
+  'favorites',
+  'vehicle_brands',
+  'vip_tiers',
   // Platform catalog (except seeded governorates): suites create their own
   // lines/stations per run, so truncate them for hermetic re-runs.
   'lines',
