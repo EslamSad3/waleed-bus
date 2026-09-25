@@ -137,7 +137,7 @@ export class CurrentUserDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ example: 'admin@bus.local', format: 'email', nullable: true })
+  @ApiProperty({ type: String, example: 'admin@bus.local', format: 'email', nullable: true })
   email!: string | null;
 
   @ApiProperty({

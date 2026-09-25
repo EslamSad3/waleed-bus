@@ -7,7 +7,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Length,
   Matches,
   Max,
@@ -67,7 +66,6 @@ export class CreatePassengerBookingDto {
     message: 'landingStationId must be a UUID',
   })
   landingStationId!: string;
-
   @ApiPropertyOptional({ maxLength: 500, description: 'Passenger pickup address shown to the driver.' })
   @IsOptional()
   @IsString()
@@ -103,6 +101,36 @@ export class CreatePassengerBookingDto {
   @IsOptional()
   @IsBoolean()
   confirmTimeConflict?: boolean;
+
+  @ApiPropertyOptional({ enum: ['SELF', 'OTHER'], default: 'SELF', description: 'Who travels: the booker or someone else.' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['SELF', 'OTHER'])
+  bookingFor?: 'SELF' | 'OTHER';
+
+  @ApiPropertyOptional({ example: 'Mona Ahmed', maxLength: 255, description: 'Required when bookingFor is OTHER; ignored for SELF (snapshot comes from the account).' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  passengerName?: string;
+
+  @ApiPropertyOptional({ example: '01012345678', maxLength: 30, description: 'Required when bookingFor is OTHER.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 30)
+  passengerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Wait near the bridge.', maxLength: 1000, description: 'Free-form note visible to the driver/operator.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 1000)
+  note?: string;
+
+  @ApiPropertyOptional({ example: 'SAVE10', description: 'Promo code applied at checkout. Unknown/expired codes are ignored at full price; exhausted or already-used codes raise.' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 32)
+  promoCode?: string;
 }
 
 export class CancelPassengerBookingDto {
@@ -146,11 +174,10 @@ export class PassengerBookingListQueryDto {
   timeFilter?: string;
 
   @ApiPropertyOptional({
-    format: 'uuid',
-    description: 'Cursor pagination token',
+    description: 'Cursor pagination token (opaque; pass back nextCursor verbatim).',
   })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   cursor?: string;
 
   @ApiPropertyOptional({ example: 20, default: 20, minimum: 1, maximum: 50 })
@@ -166,10 +193,10 @@ export class BookingBusSummaryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   id?: string;
 
-  @ApiPropertyOptional({ example: 'ق ب أ 1234' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ق ب أ 1234' })
   plateNumber?: string | null;
 
-  @ApiPropertyOptional({ example: 'BUS-001' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'BUS-001' })
   registrationNumber?: string | null;
 }
 
@@ -200,10 +227,13 @@ export class PassengerBookingItemDto {
   @ApiProperty({ format: 'uuid' })
   tripId!: string;
 
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  passengerUserId?: string | null;
+
   @ApiProperty({ example: 'Ahmed Hassan' })
   passengerName!: string;
 
-  @ApiPropertyOptional({ example: '01000000000' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01000000000' })
   passengerPhone?: string | null;
 
   @ApiProperty({ example: 2 })
@@ -212,28 +242,43 @@ export class PassengerBookingItemDto {
   @ApiProperty({ example: 'CONFIRMED' })
   status!: string;
 
-  @ApiPropertyOptional({ example: 'CASH' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'CASH' })
   paymentMethod?: string | null;
 
-  @ApiPropertyOptional({ example: 'PENDING' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'PENDING' })
   paymentStatus?: string | null;
 
-  @ApiPropertyOptional({ example: '100.00' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: '100.00' })
   totalAmount?: string | null;
+
+  @ApiPropertyOptional({ type: String, example: 'SAVE10', nullable: true })
+  promoCode?: string | null;
+
+  @ApiProperty({ example: '10.00' })
+  discountAmount!: string;
+
+  @ApiPropertyOptional({ type: String, example: 'OK', nullable: true, description: 'Promo outcome echoed on create only.' })
+  promoStatus?: string | null;
+
+  @ApiProperty({ enum: ['SELF', 'OTHER'], example: 'SELF' })
+  bookingFor!: string;
+
+  @ApiPropertyOptional({ type: String, example: 'Wait near the bridge.', nullable: true })
+  note?: string | null;
 
   @ApiProperty({ format: 'date-time' })
   confirmedAt!: Date;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   boardedAt?: Date | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   droppedAt?: Date | null;
 
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   busRating?: number | null;
 
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   driverRating?: number | null;
 
   @ApiProperty({ type: () => BookingTripSummaryDto })
@@ -261,23 +306,23 @@ export class CancelledBookingResponseDto {
   @ApiProperty({ format: 'date-time' })
   cancelledAt!: Date;
 
-  @ApiPropertyOptional({ example: 'Change of plans', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Change of plans', nullable: true })
   cancellationReason?: string | null;
 }
 
 export class ActiveTripDriverDto {
-  @ApiPropertyOptional({ example: 'Mohamed Ibrahim', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Mohamed Ibrahim', nullable: true })
   name?: string | null;
 
-  @ApiPropertyOptional({ example: '01100000000', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '01100000000', nullable: true })
   phone?: string | null;
 
-  @ApiPropertyOptional({ example: null, nullable: true })
+  @ApiPropertyOptional({ type: String, example: null, nullable: true })
   picture?: string | null;
 }
 
 export class ActiveTripBusDto {
-  @ApiPropertyOptional({ example: 'ق ب أ 1234', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'ق ب أ 1234', nullable: true })
   plateNumber?: string | null;
 
   @ApiProperty({ example: 14 })

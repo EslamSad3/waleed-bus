@@ -3,6 +3,7 @@ import { AuditService } from '../audit/audit.service.js';
 import type { RequestUser } from '../auth/jwt-payload.js';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
+import { PromotionsService } from '../promotions/promotions.service.js';
 import {
   buildCursorArgs,
   toCursorPage,
@@ -19,11 +20,24 @@ import type {
   PassengerBookingListQueryDto,
 } from './dto/passenger-booking.dto.js';
 
+/**
+ * Platform-wide default when a user has no personal override (spec 010).
+ * Shown in the dashboard as the default next to the per-user override.
+ */
+export const PLATFORM_DEFAULT_MAX_BOOKING_SEATS = 5;
+
+export function effectiveMaxBookingSeats(
+  maxBookingSeats: number | null | undefined,
+): number {
+  return maxBookingSeats ?? PLATFORM_DEFAULT_MAX_BOOKING_SEATS;
+}
+
 @Injectable()
 export class PassengerBookingService {
   constructor(
     private readonly system: SystemPrismaService,
     private readonly audit: AuditService,
+    private readonly promotions: PromotionsService,
   ) {}
 
   /**
@@ -91,14 +105,28 @@ export class PassengerBookingService {
       if (!trip.route_id) {
         throw new CodedException(409, 'TRIP_ROUTE_MISSING', 'Trip does not have a bookable route.');
       }
+      // Same-station trips are not bookable: a converted BOTH pair would
+      // otherwise satisfy the order check (BOARDING twin before LANDING
+      // twin) and allow Station X → Station X.
+      if (input.boardingStationId === input.landingStationId) {
+        throw new CodedException(422, 'INVALID_TRIP_STOPS', 'Boarding and landing stops must be different stations.');
+      }
       const routeStops = await tx.routeStation.findMany({
         where: { routeId: trip.route_id },
         orderBy: { stopOrder: 'asc' },
         select: { stationId: true, stopOrder: true, stopType: true },
       });
-      const boarding = routeStops.find((stop) => stop.stationId === input.boardingStationId);
-      const landing = routeStops.find((stop) => stop.stationId === input.landingStationId);
-      if (!boarding || !['BOARDING', 'BOTH'].includes(boarding.stopType) || !landing || !['LANDING', 'BOTH'].includes(landing.stopType) || boarding.stopOrder >= landing.stopOrder) {
+      // Capability-aware lookup: a converted BOTH station exists as an
+      // adjacent BOARDING + LANDING pair, so match station AND capability
+      // (first-row-by-station would always return the BOARDING twin and make
+      // the station unbookable as a destination). stopOrder decides validity.
+      const boarding = routeStops.find(
+        (stop) => stop.stationId === input.boardingStationId && ['BOARDING', 'BOTH'].includes(stop.stopType),
+      );
+      const landing = routeStops.find(
+        (stop) => stop.stationId === input.landingStationId && ['LANDING', 'BOTH'].includes(stop.stopType),
+      );
+      if (!boarding || !landing || boarding.stopOrder >= landing.stopOrder) {
         throw new CodedException(422, 'INVALID_TRIP_STOPS', 'Choose a boarding stop before a landing stop that this trip serves.');
       }
 
@@ -134,6 +162,38 @@ export class PassengerBookingService {
         );
       }
 
+      const bookingFor = input.bookingFor ?? 'SELF';
+      const seatLimit = effectiveMaxBookingSeats(caller.maxBookingSeats);
+      if (input.seatCount > seatLimit) {
+        throw new CodedException(
+          422,
+          'BOOKING_SEAT_LIMIT_EXCEEDED',
+          `You can book at most ${seatLimit} seats per booking.`,
+        );
+      }
+
+      let passengerUserId: string | null = actor.id;
+      let passengerName = caller.name ?? 'Passenger';
+      let passengerPhone: string | null = caller.phoneNumber;
+      if (bookingFor === 'OTHER') {
+        const otherName = input.passengerName?.trim();
+        const otherPhone = input.passengerPhone?.trim();
+        if (!otherName || !otherPhone) {
+          throw new CodedException(
+            400,
+            'VALIDATION_FAILED',
+            'passengerName and passengerPhone are required when booking for someone else.',
+          );
+        }
+        const otherAccount = await tx.user.findFirst({
+          where: { phoneNumber: otherPhone, isActive: true },
+          select: { id: true },
+        });
+        passengerUserId = otherAccount?.id ?? null;
+        passengerName = otherName;
+        passengerPhone = otherPhone;
+      }
+
       // Aggregate confirmed seats
       const bookedSeatsAgg = await tx.booking.aggregate({
         where: { tripId: trip.id, status: 'CONFIRMED' },
@@ -152,13 +212,38 @@ export class PassengerBookingService {
       const totalAmount = Number(trip.fare) * input.seatCount;
       const paymentStatus = 'PENDING';
 
+      // Spec 011: promo resolution inside the booking tx (promotion row locked
+      // FOR UPDATE; soft failures fall back to full price with a status echo).
+      let promotionId: string | null = null;
+      let promoCode: string | null = null;
+      let discountAmount = 0;
+      let promoStatus: string | null = null;
+      if (input.promoCode?.trim()) {
+        const resolution = await this.promotions.resolveInTx(
+          tx,
+          input.promoCode,
+          actor.id,
+          totalAmount,
+          true,
+        );
+        promoStatus = resolution.status;
+        promotionId = resolution.promotionId;
+        promoCode = resolution.promoCode;
+        discountAmount = resolution.discountAmount;
+      }
+      const payableAmount =
+        Math.round((totalAmount - discountAmount + Number.EPSILON) * 100) / 100;
+
       const booking = await tx.booking.create({
         data: {
           fleetId: trip.fleet_id,
           tripId: trip.id,
-          passengerUserId: actor.id,
-          passengerName: caller.name ?? 'Passenger',
-          passengerPhone: caller.phoneNumber,
+          passengerUserId,
+          bookedByUserId: actor.id,
+          passengerName,
+          passengerPhone,
+          bookingFor,
+          note: input.note?.trim() || null,
           boardingStationId: input.boardingStationId,
           landingStationId: input.landingStationId,
           pickupAddress: input.pickupAddress?.trim() || null,
@@ -169,7 +254,10 @@ export class PassengerBookingService {
           status: 'CONFIRMED',
           paymentMethod: input.paymentMethod,
           paymentStatus,
-          totalAmount,
+          totalAmount: payableAmount,
+          promotionId,
+          promoCode,
+          discountAmount,
         },
         include: {
           trip: {
@@ -182,6 +270,15 @@ export class PassengerBookingService {
         },
       });
 
+      if (promotionId && promoStatus === 'OK') {
+        await this.promotions.recordUsage(tx, {
+          promotionId,
+          userId: actor.id,
+          bookingId: booking.id,
+          discountAmount,
+        });
+      }
+
       await this.audit.log({
         actorUserId: actor.id,
         actorFleetId: trip.fleet_id,
@@ -192,17 +289,23 @@ export class PassengerBookingService {
           tripId: trip.id,
           seats: input.seatCount,
           paymentMethod: input.paymentMethod,
-          totalAmount,
+          totalAmount: payableAmount,
           boardingStationId: input.boardingStationId,
           landingStationId: input.landingStationId,
+          ...(promotionId
+            ? { promotionId, promoCode, discountAmount }
+            : {}),
         },
       });
 
-      return {
+      const created = {
         id: booking.id,
         tripId: booking.tripId,
+        passengerUserId: booking.passengerUserId,
         passengerName: booking.passengerName,
         passengerPhone: booking.passengerPhone,
+        bookingFor: booking.bookingFor,
+        note: booking.note,
         seats: booking.seats,
         status: booking.status,
         paymentMethod: booking.paymentMethod,
@@ -210,6 +313,9 @@ export class PassengerBookingService {
         totalAmount: booking.totalAmount
           ? Number(booking.totalAmount).toFixed(2)
           : null,
+        promoCode: booking.promoCode,
+        discountAmount: Number(booking.discountAmount).toFixed(2),
+        promoStatus,
         confirmedAt: booking.confirmedAt,
         trip: {
           id: booking.tripId,
@@ -219,6 +325,10 @@ export class PassengerBookingService {
           status: trip.status,
         },
       };
+
+      return { booking: created };
+    }).then((result) => {
+      return result.booking;
     });
   }
 
@@ -272,13 +382,18 @@ export class PassengerBookingService {
     const items: PassengerBookingItemDto[] = bookings.map((b) => ({
       id: b.id,
       tripId: b.tripId,
+      passengerUserId: b.passengerUserId,
       passengerName: b.passengerName,
       passengerPhone: b.passengerPhone,
+      bookingFor: b.bookingFor,
+      note: b.note,
       seats: b.seats,
       status: b.status,
       paymentMethod: b.paymentMethod,
       paymentStatus: b.paymentStatus,
       totalAmount: b.totalAmount ? Number(b.totalAmount).toFixed(2) : null,
+      promoCode: b.promoCode,
+      discountAmount: Number(b.discountAmount).toFixed(2),
       confirmedAt: b.confirmedAt,
       boardedAt: b.boardedAt,
       droppedAt: b.droppedAt,
@@ -340,8 +455,11 @@ export class PassengerBookingService {
     return {
       id: booking.id,
       tripId: booking.tripId,
+      passengerUserId: booking.passengerUserId,
       passengerName: booking.passengerName,
       passengerPhone: booking.passengerPhone,
+      bookingFor: booking.bookingFor,
+      note: booking.note,
       seats: booking.seats,
       status: booking.status,
       paymentMethod: booking.paymentMethod,
@@ -349,6 +467,8 @@ export class PassengerBookingService {
       totalAmount: booking.totalAmount
         ? Number(booking.totalAmount).toFixed(2)
         : null,
+      promoCode: booking.promoCode,
+      discountAmount: Number(booking.discountAmount).toFixed(2),
       confirmedAt: booking.confirmedAt,
       boardedAt: booking.boardedAt,
       droppedAt: booking.droppedAt,
@@ -469,14 +589,18 @@ export class PassengerBookingService {
       });
 
       return {
-        id: updated.id,
-        status: updated.status,
-        seats: updated.seats,
-        cancelledSeats: seatsToCancel,
-        paymentStatus: updated.paymentStatus ?? 'REFUND_PENDING',
-        cancelledAt: updated.cancelledAt!,
-        cancellationReason: updated.cancellationReason,
+        response: {
+          id: updated.id,
+          status: updated.status,
+          seats: updated.seats,
+          cancelledSeats: seatsToCancel,
+          paymentStatus: updated.paymentStatus ?? 'REFUND_PENDING',
+          cancelledAt: updated.cancelledAt!,
+          cancellationReason: updated.cancellationReason,
+        },
       };
+    }).then((result) => {
+      return result.response;
     });
   }
 

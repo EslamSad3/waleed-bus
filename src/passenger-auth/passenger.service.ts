@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import argon2 from 'argon2';
 import { AuditService } from '../audit/audit.service.js';
+import { effectiveMaxBookingSeats } from '../bookings/passenger-booking.service.js';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { normalizePhone } from './phone.util.js';
@@ -108,6 +109,7 @@ export class PassengerService {
     phoneVerified: boolean;
     pendingPhoneNumber: string | null;
     expiresInSeconds: number | null;
+    effectiveMaxBookingSeats: number;
   }> {
     const user = await this.system.user.findUnique({ where: { id: userId } });
     // Guard guarantees the user exists; treat absence as incomplete, never 500.
@@ -124,6 +126,11 @@ export class PassengerService {
       phoneVerified,
       pendingPhoneNumber: pending?.phoneNumber ?? null,
       expiresInSeconds: pending?.expiresInSeconds ?? null,
+      // Call §27-28: surfaced for mobile display only — enforcement stays
+      // server-side inside the booking transaction, never in the client.
+      effectiveMaxBookingSeats: effectiveMaxBookingSeats(
+        user?.maxBookingSeats ?? null,
+      ),
     };
   }
 
@@ -176,6 +183,7 @@ export class PassengerService {
     pendingPhoneNumber: string | null;
     expiresInSeconds: number | null;
     sent: boolean;
+    effectiveMaxBookingSeats: number;
   }> {
     if (
       input.name === undefined &&
@@ -344,6 +352,10 @@ export class PassengerService {
       pendingPhoneNumber: pending?.phoneNumber ?? null,
       expiresInSeconds: pending?.expiresInSeconds ?? null,
       sent,
+      // Display-only seat cap travels with the user object (enforced server-side).
+      effectiveMaxBookingSeats: effectiveMaxBookingSeats(
+        updated.maxBookingSeats ?? null,
+      ),
     };
   }
 }

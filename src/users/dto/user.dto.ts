@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsInt,
   IsOptional,
   IsString,
   Length,
@@ -27,6 +28,19 @@ export class UserDto {
   @ApiProperty({ example: true })
   isActive!: boolean;
 
+  @ApiPropertyOptional({ type: Number, 
+    example: 8,
+    nullable: true,
+    description: 'Per-user seat override; null means the platform default (5).',
+  })
+  maxBookingSeats?: number | null;
+
+  @ApiProperty({
+    example: 5,
+    description: 'Effective per-booking seat limit (override ?? platform default).',
+  })
+  effectiveMaxBookingSeats!: number;
+
   @ApiProperty({
     example: 1,
     description: 'Bumped on security-sensitive changes; stale tokens rejected.',
@@ -38,6 +52,36 @@ export class UserDto {
 
   @ApiProperty({ format: 'date-time' })
   updatedAt!: Date;
+}
+
+/** Documentation-only model for an eligible promotion-target option (GET /users/target-options). */
+export class TargetOptionDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  // NOTE: `type: String` is load-bearing — without it the OpenAPI reflection
+  // emits `type: object` for `T | null` unions, breaking generated clients.
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Promo A' })
+  name?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'a@example.com', format: 'email' })
+  email?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01009990301' })
+  phoneNumber?: string | null;
+}
+
+/** Validated query for GET /users/target-options (server-side eligible search). */
+export class TargetOptionsQueryDto {
+  @ApiPropertyOptional({ example: 'Dalia', description: 'Name/email/phone fragment (Arabic supported).' })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional({ example: 20, description: 'Max options (1-50, default 20).' })
+  @IsOptional()
+  @IsString()
+  limit?: string;
 }
 
 /** Documentation-only model for the caller's own memberships (GET /fleets/mine). */
@@ -95,6 +139,9 @@ export class FleetDto {
 
   @ApiProperty({ example: true })
   isActive!: boolean;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  vipTierId?: string | null;
 
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;
@@ -169,6 +216,15 @@ export class UpdateUserDto {
   @MinLength(8)
   @MaxLength(128)
   password?: string;
+
+  @ApiPropertyOptional({ type: Number, 
+    example: 8,
+    nullable: true,
+    description: 'Per-user seat override (must be ≥ 1); null clears back to the platform default (5).',
+  })
+  @IsOptional()
+  @IsInt()
+  maxBookingSeats?: number | null;
 }
 
 export class SetUserRolesDto {

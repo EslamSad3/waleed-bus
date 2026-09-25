@@ -6,6 +6,8 @@ import {
 import argon2 from 'argon2';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { AuditService } from '../audit/audit.service.js';
+import { CodedException } from '../common/filters/coded.exception.js';
+import { effectiveMaxBookingSeats } from '../bookings/passenger-booking.service.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
 import {
   buildCursorArgs,
@@ -25,12 +27,19 @@ export interface UpdateUserInput {
   name?: string;
   isActive?: boolean;
   password?: string;
+  maxBookingSeats?: number | null;
 }
+
+export type PresentRow = Omit<SafeUser, 'effectiveMaxBookingSeats'> & {
+  maxBookingSeats: number | null;
+};
 
 export interface SafeUser {
   id: string;
   email: string | null;
   name: string | null;
+  maxBookingSeats: number | null;
+  effectiveMaxBookingSeats: number;
   isActive: boolean;
   authVersion: number;
   createdAt: Date;
@@ -70,7 +79,7 @@ export class UsersService {
       resourceId: user.id,
       metadata: { email: user.email, roles: input.globalRoleSlugs ?? [] },
     });
-    return user;
+    return this.present(user as unknown as PresentRow);
   }
 
   async findAll(query: {
@@ -83,7 +92,49 @@ export class UsersService {
       orderBy: { createdAt: 'desc' },
       select: this.safeSelection,
     });
-    return toCursorPage(users as unknown as SafeUser[], pageSize);
+    return toCursorPage(
+      users.map((u) => this.present(u as unknown as PresentRow)),
+      pageSize,
+    );
+  }
+
+  /**
+   * Eligible promotion-target picker (spec 011): active users holding the
+   * `passenger` role, with server-side search over name/email/phone. Bounded
+   * (default 20, max 50) so the dashboard picker searches the whole
+   * population instead of filtering the first /users page client-side.
+   */
+  async findTargetOptions(query: {
+    q?: string;
+    limit?: string;
+  }): Promise<
+    Array<{
+      id: string;
+      name: string | null;
+      email: string | null;
+      phoneNumber: string | null;
+    }>
+  > {
+    const q = (query.q ?? '').trim();
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 50);
+    return this.system.user.findMany({
+      where: {
+        isActive: true,
+        globalRoles: { some: { role: { slug: 'passenger', isActive: true } } },
+        ...(q
+          ? {
+              OR: [
+                { name: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+                { phoneNumber: { contains: q } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, name: true, email: true, phoneNumber: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: limit,
+    });
   }
 
   async findOne(id: string): Promise<SafeUser> {
@@ -95,7 +146,7 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user as unknown as SafeUser;
+    return this.present(user as unknown as PresentRow);
   }
 
   async update(
@@ -113,11 +164,25 @@ export class UsersService {
         await this.assertNotLastActiveSuperAdmin(tx, id);
       }
 
+      if (
+        input.maxBookingSeats !== undefined &&
+        input.maxBookingSeats !== null &&
+        (!Number.isInteger(input.maxBookingSeats) || input.maxBookingSeats < 1)
+      ) {
+        throw new CodedException(
+          422,
+          'INVALID_BOOKING_SEAT_LIMIT',
+          'Maximum booking seats must be a positive integer.',
+        );
+      }
       const updated = await tx.user.update({
         where: { id },
         data: {
           name: input.name,
           isActive: input.isActive,
+          ...(input.maxBookingSeats !== undefined
+            ? { maxBookingSeats: input.maxBookingSeats }
+            : {}),
           ...(input.password !== undefined
             ? { passwordHash: await argon2.hash(input.password) }
             : {}),
@@ -142,9 +207,10 @@ export class UsersService {
         name: input.name,
         isActive: input.isActive,
         passwordChanged: input.password !== undefined,
+        maxBookingSeats: input.maxBookingSeats,
       },
     });
-    return user;
+    return this.present(user as unknown as PresentRow);
   }
 
   /** Transactional replacement of the user's global role assignments. */
@@ -188,7 +254,7 @@ export class UsersService {
       resourceId: id,
       metadata: { roleSlugs },
     });
-    return user;
+    return this.present(user as unknown as PresentRow);
   }
 
   async remove(id: string, actorUserId: string): Promise<void> {
@@ -252,9 +318,19 @@ export class UsersService {
     id: true,
     email: true,
     name: true,
+    maxBookingSeats: true,
     isActive: true,
     authVersion: true,
     createdAt: true,
     updatedAt: true,
   } as const;
+
+  private present(row: PresentRow): SafeUser {
+    const { maxBookingSeats, ...rest } = row;
+    return {
+      ...rest,
+      maxBookingSeats,
+      effectiveMaxBookingSeats: effectiveMaxBookingSeats(maxBookingSeats),
+    };
+  }
 }

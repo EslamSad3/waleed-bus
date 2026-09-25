@@ -6,6 +6,7 @@ import {
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import { TenantContextService } from '../authorization/services/tenant-context.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { CodedException } from '../common/filters/coded.exception.js';
 import { translatePrismaError } from '../common/prisma-error.util.js';
 import {
   buildCursorArgs,
@@ -101,12 +102,16 @@ export class FleetsService {
     const fleets = await this.system.fleet.findMany({
       ...args,
       orderBy: { createdAt: 'desc' },
+      include: { vipTier: true },
     });
     return toCursorPage(fleets, pageSize);
   }
 
   async findOne(id: string): Promise<Fleet> {
-    const fleet = await this.system.fleet.findUnique({ where: { id } });
+    const fleet = await this.system.fleet.findUnique({
+      where: { id },
+      include: { vipTier: true },
+    });
     if (!fleet) throw new NotFoundException('Fleet not found');
     return fleet;
   }
@@ -130,6 +135,41 @@ export class FleetsService {
       metadata: { ...input },
     });
     return fleet;
+  }
+
+  async assignVipTier(
+    id: string,
+    vipTierId: string | null | undefined,
+    actorUserId: string,
+  ): Promise<Fleet> {
+    const fleet = await this.system.fleet.findUnique({ where: { id } });
+    if (!fleet) throw new NotFoundException('Fleet not found');
+    if (vipTierId) {
+      const tier = await this.system.vipTier.findUnique({
+        where: { id: vipTierId },
+      });
+      if (!tier || !tier.isActive) {
+        throw new CodedException(
+          422,
+          'VIP_TIER_NOT_AVAILABLE',
+          'مستوى VIP المختار غير متاح.',
+        );
+      }
+    }
+    const updated = await this.system.fleet.update({
+      where: { id },
+      data: { vipTierId: vipTierId ?? null },
+      include: { vipTier: true },
+    });
+    await this.audit.log({
+      actorUserId,
+      targetFleetId: id,
+      action: 'fleet.vip.assign',
+      resource: 'fleet',
+      resourceId: id,
+      metadata: { vipTierId: vipTierId ?? null },
+    });
+    return updated;
   }
 
   async remove(id: string, actorUserId: string): Promise<void> {

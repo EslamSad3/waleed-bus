@@ -28,6 +28,22 @@ const ALL_TABLES = [
   'user_auth_providers',
   'phone_verification_challenges',
   'throttle_counters',
+  'markazes',
+  'localities',
+  'favorites',
+  'vehicle_brands',
+  'vip_tiers',
+  'promotions',
+  'promotion_targets',
+  'promotion_usages',
+  'notifications',
+  'service_config_entries',
+  // Platform catalog (except seeded governorates): suites create their own
+  // lines/stations per run, so truncate them for hermetic re-runs.
+  'lines',
+  'routes',
+  'stations',
+  'route_stations',
 ];
 
 /** Truncates every domain table (owner connection) — e2e suites start clean. */

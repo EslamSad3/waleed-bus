@@ -15,7 +15,7 @@ export interface RlsViolation {
 // Platform catalog records are deliberately not tenant-scoped. They are
 // accessible only through privileged system services, while app_tenant has no
 // grants on them (enforced by 001-tenant-isolation.sql).
-const EXCLUDED_TABLES = new Set(['_prisma_migrations', 'governorates', 'lines', 'routes', 'stations', 'route_stations']);
+const EXCLUDED_TABLES = new Set(['_prisma_migrations', 'governorates', 'markazes', 'localities', 'lines', 'routes', 'stations', 'route_stations', 'vehicle_brands', 'vip_tiers', 'promotions', 'promotion_targets', 'promotion_usages', 'service_config_entries']);
 
 export async function checkRls(systemUrl: string): Promise<RlsViolation[]> {
   const client = new pg.Client({ connectionString: systemUrl });

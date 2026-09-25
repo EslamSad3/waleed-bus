@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CodedException } from '../common/filters/coded.exception.js';
 import { SystemPrismaService } from '../prisma/prisma.module.js';
 import type { PublicRouteResponseDto } from './dto/route.dto.js';
+import { localityWithChain } from './geography.service.js';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -15,7 +16,7 @@ export class RoutesService {
     const stops = await this.system.station.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, address: true, latitude: true, longitude: true, governorate: true },
+      select: { id: true, name: true, address: true, latitude: true, longitude: true, governorate: true, locality: { include: localityWithChain } },
     });
     return stops.map((stop) => ({
       ...stop,
@@ -46,7 +47,7 @@ export class RoutesService {
         stations: {
           orderBy: { stopOrder: 'asc' },
           include: {
-            station: { include: { governorate: true } },
+            station: { include: { governorate: true, locality: { include: localityWithChain } } },
           },
         },
       },
@@ -96,7 +97,9 @@ export class RoutesService {
       latitude: rs.station.latitude ? Number(rs.station.latitude) : null,
       longitude: rs.station.longitude ? Number(rs.station.longitude) : null,
       governorate: rs.station.governorate,
+      locality: rs.station.locality,
       stopOrder: rs.stopOrder,
+      stopType: rs.stopType,
       estimatedStopMinutes: rs.estimatedStopMinutes,
     }));
 

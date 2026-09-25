@@ -1043,6 +1043,77 @@
         ]
       }
     },
+    "/fleets/{id}/vip": {
+      "patch": {
+        "operationId": "FleetsController_assignVip",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id (uuid).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignFleetVipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fleet with VIP tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign or clear the VIP tier of a fleet (platform path).",
+        "tags": [
+          "fleets"
+        ]
+      }
+    },
     "/fleets/{fleetId}/members": {
       "post": {
         "operationId": "MembersController_add",
@@ -2184,6 +2255,76 @@
         ]
       }
     },
+    "/users/target-options": {
+      "get": {
+        "operationId": "UsersController_findTargetOptions",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Name/email/phone fragment (Arabic supported).",
+            "schema": {
+              "example": "Dalia",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Max options (1-50, default 20).",
+            "schema": {
+              "example": 20,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Up to `limit` (default 20, max 50) matching users: id/name/email/phoneNumber.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TargetOptionDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search eligible promotion targets (active passenger accounts, server-side).",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/users/{id}": {
       "get": {
         "operationId": "UsersController_findOne",
@@ -2816,6 +2957,326 @@
         "summary": "Delete a bus.",
         "tags": [
           "buses"
+        ]
+      }
+    },
+    "/brands": {
+      "get": {
+        "operationId": "VehicleBrandsController_findAll",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vehicle brands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VehicleBrandDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List vehicle brands (active only unless includeInactive=true for the management screen).",
+        "tags": [
+          "vehicle-brands"
+        ]
+      },
+      "post": {
+        "operationId": "VehicleBrandsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleBrandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Brand created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VehicleBrandDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A brand with this name already exists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a vehicle brand.",
+        "tags": [
+          "vehicle-brands"
+        ]
+      }
+    },
+    "/brands/{id}": {
+      "get": {
+        "operationId": "VehicleBrandsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Brand id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brand details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VehicleBrandDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Brand not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one vehicle brand by id.",
+        "tags": [
+          "vehicle-brands"
+        ]
+      },
+      "patch": {
+        "operationId": "VehicleBrandsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Brand id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleBrandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Brand updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VehicleBrandDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a vehicle brand (name, order, active flag).",
+        "tags": [
+          "vehicle-brands"
+        ]
+      }
+    },
+    "/fleets/{fleetId}/uploads/bus-image": {
+      "post": {
+        "operationId": "UploadsController_uploadBusImage",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet selector (uuid) — a selector only; membership is verified server-side.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "image"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Public image URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Fleet not found in this context."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a bus image (JPEG/PNG/WebP, ≤5 MB) to Supabase Storage and get its public URL.",
+        "tags": [
+          "uploads"
         ]
       }
     },
@@ -3471,6 +3932,504 @@
           }
         ],
         "summary": "List the built-in Egyptian governorates, localized in Arabic and English.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/governorates/{id}/markaz": {
+      "get": {
+        "operationId": "TripLinesController_findMarkaz",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Governorate id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Markaz of the governorate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MarkazDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List markaz for one governorate (active only unless includeInactive=true).",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/markaz": {
+      "post": {
+        "operationId": "TripLinesController_createMarkaz",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMarkazDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Markaz created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarkazDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a markaz/district under one governorate.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/markaz/{id}": {
+      "get": {
+        "operationId": "TripLinesController_findMarkazById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Markaz id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Markaz details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarkazDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Markaz not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one markaz by id.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "patch": {
+        "operationId": "TripLinesController_updateMarkaz",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Markaz id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMarkazDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Markaz updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarkazDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a markaz (names, active flag).",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/markaz/{id}/localities": {
+      "get": {
+        "operationId": "TripLinesController_findLocalities",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Markaz id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Localities of the markaz.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LocalityDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List cities/villages for one markaz (active only unless includeInactive=true).",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/localities": {
+      "post": {
+        "operationId": "TripLinesController_createLocality",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Locality created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LocalityDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a city/village locality under one markaz.",
+        "tags": [
+          "trip-lines"
+        ]
+      }
+    },
+    "/localities/{id}": {
+      "get": {
+        "operationId": "TripLinesController_findLocalityById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Locality id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Locality details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LocalityDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Locality not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one locality by id.",
+        "tags": [
+          "trip-lines"
+        ]
+      },
+      "patch": {
+        "operationId": "TripLinesController_updateLocality",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Locality id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLocalityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Locality updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LocalityDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a locality (names, active flag).",
         "tags": [
           "trip-lines"
         ]
@@ -5788,6 +6747,893 @@
         ]
       }
     },
+    "/promotions/active": {
+      "get": {
+        "operationId": "PromotionsController_listActive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active promos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Readonly list of active global promo codes.",
+        "tags": [
+          "passenger-promotions"
+        ]
+      }
+    },
+    "/promotions/validate": {
+      "post": {
+        "operationId": "PromotionsController_validate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidatePromoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Promo preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview a promo discount for a trip without writes.",
+        "tags": [
+          "passenger-promotions"
+        ]
+      }
+    },
+    "/promotions": {
+      "get": {
+        "operationId": "PromotionsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active promos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alias for active promos (mobile convenience).",
+        "tags": [
+          "passenger-promotions"
+        ]
+      }
+    },
+    "/platform/promotions": {
+      "post": {
+        "operationId": "PlatformPromotionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePromotionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Promotion created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PromotionDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a promo code (platform).",
+        "tags": [
+          "platform-promotions"
+        ]
+      },
+      "get": {
+        "operationId": "PlatformPromotionsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Promotions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PromotionDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List promo codes with cursor pagination.",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/platform/promotions/{id}": {
+      "patch": {
+        "operationId": "PlatformPromotionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Promotion id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromotionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Promotion updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PromotionDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Promotion not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a promo code (code itself is immutable).",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/platform/promotions/{id}/expire": {
+      "post": {
+        "operationId": "PlatformPromotionsController_expire",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Promotion id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Promotion expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PromotionDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Promotion not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force-expire a promo code (manual lifecycle).",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/platform/promotions/{id}/usages": {
+      "get": {
+        "operationId": "PlatformPromotionsController_usages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Promotion id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Promotion usages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Promotion not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Per-user consumption dashboard for a code.",
+        "tags": [
+          "platform-promotions"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "My notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List my notifications (filter unread=true|false).",
+        "tags": [
+          "passenger-notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationsController_removeAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete all my notifications.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Unread count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unread badge count for the notification center.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all my notifications as read.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Notification not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one notification as read.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "operationId": "NotificationsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Notification id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Notification not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete one notification.",
+        "tags": [
+          "passenger-notifications"
+        ]
+      }
+    },
+    "/platform/notifications": {
+      "get": {
+        "operationId": "PlatformNotificationsController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ops visibility into recent notifications (filter by userId/category).",
+        "tags": [
+          "platform-notifications"
+        ]
+      }
+    },
     "/drivers": {
       "get": {
         "operationId": "FleetOwnerController_listSystemDrivers",
@@ -7515,6 +9361,357 @@
         ]
       }
     },
+    "/public/discovery/fleet-owners": {
+      "get": {
+        "operationId": "DiscoveryController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Owner, fleet, or geography fragment (Arabic supported).",
+            "schema": {
+              "example": "Halem",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Max owner groups (1-100, default 20).",
+            "schema": {
+              "example": 20,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner groups with nested fleets and best VIP rank.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FleetOwnerSearchItemDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Discover fleet owners by name or route geography, grouped by owner and VIP-ordered. No seat-availability filter.",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/public/discovery/fleet-owners/{fleetId}/buses": {
+      "get": {
+        "operationId": "DiscoveryController_fleetBuses",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "required": true,
+            "in": "path",
+            "description": "Fleet id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active buses of the fleet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BusDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fleet not found."
+          }
+        },
+        "summary": "List active buses of one fleet with vehicle details and assigned driver.",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/vip-tiers": {
+      "get": {
+        "operationId": "VipTiersController_findAll",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "VIP tiers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VipTierDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List VIP tiers (active only unless includeInactive=true for the management screen).",
+        "tags": [
+          "vip-tiers"
+        ]
+      },
+      "post": {
+        "operationId": "VipTiersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVipTierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tier created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VipTierDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "409": {
+            "description": "A tier with this name or rank already exists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a VIP tier.",
+        "tags": [
+          "vip-tiers"
+        ]
+      }
+    },
+    "/vip-tiers/{id}": {
+      "get": {
+        "operationId": "VipTiersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Tier id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tier details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VipTierDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Tier not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one VIP tier by id.",
+        "tags": [
+          "vip-tiers"
+        ]
+      },
+      "patch": {
+        "operationId": "VipTiersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Tier id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVipTierDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tier updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VipTierDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a VIP tier (name, rank, active flag).",
+        "tags": [
+          "vip-tiers"
+        ]
+      }
+    },
     "/driver/me": {
       "patch": {
         "operationId": "DriverOpsController_updateMe",
@@ -8590,6 +10787,404 @@
           "driver"
         ]
       }
+    },
+    "/favorites": {
+      "post": {
+        "operationId": "FavoritesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFavoriteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Favorite created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FavoriteDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Favorite a fleet or a bus, with optional stop prefs.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      },
+      "get": {
+        "operationId": "FavoritesController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque nextCursor from the previous page (base64url of the last item id).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default 20, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "My favorites.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FavoriteDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List my favorites with target-activity flags.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      }
+    },
+    "/favorites/{id}": {
+      "patch": {
+        "operationId": "FavoritesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Favorite id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFavoriteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Favorite updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FavoriteDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Favorite not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update my favorite stop prefs.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      },
+      "delete": {
+        "operationId": "FavoritesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Favorite id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favorite deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          },
+          "404": {
+            "description": "Favorite not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete my favorite.",
+        "tags": [
+          "passenger-favorites"
+        ]
+      }
+    },
+    "/config/customer-service": {
+      "get": {
+        "operationId": "ServiceConfigController_listPublic",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Customer service entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceConfigEntryDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public mobile read: active entries in order.",
+        "tags": [
+          "service-config"
+        ]
+      }
+    },
+    "/platform/config/customer-service": {
+      "get": {
+        "operationId": "PlatformServiceConfigController_listAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceConfigEntryDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Platform read: full list including inactive.",
+        "tags": [
+          "platform-service-config"
+        ]
+      },
+      "put": {
+        "operationId": "PlatformServiceConfigController_replace",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceServiceConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Entries replaced.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceConfigEntryDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the whole ordered list (client order wins).",
+        "tags": [
+          "platform-service-config"
+        ]
+      }
     }
   },
   "info": {
@@ -8756,7 +11351,7 @@
             "format": "uuid"
           },
           "email": {
-            "type": "object",
+            "type": "string",
             "example": "admin@bus.local",
             "format": "email",
             "nullable": true
@@ -8920,14 +11515,19 @@
             "example": false
           },
           "pendingPhoneNumber": {
-            "type": "object",
+            "type": "string",
             "example": "01000000001",
             "nullable": true
           },
           "expiresInSeconds": {
-            "type": "object",
+            "type": "number",
             "example": 60,
             "nullable": true
+          },
+          "effectiveMaxBookingSeats": {
+            "type": "number",
+            "example": 5,
+            "description": "Display-only seat cap (user override ?? platform default 5). Enforcement is server-side."
           }
         },
         "required": [
@@ -8935,7 +11535,8 @@
           "missingFields",
           "phoneVerified",
           "pendingPhoneNumber",
-          "expiresInSeconds"
+          "expiresInSeconds",
+          "effectiveMaxBookingSeats"
         ]
       },
       "VerifyOtpDto": {
@@ -8995,6 +11596,11 @@
           "isActive": {
             "type": "boolean",
             "example": true
+          },
+          "vipTierId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           },
           "createdAt": {
             "format": "date-time",
@@ -9079,6 +11685,17 @@
           "isActive": {
             "type": "boolean",
             "example": true
+          }
+        }
+      },
+      "AssignFleetVipDto": {
+        "type": "object",
+        "properties": {
+          "vipTierId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "VIP tier to assign; null clears the assignment."
           }
         }
       },
@@ -9426,6 +12043,17 @@
             "type": "boolean",
             "example": true
           },
+          "maxBookingSeats": {
+            "type": "number",
+            "example": 8,
+            "nullable": true,
+            "description": "Per-user seat override; null means the platform default (5)."
+          },
+          "effectiveMaxBookingSeats": {
+            "type": "number",
+            "example": 5,
+            "description": "Effective per-booking seat limit (override ?? platform default)."
+          },
           "authVersion": {
             "type": "number",
             "example": 1,
@@ -9444,6 +12072,7 @@
           "id",
           "email",
           "isActive",
+          "effectiveMaxBookingSeats",
           "authVersion",
           "createdAt",
           "updatedAt"
@@ -9487,6 +12116,34 @@
           "password"
         ]
       },
+      "TargetOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Promo A"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "a@example.com",
+            "format": "email"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "01009990301"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "UpdateUserDto": {
         "type": "object",
         "properties": {
@@ -9506,6 +12163,12 @@
             "format": "password",
             "minLength": 8,
             "maxLength": 128
+          },
+          "maxBookingSeats": {
+            "type": "number",
+            "example": 8,
+            "nullable": true,
+            "description": "Per-user seat override (must be ≥ 1); null clears back to the platform default (5)."
           }
         }
       },
@@ -9527,6 +12190,33 @@
           "roleSlugs"
         ]
       },
+      "VehicleBrandDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Mercedes"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isActive",
+          "sortOrder"
+        ]
+      },
       "BusDto": {
         "type": "object",
         "properties": {
@@ -9546,8 +12236,38 @@
           },
           "plateNumber": {
             "type": "string",
+            "nullable": true,
             "example": "ABC-1234",
             "maxLength": 50
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "example": "أبيض",
+            "maxLength": 50
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://example.com/buses/bus-1.jpg"
+          },
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/VehicleBrandDto"
+          },
+          "isAirConditioned": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "modelYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2022
           },
           "capacity": {
             "type": "number",
@@ -9591,7 +12311,35 @@
           "plateNumber": {
             "type": "string",
             "example": "ABC-1234",
+            "minLength": 1,
             "maxLength": 50
+          },
+          "color": {
+            "type": "string",
+            "example": "أبيض",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://example.com/buses/bus-1.jpg",
+            "description": "Absolute HTTPS URL of the bus image (Supabase Storage URL; bucket provisioning is a follow-up)."
+          },
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Admin-managed vehicle brand. Must be active."
+          },
+          "isAirConditioned": {
+            "type": "boolean",
+            "example": true
+          },
+          "modelYear": {
+            "type": "number",
+            "example": 2022,
+            "minimum": 1980,
+            "maximum": 2100
           },
           "capacity": {
             "type": "number",
@@ -9602,6 +12350,9 @@
         },
         "required": [
           "registrationNumber",
+          "plateNumber",
+          "color",
+          "imageUrl",
           "capacity"
         ]
       },
@@ -9613,6 +12364,31 @@
             "example": "ABC-1234",
             "maxLength": 50
           },
+          "color": {
+            "type": "string",
+            "example": "أبيض",
+            "maxLength": 50
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://example.com/buses/bus-1.jpg"
+          },
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Admin-managed vehicle brand. Must be active."
+          },
+          "isAirConditioned": {
+            "type": "boolean",
+            "example": true
+          },
+          "modelYear": {
+            "type": "number",
+            "example": 2022,
+            "minimum": 1980,
+            "maximum": 2100
+          },
           "capacity": {
             "type": "number",
             "example": 45,
@@ -9622,6 +12398,44 @@
           "isActive": {
             "type": "boolean",
             "example": true
+          }
+        }
+      },
+      "CreateVehicleBrandDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Mercedes",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateVehicleBrandDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Mercedes"
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0
+          },
+          "isActive": {
+            "type": "boolean"
           }
         }
       },
@@ -9654,7 +12468,7 @@
             "example": "2026-09-10T08:00:00.000Z"
           },
           "routeId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -9808,7 +12622,7 @@
             "example": "Waleed Transport"
           },
           "nickname": {
-            "type": "object",
+            "type": "string",
             "example": "El Waleed",
             "nullable": true,
             "description": "Passenger-facing familiar name for the fleet owner."
@@ -9830,7 +12644,7 @@
             "type": "string"
           },
           "address": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "stopType": {
@@ -9856,12 +12670,12 @@
             "format": "uuid"
           },
           "routeId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "routeName": {
-            "type": "object",
+            "type": "string",
             "example": "Cairo - Alexandria Express",
             "nullable": true
           },
@@ -9947,8 +12761,17 @@
             "type": "number",
             "example": 1
           },
+          "stopType": {
+            "type": "string",
+            "enum": [
+              "BOARDING",
+              "LANDING",
+              "BOTH"
+            ],
+            "description": "Stop capability; converted BOTH stations appear as an adjacent BOARDING + LANDING pair."
+          },
           "estimatedStopMinutes": {
-            "type": "object",
+            "type": "number",
             "example": 0,
             "nullable": true
           }
@@ -9956,7 +12779,8 @@
         "required": [
           "id",
           "name",
-          "stopOrder"
+          "stopOrder",
+          "stopType"
         ]
       },
       "TripRouteDto": {
@@ -10000,7 +12824,8 @@
             "example": "ق ب أ 1234"
           },
           "registrationNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "BUS-001"
           }
         },
@@ -10108,6 +12933,90 @@
           "nameEn"
         ]
       },
+      "MarkazDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "governorateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "BANHA"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "governorate": {
+            "$ref": "#/components/schemas/GovernorateDto"
+          }
+        },
+        "required": [
+          "id",
+          "governorateId",
+          "code",
+          "nameAr",
+          "nameEn",
+          "isActive"
+        ]
+      },
+      "LocalityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "markazId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CITY",
+              "VILLAGE"
+            ],
+            "example": "CITY"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "markaz": {
+            "$ref": "#/components/schemas/MarkazDto"
+          }
+        },
+        "required": [
+          "id",
+          "markazId",
+          "nameAr",
+          "nameEn",
+          "type",
+          "isActive"
+        ]
+      },
       "StationDto": {
         "type": "object",
         "properties": {
@@ -10120,27 +13029,48 @@
             "example": "Ramses Station"
           },
           "address": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "Ramses Square, Cairo"
           },
           "latitude": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 30.0631
           },
           "longitude": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 31.2497
           },
           "stopOrder": {
             "type": "number",
             "example": 1
           },
+          "stopType": {
+            "type": "string",
+            "enum": [
+              "BOARDING",
+              "LANDING",
+              "BOTH"
+            ],
+            "description": "Stop capability; converted BOTH stations appear as an adjacent BOARDING + LANDING pair."
+          },
           "estimatedStopMinutes": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 0
           },
           "governorate": {
             "$ref": "#/components/schemas/GovernorateDto"
+          },
+          "locality": {
+            "description": "Physical locality chain (locality → markaz → governorate).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocalityDto"
+              }
+            ]
           }
         },
         "required": [
@@ -10152,7 +13082,8 @@
         "type": "object",
         "properties": {
           "plateNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ق ب أ 1234"
           }
         }
@@ -10244,6 +13175,116 @@
           "upcomingTrips"
         ]
       },
+      "CreateMarkazDto": {
+        "type": "object",
+        "properties": {
+          "governorateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Governorate this markaz belongs to."
+          },
+          "code": {
+            "type": "string",
+            "example": "BANHA",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "governorateId",
+          "code",
+          "nameAr",
+          "nameEn"
+        ]
+      },
+      "UpdateMarkazDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateLocalityDto": {
+        "type": "object",
+        "properties": {
+          "markazId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Markaz this locality belongs to."
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "بنها",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CITY",
+              "VILLAGE"
+            ],
+            "example": "CITY"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "markazId",
+          "nameAr",
+          "nameEn",
+          "type"
+        ]
+      },
+      "UpdateLocalityDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "بنها"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Banha"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
       "CreateStopDto": {
         "type": "object",
         "properties": {
@@ -10252,7 +13293,8 @@
             "example": "ميدان رمسيس"
           },
           "address": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ميدان رمسيس، القاهرة"
           },
           "latitude": {
@@ -10271,6 +13313,12 @@
             "type": "string",
             "format": "uuid",
             "description": "Egyptian governorate for this stop."
+          },
+          "localityId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "City/village locality for this stop. Must belong to the stop governorate."
           },
           "isActive": {
             "type": "boolean",
@@ -10292,7 +13340,8 @@
             "example": "ميدان رمسيس"
           },
           "address": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ميدان رمسيس، القاهرة"
           },
           "latitude": {
@@ -10312,6 +13361,12 @@
             "format": "uuid",
             "description": "Egyptian governorate for this stop."
           },
+          "localityId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "City/village locality for this stop. Must belong to the stop governorate."
+          },
           "isActive": {
             "type": "boolean"
           }
@@ -10328,11 +13383,9 @@
             "type": "string",
             "enum": [
               "BOARDING",
-              "LANDING",
-              "BOTH"
+              "LANDING"
             ],
-            "default": "BOTH",
-            "description": "Whether passengers may board, land, or both at this stop."
+            "description": "Whether passengers may board or land at this stop. Legacy BOTH rows remain readable but can no longer be written."
           },
           "estimatedStopMinutes": {
             "type": "number",
@@ -10341,7 +13394,8 @@
           }
         },
         "required": [
-          "stopId"
+          "stopId",
+          "stopType"
         ]
       },
       "CreateTripLineDto": {
@@ -10530,11 +13584,13 @@
             "format": "uuid"
           },
           "plateNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ق ب أ 1234"
           },
           "registrationNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "BUS-001"
           }
         }
@@ -10586,12 +13642,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "passengerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
           "passengerName": {
             "type": "string",
             "example": "Ahmed Hassan"
           },
           "passengerPhone": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "01000000000"
           },
           "seats": {
@@ -10603,38 +13665,69 @@
             "example": "CONFIRMED"
           },
           "paymentMethod": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "CASH"
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "PENDING"
           },
           "totalAmount": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "100.00"
+          },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "nullable": true
+          },
+          "discountAmount": {
+            "type": "string",
+            "example": "10.00"
+          },
+          "promoStatus": {
+            "type": "string",
+            "example": "OK",
+            "nullable": true,
+            "description": "Promo outcome echoed on create only."
+          },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "example": "SELF"
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "nullable": true
           },
           "confirmedAt": {
             "format": "date-time",
             "type": "string"
           },
           "boardedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "droppedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "busRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           },
           "driverRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           },
@@ -10648,6 +13741,8 @@
           "passengerName",
           "seats",
           "status",
+          "discountAmount",
+          "bookingFor",
           "confirmedAt",
           "trip"
         ]
@@ -10714,6 +13809,38 @@
             "example": false,
             "default": false,
             "description": "Set to true to override a DUPLICATE_TIME_BOOKING conflict"
+          },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "default": "SELF",
+            "description": "Who travels: the booker or someone else."
+          },
+          "passengerName": {
+            "type": "string",
+            "example": "Mona Ahmed",
+            "maxLength": 255,
+            "description": "Required when bookingFor is OTHER; ignored for SELF (snapshot comes from the account)."
+          },
+          "passengerPhone": {
+            "type": "string",
+            "example": "01012345678",
+            "maxLength": 30,
+            "description": "Required when bookingFor is OTHER."
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "maxLength": 1000,
+            "description": "Free-form note visible to the driver/operator."
+          },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "description": "Promo code applied at checkout. Unknown/expired codes are ignored at full price; exhausted or already-used codes raise."
           }
         },
         "required": [
@@ -10752,7 +13879,7 @@
             "type": "string"
           },
           "cancellationReason": {
-            "type": "object",
+            "type": "string",
             "example": "Change of plans",
             "nullable": true
           }
@@ -10828,7 +13955,7 @@
         "type": "object",
         "properties": {
           "plateNumber": {
-            "type": "object",
+            "type": "string",
             "example": "ق ب أ 1234",
             "nullable": true
           },
@@ -10845,17 +13972,17 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "object",
+            "type": "string",
             "example": "Mohamed Ibrahim",
             "nullable": true
           },
           "phone": {
-            "type": "object",
+            "type": "string",
             "example": "01100000000",
             "nullable": true
           },
           "picture": {
-            "type": "object",
+            "type": "string",
             "example": null,
             "nullable": true
           }
@@ -11100,6 +14227,19 @@
             "format": "uuid",
             "nullable": true
           },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "example": "SELF"
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "nullable": true
+          },
           "seats": {
             "type": "number",
             "example": 2
@@ -11174,6 +14314,7 @@
           "fleetName",
           "tripId",
           "passengerName",
+          "bookingFor",
           "seats",
           "status",
           "refundedAmount",
@@ -11378,10 +14519,56 @@
             "type": "number",
             "example": 2
           },
+          "passengerName": {
+            "type": "string",
+            "example": "Ahmed Hassan"
+          },
+          "passengerPhone": {
+            "type": "string",
+            "example": "+201000000000",
+            "nullable": true
+          },
+          "passengerUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "bookingFor": {
+            "type": "string",
+            "enum": [
+              "SELF",
+              "OTHER"
+            ],
+            "example": "SELF"
+          },
+          "note": {
+            "type": "string",
+            "example": "Wait near the bridge.",
+            "nullable": true
+          },
+          "boardingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "landingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
           "totalAmount": {
             "type": "string",
             "example": "100.00",
             "nullable": true
+          },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "nullable": true
+          },
+          "discountAmount": {
+            "type": "string",
+            "example": "10.00"
           },
           "refundedAmount": {
             "type": "string",
@@ -11490,6 +14677,9 @@
           "fleetName",
           "status",
           "seats",
+          "passengerName",
+          "bookingFor",
+          "discountAmount",
           "refundedAmount",
           "trip",
           "ratings",
@@ -11624,9 +14814,18 @@
             "example": "100.00",
             "nullable": true
           },
+          "promoCode": {
+            "type": "string",
+            "example": "SAVE10",
+            "nullable": true
+          },
+          "discountAmount": {
+            "type": "string",
+            "example": "10.00"
+          },
           "refundedAmount": {
             "type": "string",
-            "example": "100.00"
+            "example": "0.00"
           },
           "remainingRefundableBalance": {
             "type": "string",
@@ -11644,6 +14843,7 @@
         },
         "required": [
           "bookingId",
+          "discountAmount",
           "refundedAmount",
           "remainingRefundableBalance",
           "updatedAt"
@@ -11918,6 +15118,196 @@
           "resolutionNote"
         ]
       },
+      "ValidatePromoDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "SAVE10"
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seatCount": {
+            "type": "number",
+            "example": 2
+          }
+        },
+        "required": [
+          "code",
+          "tripId",
+          "seatCount"
+        ]
+      },
+      "PromotionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "SAVE10"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FIXED"
+            ],
+            "example": "FIXED"
+          },
+          "value": {
+            "type": "string",
+            "example": "50.00",
+            "description": "Fixed EGP discount amount."
+          },
+          "isGlobal": {
+            "type": "boolean"
+          },
+          "targetUserIds": {
+            "example": [],
+            "description": "Targeted user ids (platform responses only; empty for global codes).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxUsesPerUser": {
+            "type": "number"
+          },
+          "maxTotalUses": {
+            "type": "number",
+            "nullable": true
+          },
+          "startsAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "value",
+          "isGlobal",
+          "targetUserIds",
+          "maxUsesPerUser",
+          "isActive"
+        ]
+      },
+      "CreatePromotionDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "SAVE10",
+            "description": "3-32 chars A-Z 0-9 _ -; normalized UPPER-TRIM."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FIXED"
+            ],
+            "example": "FIXED",
+            "description": "FIXED only (fixed EGP amount, never percentage)."
+          },
+          "value": {
+            "type": "number",
+            "example": 50,
+            "description": "Fixed EGP discount amount (positive)."
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "default": true,
+            "description": "False = only targeted users."
+          },
+          "targetUserIds": {
+            "example": [
+              "user-uuid"
+            ],
+            "description": "Required when isGlobal=false.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxUsesPerUser": {
+            "type": "number",
+            "default": 1,
+            "description": "Max redemptions per user."
+          },
+          "maxTotalUses": {
+            "type": "number",
+            "nullable": true,
+            "description": "Null = unlimited platform-wide."
+          },
+          "startsAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "code",
+          "type",
+          "value"
+        ]
+      },
+      "UpdatePromotionDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "example": 50,
+            "description": "Fixed EGP discount amount (positive)."
+          },
+          "maxUsesPerUser": {
+            "type": "number"
+          },
+          "maxTotalUses": {
+            "type": "number",
+            "nullable": true
+          },
+          "startsAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "targetUserIds": {
+            "example": [
+              "user-uuid"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "OwnerProfileDto": {
         "type": "object",
         "properties": {
@@ -11930,17 +15320,17 @@
             "example": "Ahmed Hassan"
           },
           "email": {
-            "type": "object",
+            "type": "string",
             "example": "admin@bus.local",
             "nullable": true
           },
           "phoneNumber": {
-            "type": "object",
+            "type": "string",
             "example": "01001234567",
             "nullable": true
           },
           "picture": {
-            "type": "object",
+            "type": "string",
             "maxLength": 1024,
             "nullable": true
           }
@@ -12175,6 +15565,124 @@
           }
         }
       },
+      "VipTierDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "VIP 1"
+          },
+          "rank": {
+            "type": "number",
+            "example": 1
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rank",
+          "isActive"
+        ]
+      },
+      "FleetOwnerSearchFleetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Halem Travel"
+          },
+          "vipTier": {
+            "$ref": "#/components/schemas/VipTierDto"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "FleetOwnerSearchItemDto": {
+        "type": "object",
+        "properties": {
+          "fleetOwnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Owner user id — the grouping key."
+          },
+          "fleetOwnerName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Halem"
+          },
+          "vipRank": {
+            "type": "number",
+            "nullable": true,
+            "example": 1,
+            "description": "Best VIP rank across the owner fleets; null = untiered (sorts last)."
+          },
+          "fleets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FleetOwnerSearchFleetDto"
+            }
+          }
+        },
+        "required": [
+          "fleetOwnerId",
+          "fleets"
+        ]
+      },
+      "CreateVipTierDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "VIP 1",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "rank": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "rank"
+        ]
+      },
+      "UpdateVipTierDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "VIP 1"
+          },
+          "rank": {
+            "type": "number",
+            "example": 1
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
       "UpdateDriverProfileDto": {
         "type": "object",
         "properties": {
@@ -12271,6 +15779,320 @@
         },
         "required": [
           "note"
+        ]
+      },
+      "FavoriteFleetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Halem Travel"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isActive"
+        ]
+      },
+      "FavoriteBusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationNumber": {
+            "type": "string",
+            "example": "BUS-A-001"
+          },
+          "plateNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "ABC-1234"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "fleetName": {
+            "type": "string",
+            "example": "Halem Travel"
+          },
+          "fleetActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "fleetId",
+          "registrationNumber",
+          "isActive",
+          "fleetName",
+          "fleetActive"
+        ]
+      },
+      "FavoriteStationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Banha Bridge"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "FavoriteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FLEET",
+              "BUS"
+            ]
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "busId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "boardingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "landingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fleet": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteFleetDto"
+              }
+            ]
+          },
+          "bus": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteBusDto"
+              }
+            ]
+          },
+          "boardingStation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteStationDto"
+              }
+            ]
+          },
+          "landingStation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FavoriteStationDto"
+              }
+            ]
+          },
+          "isTargetActive": {
+            "type": "boolean",
+            "example": true,
+            "description": "False when the favorited fleet/bus was disabled after saving."
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "createdAt",
+          "isTargetActive"
+        ]
+      },
+      "CreateFavoriteDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FLEET",
+              "BUS"
+            ],
+            "example": "BUS"
+          },
+          "fleetId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for FLEET favorites."
+          },
+          "busId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for BUS favorites."
+          },
+          "boardingStationId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Optional boarding stop preference."
+          },
+          "landingStationId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Optional landing stop preference."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "UpdateFavoriteDto": {
+        "type": "object",
+        "properties": {
+          "boardingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Set null to clear."
+          },
+          "landingStationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Set null to clear."
+          }
+        }
+      },
+      "ServiceConfigEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string",
+            "example": "Contact customer service"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PHONE",
+              "WHATSAPP",
+              "WEBSITE"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "0111234567"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "type",
+          "value",
+          "isActive",
+          "sortOrder"
+        ]
+      },
+      "ServiceConfigEntryInputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Omit to create; unknown ids are rejected, never auto-created."
+          },
+          "text": {
+            "type": "string",
+            "example": "Contact customer service",
+            "maxLength": 200
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PHONE",
+              "WHATSAPP",
+              "WEBSITE"
+            ],
+            "example": "PHONE"
+          },
+          "value": {
+            "type": "string",
+            "example": "0111234567"
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "value"
+        ]
+      },
+      "ReplaceServiceConfigDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "description": "Full ordered list; array position wins.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceConfigEntryInputDto"
+            }
+          }
+        },
+        "required": [
+          "entries"
         ]
       }
     }

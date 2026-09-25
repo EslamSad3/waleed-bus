@@ -41,13 +41,23 @@ describe('SystemPrisma Architectural Boundary', () => {
     'passenger-auth/throttle.service.ts',
     'permissions/permissions.service.ts',
     'roles/roles.service.ts',
+    'buses/vehicle-brand.service.ts',
     'routes/routes.service.ts',
     'trips/trips.service.ts',
     'users/users.service.ts',
 
     // Global Commercial Catalog (lines/routes/stations are platform-wide, not fleet-scoped)
+    'favorites/favorites.service.ts',
     'fleet-owner/bus-trip-line.service.ts',
     'fleet-owner/fleet-owners-admin.service.ts',
+    'fleet-owner/discovery.service.ts',
+    'fleet-owner/vip-tier.service.ts',
+    'notifications/notifications.service.ts',
+    'notifications/platform-notifications.controller.ts',
+    'promotions/promotions.service.ts',
+    'promotions/platform-promotions.controller.ts',
+    'service-config/service-config.service.ts',
+    'routes/geography.service.ts',
     'routes/trip-lines.service.ts',
   ]);
 

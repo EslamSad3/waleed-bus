@@ -99,9 +99,12 @@ export class ProfileStatusDto {
   @ApiProperty({ example: false })
   phoneVerified!: boolean;
 
-  @ApiProperty({ example: '01000000001', nullable: true })
+  @ApiProperty({ type: String, example: '01000000001', nullable: true })
   pendingPhoneNumber!: string | null;
 
-  @ApiProperty({ example: 60, nullable: true })
+  @ApiProperty({ type: Number, example: 60, nullable: true })
   expiresInSeconds!: number | null;
+
+  @ApiProperty({ example: 5, description: 'Display-only seat cap (user override ?? platform default 5). Enforcement is server-side.' })
+  effectiveMaxBookingSeats!: number;
 }

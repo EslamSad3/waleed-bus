@@ -405,6 +405,7 @@ describe('Passenger auth (e2e)', () => {
           phoneVerified: true,
           pendingPhoneNumber: null,
           expiresInSeconds: null,
+          effectiveMaxBookingSeats: 5,
         },
       });
     });
@@ -438,6 +439,7 @@ describe('Passenger auth (e2e)', () => {
       expect(res.body.data).toMatchObject({
         name: 'New Name',
         phoneVerified: true,
+        effectiveMaxBookingSeats: 5,
       });
     });
 

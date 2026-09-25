@@ -89,13 +89,37 @@ Any direct injection or usage of `SystemPrismaService` outside of `FleetPathServ
 - **Justification**: The audit trail records security, governance, and observability events across all tenants. Writing via the system path ensures audit records cannot be tampered with or suppressed by tenant-level RLS restrictions. Reading audit logs is restricted to platform administration.
 - **Operational & Durability Semantics**: Audit logging is explicitly designed as non-blocking, non-transactional observability and governance logging. Audit writes occur over an independent database connection outside the business mutation transactions so that audit persistence failures never roll back user business transactions or compromise platform availability.
 
-### 7. Global Trip-Line Catalog (`routes/trip-lines.service.ts`, `routes/routes.service.ts`)
-- **Operations**: Stop (station) CRUD, governorate listing, trip-line (Line) CRUD, direction stop replacement, public stop/route resolution.
-- **Justification**: The commercial catalog — `governorates`, `stations`, `lines`, `routes`, `route_stations` — is platform-global reference data with no `fleet_id` column. Row-Level Security policies are fleet-scoped by design, so these tables are invisible to (and unguarded by) the tenant path. All mutating endpoints are `@Platform()`-guarded and require explicit `stations.*` / `routes.*` permissions; every mutation is audit-logged. Public read paths (`GET /public/routes/*`) expose only the generic catalog, never fleet data.
+### 7. Global Trip-Line Catalog (`routes/trip-lines.service.ts`, `routes/routes.service.ts`, `routes/geography.service.ts`)
+- **Operations**: Stop (station) CRUD, governorate listing, markaz/locality dictionary CRUD, trip-line (Line) CRUD, direction stop replacement, public stop/route resolution.
+- **Justification**: The commercial catalog — `governorates`, `markazes`, `localities`, `stations`, `lines`, `routes`, `route_stations` — is platform-global reference data with no `fleet_id` column. Row-Level Security policies are fleet-scoped by design, so these tables are invisible to (and unguarded by) the tenant path. All mutating endpoints are `@Platform()`-guarded and require explicit `stations.*` / `routes.*` permissions; every mutation is audit-logged. Public read paths (`GET /public/routes/*`) expose only the generic catalog, never fleet data.
 
 ### 8. Bus → Trip-Line Assignment Validation (`fleet-owner/bus-trip-line.service.ts`)
 - **Operations**: `assign()`, `unassign()`.
 - **Justification**: A fleet owner or super admin binds one of their buses to a commercial trip line. Buses are fleet-scoped and updated strictly inside `FleetPathService.run()` (tenant RLS path), but the target `lines` row is global catalog data that the tenant connection cannot see. The system path is used only for a read-only existence/`isActive` check of the trip line before the fleet-scoped mutation; a missing or inactive line fails closed with `409 TRIP_LINE_NOT_AVAILABLE`. The assignment itself is audit-logged.
+
+### 10. Vehicle Brand Dictionary (`buses/vehicle-brand.service.ts`)
+- **Operations**: Brand list/create/update, active-brand validation for bus assignment.
+- **Justification**: `vehicle_brands` is platform-global catalog data with no `fleet_id` column (same trust level as §7). All endpoints are `@Platform()`-guarded with `buses.*` permissions; mutations are audit-logged. Bus assignment validation is a read-only existence/`isActive` check before the fleet-scoped bus mutation.
+
+### 11. Passenger Discovery + VIP Tiers (`fleet-owner/discovery.service.ts`, `fleet-owner/vip-tier.service.ts`)
+- **Operations**: Public owner-grouped search (name/geography match, best-VIP-rank ordered, untiered last), public per-fleet active-bus listing with driver enrichment, VIP tier CRUD.
+- **Justification**: Discovery serves passengers who hold no fleet membership, so the fleet-member-scoped tenant path cannot serve it; the directory (`fleets`, `users`) and catalog (`stations`, `localities`, `markazes`, `governorates`, `vip_tiers`, `vehicle_brands`) rows are read-only projections that expose no seats, payments, or secrets. Writes (tier CRUD, fleet assignment) are `@Platform()`-guarded with `fleets.*` permissions and audit-logged.
+
+### 12. Passenger Favorites (`favorites/favorites.service.ts`)
+- **Operations**: Fleet/bus favorite CRUD scoped to the authenticated passenger.
+- **Justification**: Same family as §3 — passengers hold no fleet membership, so the fleet-member-scoped tenant path cannot serve user-owned cross-fleet data. Defense in depth: verified-phone gate, all queries scoped to `actor.id`, foreign ids uniformly 404 (no oracle), plus a database-level `owner_favorites` self-access RLS policy on `public.favorites`.
+
+### 13. Promotions (`promotions/promotions.service.ts`, `promotions/platform-promotions.controller.ts`)
+- **Operations**: Platform promo CRUD + usage dashboard (`@Platform()`), passenger active-code listing + dry-run validate, in-transaction promo resolution during passenger checkout.
+- **Justification**: `promotions`/`promotion_targets`/`promotion_usages` are platform-global catalog rows with no `fleet_id` (same trust level as §7/§10); no tenant-path query can resolve a cross-fleet checkout code. Defense in depth: passenger reads expose no usage internals, unknown/ineligible codes uniformly surface as UNKNOWN (no oracle), per-code caps serialize on a locked promotion row, and platform mutations are audit-logged.
+
+### 14. Notifications (`notifications/notifications.service.ts`, `notifications/platform-notifications.controller.ts`)
+- **Operations**: Server-side inbox emits (USER-scoped promo-assignment trigger per call §42), passenger inbox CRUD strictly scoped to `actor.id`, platform read-only ops listing. Categories are TEXT/TRIP/DISCOUNT_CODE with explicit `trip_id`/`promotion_id` references (call §§43-44).
+- **Justification**: Same family as §3/§12 — triggers address users (booker vs traveler) who may belong to no common fleet, so the fleet-member-scoped tenant path cannot serve cross-user emits. Defense in depth: emit path is server-side only (no client-supplied recipient), inbox reads/deletes scope to `actor.id`, foreign ids uniformly 404 (no oracle), plus a database-level `owner_notifications` self-access RLS policy on `public.notifications`. Emits are best-effort and never fail the originating transaction.
+
+### 15. Service Config (`service-config/service-config.service.ts`)
+- **Operations**: Public active-entry read; platform full read + ordered replace-all (audited).
+- **Justification**: `service_config_entries` is a platform-global singleton list with no `fleet_id` (same trust level as §7/§10). The public read exposes only active entries (no secrets); writes are `@Platform()`-guarded and audit-logged.
 
 ### 9. Platform Fleet-Owner Administration (`fleet-owner/fleet-owners-admin.service.ts`)
 - **Operations**: Super-admin listing, inspection, and lifecycle management of fleet-owner accounts and their fleets.

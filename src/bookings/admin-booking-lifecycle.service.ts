@@ -36,10 +36,13 @@ export class AdminBookingLifecycleService {
           paymentStatus: string;
           paymentMethod: string | null;
           departAt: Date;
+          passengerUserId: string | null;
+          bookedByUserId: string | null;
         }>
       >`
         SELECT b.id, b.trip_id as "tripId", b.status, b.payment_status as "paymentStatus",
-               b.payment_method as "paymentMethod", t.depart_at as "departAt"
+               b.payment_method as "paymentMethod", t.depart_at as "departAt",
+               b.passenger_user_id as "passengerUserId", b.booked_by_user_id as "bookedByUserId"
         FROM bookings b
         JOIN trips t ON t.id = b.trip_id
         WHERE b.id = ${id}::uuid
@@ -103,13 +106,17 @@ export class AdminBookingLifecycleService {
       });
 
       return {
-        id: updated.id,
-        status: updated.status,
-        cancellationReason: updated.cancellationReason,
-        cancelledAt: updated.cancelledAt,
-        paymentStatus: updated.paymentStatus,
-        seatsRestored,
+        response: {
+          id: updated.id,
+          status: updated.status,
+          cancellationReason: updated.cancellationReason,
+          cancelledAt: updated.cancelledAt,
+          paymentStatus: updated.paymentStatus,
+          seatsRestored,
+        },
       };
+    }).then((result) => {
+      return result.response;
     });
   }
 

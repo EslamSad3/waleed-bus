@@ -263,12 +263,13 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
           name: 'Cairo - Alexandria Express',
           code: 'CAI-ALX-01',
           stations: [
-            { name: 'Ramses Station', stopOrder: 1, estimatedStopMinutes: 0 },
-            { name: 'Banha Station', stopOrder: 2, estimatedStopMinutes: 45 },
+            { name: 'Ramses Station', stopOrder: 1, estimatedStopMinutes: 0, stopType: 'BOTH' },
+            { name: 'Banha Station', stopOrder: 2, estimatedStopMinutes: 45, stopType: 'BOTH' },
             {
               name: 'Mahatet Masr (Alexandria)',
               stopOrder: 3,
               estimatedStopMinutes: 150,
+              stopType: 'BOTH',
             },
           ],
         },
@@ -997,12 +998,13 @@ describe('Passenger Trip Booking Flow (e2e)', () => {
         destination: 'Alexandria',
         qrIdentifier: 'qr_route_cai_alx_01',
         stations: [
-          { name: 'Ramses Station', stopOrder: 1, estimatedStopMinutes: 0 },
-          { name: 'Banha Station', stopOrder: 2, estimatedStopMinutes: 45 },
+          { name: 'Ramses Station', stopOrder: 1, estimatedStopMinutes: 0, stopType: 'BOTH' },
+          { name: 'Banha Station', stopOrder: 2, estimatedStopMinutes: 45, stopType: 'BOTH' },
           {
             name: 'Mahatet Masr (Alexandria)',
             stopOrder: 3,
             estimatedStopMinutes: 150,
+            stopType: 'BOTH',
           },
         ],
       });

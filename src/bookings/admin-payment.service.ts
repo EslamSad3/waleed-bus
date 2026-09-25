@@ -34,10 +34,15 @@ export class AdminPaymentService {
           paymentMethod: string | null;
           paymentNotes: string | null;
           totalAmount: unknown;
+          passengerUserId: string | null;
+          bookedByUserId: string | null;
+          bookingFor: string;
         }>
       >`
         SELECT id, payment_status as "paymentStatus", payment_method as "paymentMethod",
-               payment_notes as "paymentNotes", total_amount as "totalAmount"
+               payment_notes as "paymentNotes", total_amount as "totalAmount",
+               passenger_user_id as "passengerUserId", booked_by_user_id as "bookedByUserId",
+               booking_for as "bookingFor"
         FROM bookings
         WHERE id = ${id}::uuid
         FOR UPDATE
@@ -93,13 +98,17 @@ export class AdminPaymentService {
       });
 
       return {
-        bookingId: updated.id,
-        paymentStatus: updated.paymentStatus,
-        paymentMethod: updated.paymentMethod,
-        paymentReference: updated.paymentReference,
-        paidAt: updated.paidAt,
-        paymentMarkedBy: updated.paymentMarkedBy,
+        response: {
+          bookingId: updated.id,
+          paymentStatus: updated.paymentStatus,
+          paymentMethod: updated.paymentMethod,
+          paymentReference: updated.paymentReference,
+          paidAt: updated.paidAt,
+          paymentMarkedBy: updated.paymentMarkedBy,
+        },
       };
+    }).then((result) => {
+      return result.response;
     });
   }
 
@@ -177,10 +186,16 @@ export class AdminPaymentService {
           paymentStatus: string;
           totalAmount: unknown;
           refundedAmount: unknown;
+          passengerUserId: string | null;
+          bookedByUserId: string | null;
+          promoCode: string | null;
+          discountAmount: unknown;
         }>
       >`
         SELECT id, payment_method as "paymentMethod", payment_status as "paymentStatus",
-               total_amount as "totalAmount", refunded_amount as "refundedAmount"
+               total_amount as "totalAmount", refunded_amount as "refundedAmount",
+               passenger_user_id as "passengerUserId", booked_by_user_id as "bookedByUserId",
+               promo_code as "promoCode", discount_amount as "discountAmount"
         FROM bookings
         WHERE id = ${id}::uuid
         FOR UPDATE
@@ -242,14 +257,20 @@ export class AdminPaymentService {
       });
 
       return {
-        bookingId: updated.id,
-        paymentStatus: updated.paymentStatus,
-        totalAmount: updated.totalAmount?.toString() ?? null,
-        refundedAmount: updated.refundedAmount.toString(),
-        remainingRefundableBalance: (total - newRefundedTotal).toFixed(2),
-        refundReference: updated.refundReference,
-        updatedAt: updated.updatedAt,
+        response: {
+          bookingId: updated.id,
+          paymentStatus: updated.paymentStatus,
+          totalAmount: updated.totalAmount?.toString() ?? null,
+          promoCode: bookingRows[0].promoCode,
+          discountAmount: Number(bookingRows[0].discountAmount ?? 0).toFixed(2),
+          refundedAmount: updated.refundedAmount.toString(),
+          remainingRefundableBalance: (total - newRefundedTotal).toFixed(2),
+          refundReference: updated.refundReference,
+          updatedAt: updated.updatedAt,
+        },
       };
+    }).then((result) => {
+      return result.response;
     });
   }
 }

@@ -21,13 +21,13 @@ export class OwnerProfileDto {
   @ApiPropertyOptional({ example: 'Ahmed Hassan' })
   name?: string;
 
-  @ApiPropertyOptional({ example: 'admin@bus.local', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'admin@bus.local', nullable: true })
   email?: string | null;
 
-  @ApiPropertyOptional({ example: '01001234567', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '01001234567', nullable: true })
   phoneNumber?: string | null;
 
-  @ApiPropertyOptional({ maxLength: 1024, nullable: true })
+  @ApiPropertyOptional({ type: String, maxLength: 1024, nullable: true })
   picture?: string | null;
 }
 

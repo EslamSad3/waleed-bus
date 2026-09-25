@@ -21,6 +21,8 @@ model User {
   nationalId      String?   @map("national_id") @db.VarChar(14)
   phoneVerifiedAt DateTime? @map("phone_verified_at")
   picture         String?   @db.VarChar(1024)
+  /// Per-user booking seat override (spec 010); null = platform default (5).
+  maxBookingSeats Int?      @map("max_booking_seats")
   isActive        Boolean   @default(true) @map("is_active")
   authVersion     Int       @default(1) @map("auth_version")
   createdAt       DateTime  @default(now()) @map("created_at")
@@ -35,6 +37,9 @@ model User {
   driverAssignments BusAssignment[]    @relation("AssignmentDriver")
   filedReports   PassengerReport[]    @relation("ReportDriver")
   passengerBookings Booking[]         @relation("PassengerBookings")
+  favorites      Favorite[]
+  notifications  Notification[]
+  promotionTargets PromotionTarget[]
 
   @@map("users")
 }
@@ -98,15 +103,33 @@ model UserRole {
   @@map("user_roles")
 }
 
+/// VIP ranking tier for fleet-owner discovery ordering (spec 008).
+/// Lower rank surfaces first. Platform-owned catalog data.
+model VipTier {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  rank      Int      @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fleets Fleet[]
+
+  @@map("vip_tiers")
+}
+
 model Fleet {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @db.VarChar(255)
   ownerId   String   @map("owner_id") @db.Uuid
   isActive  Boolean  @default(true) @map("is_active")
+  /// VIP tier for discovery ordering; null = untiered (sorts last).
+  vipTierId String?  @map("vip_tier_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   owner    User          @relation("FleetOwner", fields: [ownerId], references: [id])
+  vipTier  VipTier?      @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
   members  FleetMember[]
   buses    Bus[]
   trips    Trip[]
@@ -114,6 +137,7 @@ model Fleet {
   assignments BusAssignment[]
   reports  PassengerReport[]
 
+  @@index([vipTierId])
   @@map("fleets")
 }
 
@@ -173,11 +197,33 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+/// Admin-managed vehicle brand dictionary (spec 007).
+/// Platform-owned catalog data, like Governorate.
+model VehicleBrand {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  buses Bus[]
+
+  @@map("vehicle_brands")
+}
+
 model Bus {
   id                 String   @id @default(uuid()) @db.Uuid
   fleetId            String   @map("fleet_id") @db.Uuid
   registrationNumber String   @map("registration_number") @db.VarChar(50)
   plateNumber        String?  @map("plate_number") @db.VarChar(50)
+  /// Required for new buses (DTO layer); nullable until the backfill
+  /// assigns values to pre-existing rows (spec 007).
+  color              String?  @db.VarChar(50)
+  imageUrl           String?  @map("image_url") @db.VarChar(1024)
+  brandId            String?  @map("brand_id") @db.Uuid
+  isAirConditioned   Boolean? @map("is_air_conditioned")
+  modelYear          Int?     @map("model_year")
   capacity           Int
   lineId             String?  @map("line_id") @db.Uuid
   isActive           Boolean  @default(true) @map("is_active")
@@ -186,12 +232,14 @@ model Bus {
 
   fleet Fleet  @relation(fields: [fleetId], references: [id])
   line  Line?  @relation("BusTripLine", fields: [lineId], references: [id], onDelete: SetNull)
+  brand VehicleBrand? @relation(fields: [brandId], references: [id], onDelete: Restrict)
   trips Trip[]
   assignments BusAssignment[]
 
   @@unique([fleetId, registrationNumber])
   @@index([fleetId])
   @@index([lineId])
+  @@index([brandId])
   @@map("buses")
 }
 
@@ -214,6 +262,7 @@ model Trip {
   route    Route?    @relation(fields: [routeId], references: [id])
   bookings Booking[]
   reports  PassengerReport[]
+  notifications Notification[]
 
   @@index([fleetId])
   @@index([busId])
@@ -227,6 +276,10 @@ model Booking {
   tripId         String   @map("trip_id") @db.Uuid
   passengerName  String   @map("passenger_name") @db.VarChar(255)
   passengerPhone String?  @map("passenger_phone") @db.VarChar(30)
+  /// SELF | OTHER (validated in the application layer)
+  bookingFor     String   @default("SELF") @map("booking_for") @db.VarChar(20)
+  /// Free-form note visible wherever booking details are authorized.
+  note           String?  @db.VarChar(1000)
   boardingStationId String? @map("boarding_station_id") @db.Uuid
   landingStationId String? @map("landing_station_id") @db.Uuid
   pickupAddress String? @map("pickup_address") @db.VarChar(500)
@@ -234,6 +287,9 @@ model Booking {
   pickupLongitude Decimal? @map("pickup_longitude") @db.Decimal(10, 7)
   pickupLocationConfirmed Boolean @default(false) @map("pickup_location_confirmed")
   passengerUserId String? @map("passenger_user_id") @db.Uuid
+  /// Account that performed the checkout (spec 011 traveler-vs-booker routing).
+  /// Equals passengerUserId for SELF bookings; differs for OTHER.
+  bookedByUserId String? @map("booked_by_user_id") @db.Uuid
   seats          Int      @default(1)
   /// CONFIRMED | CANCELLED (validated in the application layer)
   status         String   @default("CONFIRMED") @db.VarChar(20)
@@ -263,6 +319,10 @@ model Booking {
   refundedAmount Decimal   @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   refundReference String?  @map("refund_reference") @db.VarChar(100)
   paymentNotes   String?   @map("payment_notes") @db.VarChar(500)
+  /// Applied promotion snapshot (spec 011). totalAmount stays the value paid.
+  promotionId    String?   @map("promotion_id") @db.Uuid
+  promoCode      String?   @map("promo_code") @db.VarChar(32)
+  discountAmount Decimal    @default(0) @map("discount_amount") @db.Decimal(10, 2)
   /// 1–5, one write per side (validated app-layer)
   busRating      Int?      @map("bus_rating")
   driverRating   Int?      @map("driver_rating")
@@ -274,6 +334,7 @@ model Booking {
   trip      Trip      @relation(fields: [tripId], references: [id])
   fleet     Fleet     @relation(fields: [fleetId], references: [id])
   passenger User?     @relation("PassengerBookings", fields: [passengerUserId], references: [id])
+  promotion Promotion? @relation("PromotionBookings", fields: [promotionId], references: [id])
   reports   PassengerReport[]
   shares    TripShare[]
 
@@ -381,6 +442,146 @@ model PassengerReport {
   @@map("passenger_reports")
 }
 
+/// Passenger favorite: fleet owner or individual bus, with optional
+/// boarding/landing stop preferences (spec 009). User-owned rows scoped
+/// to actor.id at the service layer; RLS self-policy is defense in depth.
+/// `type` is FLEET | BUS, validated in the application layer.
+model Favorite {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  /// FLEET | BUS (validated in the application layer)
+  type              String   @db.VarChar(20)
+  fleetId           String?  @map("fleet_id") @db.Uuid
+  busId             String?  @map("bus_id") @db.Uuid
+  boardingStationId String?  @map("boarding_station_id") @db.Uuid
+  landingStationId  String?  @map("landing_station_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fleetId])
+  @@unique([userId, busId])
+  @@index([userId])
+  @@index([userId, type])
+  @@map("favorites")
+}
+
+/// Promo code catalog (spec 011). Platform-managed via the system path;
+/// never fleet-scoped, so no RLS policy (catalog pattern — see check-rls exclusions).
+/// `type` is PERCENTAGE (1-100) | FIXED, validated app-layer.
+model Promotion {
+  id                String    @id @default(uuid()) @db.Uuid
+  /// Normalized UPPER-TRIM at write time; unique across the platform.
+  code              String    @unique @db.VarChar(32)
+  /// FIXED only (call §39: fixed EGP amount, never percentage-based).
+  /// Enforced by CHECK promotions_type_check + DTO validation.
+  type              String    @db.VarChar(20)
+  /// Fixed EGP discount amount (positive).
+  value             Decimal   @db.Decimal(10, 2)
+  /// True = every user may consume (each up to maxUsesPerUser). False =
+  /// only listed PromotionTarget users (no oracle: others see UNKNOWN).
+  isGlobal          Boolean   @default(true) @map("is_global")
+  /// 1 = once-per-user (default). Platform may raise per code.
+  maxUsesPerUser    Int       @default(1) @map("max_uses_per_user")
+  /// Null = unlimited platform-wide redemptions.
+  maxTotalUses      Int?      @map("max_total_uses")
+  startsAt          DateTime? @map("starts_at")
+  expiresAt         DateTime? @map("expires_at")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdByUserId   String?   @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  targets PromotionTarget[]
+  usages  PromotionUsage[]
+  bookings Booking[] @relation("PromotionBookings")
+  notifications Notification[] @relation("PromotionNotifications")
+
+  @@index([isActive, isGlobal])
+  @@map("promotions")
+}
+
+/// Allowlist for non-global promotions (spec 011 §109 user segments).
+model PromotionTarget {
+  promotionId String @map("promotion_id") @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  /// Every target must be a real user: unknown/ex-stale ids are rejected at
+  /// write time (service validation) and enforced by this FK (CASCADE so
+  /// deleting a user cleans up their targeting rows).
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, userId])
+  @@index([userId])
+  @@map("promotion_targets")
+}
+
+/// One row per booking that consumed a code (spec 011). Rows survive booking
+/// cancellation as audit truth; exactly one code per booking (no stacking).
+model PromotionUsage {
+  id             String   @id @default(uuid()) @db.Uuid
+  promotionId    String   @map("promotion_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  bookingId      String   @unique @map("booking_id") @db.Uuid
+  discountAmount Decimal  @map("discount_amount") @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Restrict)
+
+  @@index([promotionId])
+  @@index([userId])
+  @@map("promotion_usages")
+}
+
+/// User inbox row (spec 012). Category: TEXT | TRIP | DISCOUNT_CODE.
+/// Emitted server-side only; readers are strictly actor-scoped.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// Call §43: TEXT (no refs) | TRIP (tripId) | DISCOUNT_CODE (promotionId).
+  /// Combinations enforced by DB CHECK notifications_ref_check + service validation.
+  category  String    @db.VarChar(20)
+  title     String    @db.VarChar(200)
+  body      String    @db.VarChar(2000)
+  /// Set for TRIP; null otherwise. Deleting a referenced trip is blocked
+  /// (RESTRICT) so the CHECK notifications_ref_check can never observe a
+  /// nulled-out reference; trips use soft lifecycle (status), not hard delete.
+  tripId    String?   @map("trip_id") @db.Uuid
+  /// Set for DISCOUNT_CODE; null otherwise. Same RESTRICT contract as trips;
+  /// promotions are expired (isActive=false), never hard-deleted.
+  promotionId String? @map("promotion_id") @db.Uuid
+  /// Idempotency key; re-emit with the same key returns the existing row.
+  dedupeKey String?   @unique @map("dedupe_key") @db.VarChar(128)
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  promotion Promotion? @relation("PromotionNotifications", fields: [promotionId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+/// Dashboard-managed customer-service / ads entries (spec 013). Single global
+/// ordered list; `type` is PHONE | WHATSAPP | WEBSITE (validated app-layer).
+/// Platform-managed catalog: no RLS policy (see check-rls exclusions).
+model ServiceConfigEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  text      String   @db.VarChar(200)
+  type      String   @db.VarChar(20)
+  value     String   @db.VarChar(500)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, sortOrder])
+  @@map("service_config_entries")
+}
+
 /// Generic DB-backed rate-limit bucket. Keys: login:phone:<n>,
 /// login:ip:<ip>, otp:send:<phone>, otp:verify:<challengeId>.
 model ThrottleCounter {
@@ -442,8 +643,48 @@ model Governorate {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   stations Station[]
+  markazes Markaz[]
 
   @@map("governorates")
+}
+
+/// District/Markaz: second level of the geographic hierarchy
+/// (spec 006). Platform-owned catalog data, like Governorate.
+model Markaz {
+  id            String      @id @default(uuid()) @db.Uuid
+  governorateId String      @map("governorate_id") @db.Uuid
+  code          String      @unique @db.VarChar(50)
+  nameAr        String      @map("name_ar") @db.VarChar(100)
+  nameEn        String      @map("name_en") @db.VarChar(100)
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  governorate Governorate @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  localities  Locality[]
+
+  @@index([governorateId])
+  @@map("markazes")
+}
+
+/// City/Village locality: generic third level of the geographic hierarchy
+/// (spec 006). `type` is CITY | VILLAGE, validated in the application layer.
+model Locality {
+  id        String   @id @default(uuid()) @db.Uuid
+  markazId  String   @map("markaz_id") @db.Uuid
+  nameAr    String   @map("name_ar") @db.VarChar(100)
+  nameEn    String   @map("name_en") @db.VarChar(100)
+  /// CITY | VILLAGE (validated in the application layer)
+  type      String   @db.VarChar(20)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  markaz   Markaz    @relation(fields: [markazId], references: [id], onDelete: Restrict)
+  stations Station[]
+
+  @@index([markazId])
+  @@map("localities")
 }
 
 model Station {
@@ -453,14 +694,20 @@ model Station {
   latitude      Decimal?    @db.Decimal(10, 7)
   longitude     Decimal?    @db.Decimal(10, 7)
   governorateId String      @map("governorate_id") @db.Uuid
+  /// Physical stop's locality (spec 006). Nullable during the backfill
+  /// transition; every station must reference a locality whose markaz
+  /// belongs to the station's governorate.
+  localityId    String?     @map("locality_id") @db.Uuid
   isActive      Boolean     @default(true) @map("is_active")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
   governorate Governorate   @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  locality    Locality?     @relation(fields: [localityId], references: [id], onDelete: Restrict)
   routes     RouteStation[]
 
   @@index([governorateId])
+  @@index([localityId])
   @@map("stations")
 }
 
@@ -470,7 +717,10 @@ model RouteStation {
   stationId            String   @map("station_id") @db.Uuid
   stopOrder            Int      @map("stop_order")
   estimatedStopMinutes Int?     @map("estimated_stop_minutes")
-  /// BOARDING | LANDING | BOTH. Controls passenger search and booking choices.
+  /// New API writes accept BOARDING | LANDING only (BOTH rejected at the DTO
+  /// layer). The database default intentionally stays BOTH so system-path and
+  /// legacy rows without an explicit type keep working until the production
+  /// backfill converts every BOTH row (spec 006 follow-up).
   stopType             String   @default("BOTH") @map("stop_type") @db.VarChar(20)
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
@@ -478,8 +728,10 @@ model RouteStation {
   route   Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
   station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
 
+  // NOTE: there is intentionally NO (routeId, stationId) uniqueness — a
+  // converted BOTH station lives as an adjacent BOARDING + LANDING pair on
+  // the same station (ordering still unique per route via stopOrder).
   @@unique([routeId, stopOrder])
-  @@unique([routeId, stationId])
   @@index([stationId])
   @@map("route_stations")
 }

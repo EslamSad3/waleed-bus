@@ -171,6 +171,16 @@ CREATE POLICY self_providers ON public.user_auth_providers
   USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
   WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
 
+-- favorites: passenger-owned rows, self access only (spec 009). The
+-- service uses the system path with actor.id scoping; this policy is
+-- defense in depth for any future tenant-path use.
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS owner_favorites ON public.favorites;
+CREATE POLICY owner_favorites ON public.favorites
+  FOR ALL
+  USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
+
 -- trip_shares: readable/writable by members of the fleet owning the underlying booking
 ALTER TABLE public.trip_shares ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS booking_shares ON public.trip_shares;
@@ -247,8 +257,30 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.fleet_members TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.buses, public.trips, public.bookings TO app_tenant;
 -- Stops and trip lines are platform-owned catalog data, never tenant-scoped.
 REVOKE ALL ON public.lines, public.routes, public.stations, public.route_stations FROM app_tenant;
+-- Spec 006: geography dictionary is platform-owned catalog data too.
+REVOKE ALL ON public.markazes, public.localities FROM app_tenant;
+-- Spec 007: vehicle brand dictionary is platform-owned catalog data too.
+REVOKE ALL ON public.vehicle_brands FROM app_tenant;
+-- Spec 008: VIP tiers are platform-owned catalog data too.
+REVOKE ALL ON public.vip_tiers FROM app_tenant;
+-- Spec 011: promotions catalog + usages + targets are platform-managed via the
+-- system path (never fleet-scoped); app_tenant gets no grants.
+REVOKE ALL ON public.promotions, public.promotion_targets, public.promotion_usages FROM app_tenant;
+-- Spec 013: service-config entries are platform-managed catalog rows too.
+REVOKE ALL ON public.service_config_entries FROM app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.trip_shares TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.phone_verification_challenges, public.user_auth_providers TO app_tenant;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO app_tenant;
+-- Spec 012: notifications are user-owned rows, self access only. The service
+-- uses the system path with actor.id scoping; this policy is defense in depth
+-- for any future tenant-path use.
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS owner_notifications ON public.notifications;
+CREATE POLICY owner_notifications ON public.notifications
+  FOR ALL
+  USING (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid)
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), '')::uuid);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.notifications TO app_tenant;
 
 -- Spec 003: assignments are written by owner assignment flows (INSERT + status
 -- updates; no service path deletes — the DELETE grant keeps the family

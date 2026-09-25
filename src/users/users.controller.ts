@@ -29,6 +29,8 @@ import { UsersService } from './users.service.js';
 import {
   CreateUserDto,
   SetUserRolesDto,
+  TargetOptionsQueryDto,
+  TargetOptionDto,
   UpdateUserDto,
   UserDto,
 } from './dto/user.dto.js';
@@ -70,6 +72,22 @@ export class UsersController {
   )
   findAll(@Query() query: { cursor?: string; limit?: string }) {
     return this.usersService.findAll(query);
+  }
+
+  @Get('target-options')
+  @RequirePermission('users.read')
+  @ApiOperation({
+    summary:
+      'Search eligible promotion targets (active passenger accounts, server-side).',
+  })
+  @ApiEnvelopeResponse(
+    200,
+    'Up to `limit` (default 20, max 50) matching users: id/name/email/phoneNumber.',
+    TargetOptionDto,
+    true,
+  )
+  findTargetOptions(@Query() query: TargetOptionsQueryDto) {
+    return this.usersService.findTargetOptions(query);
   }
 
   @Get(':id')
