@@ -139,3 +139,87 @@ describe('NotificationsService categories (call §§43-44)', () => {
     expect(promoWithTrip.code).toBe('INVALID_NOTIFICATION_REF');
   });
 });
+
+describe('NotificationsService.sendFromPlatform', () => {
+  it('sends notification to a single user successfully', async () => {
+    const createdNotification = { id: 'notif-1', userId: 'u-1', title: 'Hello', body: 'World' };
+    const prisma = {
+      notification: {
+        create: vi.fn(async () => createdNotification),
+      },
+      user: {
+        findUnique: vi.fn(async () => ({ id: 'u-1', isActive: true })),
+      },
+    };
+    const svc = new NotificationsService(prisma as never);
+    const result = await svc.sendFromPlatform({
+      userId: 'u-1',
+      title: 'Hello',
+      body: 'World',
+    });
+    expect(result.sentCount).toBe(1);
+    expect(result.isGlobal).toBe(false);
+    expect(result.notificationIds).toEqual(['notif-1']);
+  });
+
+  it('rejects sending to single user when userId is missing', async () => {
+    const svc = new NotificationsService({} as never);
+    const res = await codeOf(
+      svc.sendFromPlatform({
+        title: 'Hello',
+        body: 'World',
+      }),
+    );
+    expect(res.code).toBe('INVALID_NOTIFICATION_TARGET');
+  });
+
+  it('throws 404 when target user does not exist', async () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn(async () => null),
+      },
+    };
+    const svc = new NotificationsService(prisma as never);
+    const res = await codeOf(
+      svc.sendFromPlatform({
+        userId: 'missing-user',
+        title: 'Hello',
+        body: 'World',
+      }),
+    );
+    expect(res.code).toBe('USER_NOT_FOUND');
+  });
+
+  it('broadcasts globally to all active users', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn(async () => [{ id: 'u-1' }, { id: 'u-2' }, { id: 'u-3' }]),
+      },
+      notification: {
+        createMany: vi.fn(async () => ({ count: 3 })),
+      },
+    };
+    const svc = new NotificationsService(prisma as never);
+    const result = await svc.sendFromPlatform({
+      isGlobal: true,
+      title: 'Global Announcement',
+      body: 'Broadcast message',
+    });
+    expect(result.sentCount).toBe(3);
+    expect(result.isGlobal).toBe(true);
+    expect(result.notificationIds).toHaveLength(3);
+    expect(prisma.notification.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            userId: 'u-1',
+            title: 'Global Announcement',
+            body: 'Broadcast message',
+            category: 'TEXT',
+          }),
+        ]),
+      }),
+    );
+  });
+});
+
