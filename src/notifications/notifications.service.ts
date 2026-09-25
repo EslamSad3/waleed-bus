@@ -43,29 +43,19 @@ export class NotificationsService {
 
   async notify(input: NotifyInput) {
     const { tripId = null, promotionId = null } = input;
-    if (input.category === 'TRIP' && !tripId) {
+    const valid =
+      (input.category === 'TEXT' && !tripId && !promotionId) ||
+      (input.category === 'TRIP' && !!tripId && !promotionId) ||
+      (input.category === 'DISCOUNT_CODE' && !tripId && !!promotionId);
+    if (!valid) {
       throw new CodedException(
         422,
-        'INVALID_NOTIFICATION_REF',
-        'TRIP notifications require tripId.',
-      );
-    }
-    if (input.category === 'DISCOUNT_CODE' && !promotionId) {
-      throw new CodedException(
-        422,
-        'INVALID_NOTIFICATION_REF',
-        'DISCOUNT_CODE notifications require promotionId.',
-      );
-    }
-    if (
-      input.category !== 'TEXT' &&
-      input.category !== 'TRIP' &&
-      input.category !== 'DISCOUNT_CODE'
-    ) {
-      throw new CodedException(
-        422,
-        'INVALID_NOTIFICATION_CATEGORY',
-        'Category must be TEXT, TRIP, or DISCOUNT_CODE.',
+        input.category === 'TEXT' ||
+          input.category === 'TRIP' ||
+          input.category === 'DISCOUNT_CODE'
+          ? 'INVALID_NOTIFICATION_REF'
+          : 'INVALID_NOTIFICATION_CATEGORY',
+        'Category must be TEXT (no refs), TRIP (tripId only), or DISCOUNT_CODE (promotionId only).',
       );
     }
     if (tripId) {

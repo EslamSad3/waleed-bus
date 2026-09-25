@@ -214,6 +214,46 @@ describe('Discovery + VIP (e2e, spec 008)', () => {
     expect((res.body.data.items as unknown[]).length).toBeLessThanOrEqual(1);
   });
 
+  it('never crowds out owners: many fleets of one owner cannot hide another', async () => {
+    // Owner A holds 11 rank-1 fleets; owner B holds 1 rank-1 fleet. A fleet-
+    // window heuristic (take limit*5) would fill the window with A's fleets
+    // and drop B; exact owner-level selection must return both with A's
+    // nested fleets complete.
+    const ownerA = await createUser(t.system, {
+      email: 'crowd-a@example.com',
+      password: 'Password123!',
+      name: 'Crowd A',
+    });
+    const ownerB = await createUser(t.system, {
+      email: 'crowd-b@example.com',
+      password: 'Password123!',
+      name: 'Crowd B',
+    });
+    const tierId = (await t.system.vipTier.findFirstOrThrow({ where: { rank: 1 } })).id;
+    for (let i = 0; i < 11; i++) {
+      await t.system.fleet.create({
+        data: { name: `Crowd A Fleet ${i}`, ownerId: ownerA.id, vipTierId: tierId },
+      });
+    }
+    await t.system.fleet.create({
+      data: { name: 'Crowd B Fleet', ownerId: ownerB.id, vipTierId: tierId },
+    });
+    const res = await api()
+      .get('/public/discovery/fleet-owners?q=Crowd&limit=2')
+      .expect(200);
+    const items = res.body.data.items as {
+      fleetOwnerId: string;
+      vipRank: number | null;
+      fleets: { id: string }[];
+    }[];
+    expect(items).toHaveLength(2);
+    const groupA = items.find((i) => i.fleetOwnerId === ownerA.id)!;
+    const groupB = items.find((i) => i.fleetOwnerId === ownerB.id)!;
+    expect(groupA.vipRank).toBe(1);
+    expect(groupA.fleets).toHaveLength(11);
+    expect(groupB.fleets).toHaveLength(1);
+  });
+
   it('returns active buses with driver info, excluding inactive buses', async () => {
     const res = await api()
       .get(`/public/discovery/fleet-owners/${halemFleetId}/buses`)

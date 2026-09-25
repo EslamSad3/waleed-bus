@@ -15025,6 +15025,14 @@
           "isGlobal": {
             "type": "boolean"
           },
+          "targetUserIds": {
+            "example": [],
+            "description": "Targeted user ids (platform responses only; empty for global codes).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "maxUsesPerUser": {
             "type": "number"
           },
@@ -15049,6 +15057,7 @@
           "type",
           "value",
           "isGlobal",
+          "targetUserIds",
           "maxUsesPerUser",
           "isActive"
         ]

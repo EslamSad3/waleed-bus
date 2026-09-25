@@ -50,6 +50,7 @@ function toDto(p: {
   startsAt: Date | null;
   expiresAt: Date | null;
   isActive: boolean;
+  targets?: Array<{ userId: string }>;
 }) {
   return {
     id: p.id,
@@ -59,6 +60,9 @@ function toDto(p: {
     isGlobal: p.isGlobal,
     maxUsesPerUser: p.maxUsesPerUser,
     maxTotalUses: p.maxTotalUses,
+    // Platform-only visibility into the allowlist (drives the dashboard
+    // audience editor; never exposed on passenger routes).
+    targetUserIds: (p.targets ?? []).map((t) => t.userId),
     startsAt: p.startsAt ? p.startsAt.toISOString() : null,
     expiresAt: p.expiresAt ? p.expiresAt.toISOString() : null,
     isActive: p.isActive,
@@ -121,6 +125,7 @@ export class PromotionsService {
                 },
               }),
         },
+        include: { targets: { select: { userId: true } } },
       });
       await this.audit.log({
         actorUserId: actor.id,
@@ -161,6 +166,19 @@ export class PromotionsService {
     if (dto.value !== undefined && !(dto.value > 0)) {
       throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Fixed value must be a positive amount.');
     }
+    // Snapshot current targets so newly-added users can be notified (§42)
+    // after the replacement commits. Empty set when targets untouched.
+    const beforeTargets =
+      dto.targetUserIds !== undefined
+        ? new Set(
+            (
+              await this.system.promotionTarget.findMany({
+                where: { promotionId: id },
+                select: { userId: true },
+              })
+            ).map((t) => t.userId),
+          )
+        : null;
     const startsAt = dto.startsAt !== undefined ? (dto.startsAt ? new Date(dto.startsAt) : null) : existing.startsAt;
     const expiresAt = dto.expiresAt !== undefined ? (dto.expiresAt ? new Date(dto.expiresAt) : null) : existing.expiresAt;
     if (startsAt && expiresAt && startsAt >= expiresAt) {
@@ -185,6 +203,7 @@ export class PromotionsService {
           ...(dto.expiresAt !== undefined ? { expiresAt } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
+        include: { targets: { select: { userId: true } } },
       });
     });
     await this.audit.log({
@@ -194,6 +213,21 @@ export class PromotionsService {
       resourceId: id,
       metadata: { code: existing.code },
     });
+    // Newly-added targets (A,B → A,B,C notifies C only): same §42 copy,
+    // idempotent via dedupeKey, best-effort post-commit.
+    if (beforeTargets !== null && !existing.isGlobal) {
+      const added = (dto.targetUserIds ?? []).filter((u) => !beforeTargets.has(u));
+      for (const userId of added) {
+        void this.notifications.notifyBestEffort({
+          userId,
+          category: 'DISCOUNT_CODE',
+          title: 'كود خصم جديد لك',
+          body: `تم تخصيص كود الخصم ${existing.code} لك. انسخه واستخدمه عند الحجز.`,
+          promotionId: id,
+          dedupeKey: `promo:${id}:assigned:${userId}`,
+        });
+      }
+    }
     return toDto(updated);
   }
 
@@ -207,6 +241,7 @@ export class PromotionsService {
       ...cursorArgs,
       take: pageSize + 1,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: { targets: { select: { userId: true } } },
     });
     const page = toCursorPage(rows, pageSize);
     return { ...page, items: page.items.map(toDto) };

@@ -136,6 +136,9 @@ export class PromotionDto {
   @ApiProperty()
   isGlobal!: boolean;
 
+  @ApiProperty({ example: [], description: 'Targeted user ids (platform responses only; empty for global codes).' })
+  targetUserIds!: string[];
+
   @ApiProperty()
   maxUsesPerUser!: number;
 

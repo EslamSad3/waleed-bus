@@ -183,6 +183,7 @@ export class PassengerService {
     pendingPhoneNumber: string | null;
     expiresInSeconds: number | null;
     sent: boolean;
+    effectiveMaxBookingSeats: number;
   }> {
     if (
       input.name === undefined &&
@@ -351,6 +352,10 @@ export class PassengerService {
       pendingPhoneNumber: pending?.phoneNumber ?? null,
       expiresInSeconds: pending?.expiresInSeconds ?? null,
       sent,
+      // Display-only seat cap travels with the user object (enforced server-side).
+      effectiveMaxBookingSeats: effectiveMaxBookingSeats(
+        updated.maxBookingSeats ?? null,
+      ),
     };
   }
 }

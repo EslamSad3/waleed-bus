@@ -58,7 +58,7 @@ A super-admin creates a physical Station via Governorate → Markaz → Locality
 
 ## Out of scope
 
-Route stop-type cleanup (`BOTH` → `BOARDING|LANDING`), vehicle fields, discovery/VIP, favorites, booking limits/snapshots, promotions, notifications, customer-service config — separate specs.
+Vehicle fields, discovery/VIP, favorites, booking limits/snapshots, promotions, notifications, customer-service config — separate specs. Route stop-type `BOTH` cleanup: application writes already accept `BOARDING|LANDING` only; the production row conversion + DB default flip is tracked in `docs/BOTH-backfill-runbook.md` (split rule, Step-0 inspection, draft migration).
 
 ## Constraints
 

@@ -9,6 +9,9 @@ function discoverySystem(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => null),
     },
+    user: {
+      findMany: vi.fn(async () => []),
+    },
     bus: {
       findMany: vi.fn(async () => []),
     },
@@ -17,11 +20,15 @@ function discoverySystem(overrides: Record<string, unknown> = {}) {
 }
 
 describe('DiscoveryService (spec 008)', () => {
-  it('searches fleets VIP-ordered with deterministic tiebreaks', async () => {
+  it('groups by owner with stage-2 fleet ordering', async () => {
     const system = discoverySystem();
     const service = new DiscoveryService(system as never);
     await service.searchFleetOwners({ q: 'halem', limit: '10' });
-    expect(system.fleet.findMany).toHaveBeenCalledWith(
+    // Stage 1: light match scan (no take-window); stage 2: full rows ordered.
+    expect(system.fleet.findMany).toHaveBeenCalledTimes(2);
+    expect(system.user.findMany).toHaveBeenCalledOnce();
+    expect(system.fleet.findMany).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         orderBy: [
           { vipTier: { rank: 'asc' } },
@@ -41,6 +48,56 @@ describe('DiscoveryService (spec 008)', () => {
     expect(args.where).toMatchObject({ isActive: true });
     expect(JSON.stringify(args.where)).toContain('بنها');
     expect(JSON.stringify(args.where)).toContain('locality');
+  });
+
+  it('treats inactive tiers as untiered and collapses one owner to one group', async () => {
+    const system = discoverySystem({
+      fleet: {
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([
+            { ownerId: 'owner-1', vipTier: { rank: 1, isActive: false } },
+            { ownerId: 'owner-1', vipTier: { rank: 2, isActive: true } },
+            { ownerId: 'owner-2', vipTier: null },
+          ])
+          .mockResolvedValueOnce([
+            {
+              id: 'fleet-a',
+              name: 'A Fleet',
+              ownerId: 'owner-1',
+              owner: { id: 'owner-1', name: 'Owner One', nickname: null },
+              vipTier: { id: 't2', name: 'VIP 2', rank: 2, isActive: true },
+            },
+            {
+              id: 'fleet-b',
+              name: 'B Fleet',
+              ownerId: 'owner-2',
+              owner: { id: 'owner-2', name: 'Owner Two', nickname: null },
+              vipTier: null,
+            },
+          ]),
+        findFirst: vi.fn(async () => null),
+      },
+      user: {
+        findMany: vi.fn(async () => [
+          { id: 'owner-1', name: 'Owner One', nickname: null },
+          { id: 'owner-2', name: 'Owner Two', nickname: null },
+        ]),
+      },
+    });
+    const service = new DiscoveryService(system as never);
+    const result = await service.searchFleetOwners({});
+    expect(result.items).toHaveLength(2);
+    // Inactive rank-1 ignored: best active rank is 2.
+    expect(result.items[0]).toMatchObject({
+      fleetOwnerId: 'owner-1',
+      vipRank: 2,
+    });
+    expect(result.items[0].fleets).toHaveLength(1);
+    expect(result.items[1]).toMatchObject({
+      fleetOwnerId: 'owner-2',
+      vipRank: null,
+    });
   });
 
   it('returns 404 for unknown or inactive fleets on bus discovery', async () => {

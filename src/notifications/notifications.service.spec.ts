@@ -101,4 +101,41 @@ describe('NotificationsService categories (call §§43-44)', () => {
     );
     expect(promoResponse.code).toBe('INVALID_NOTIFICATION_REF');
   });
+
+  it('rejects cross-category references', async () => {
+    const svc = makeService({ create: vi.fn(async () => ({})) });
+    const textWithRefs = await codeOf(
+      svc.notify({
+        userId: 'u-1',
+        category: 'TEXT',
+        title: 't',
+        body: 'b',
+        tripId: 'trip-1',
+        promotionId: 'promo-1',
+      }),
+    );
+    expect(textWithRefs.code).toBe('INVALID_NOTIFICATION_REF');
+    const tripWithPromo = await codeOf(
+      svc.notify({
+        userId: 'u-1',
+        category: 'TRIP',
+        title: 't',
+        body: 'b',
+        tripId: 'trip-1',
+        promotionId: 'promo-1',
+      }),
+    );
+    expect(tripWithPromo.code).toBe('INVALID_NOTIFICATION_REF');
+    const promoWithTrip = await codeOf(
+      svc.notify({
+        userId: 'u-1',
+        category: 'DISCOUNT_CODE',
+        title: 't',
+        body: 'b',
+        tripId: 'trip-1',
+        promotionId: 'promo-1',
+      }),
+    );
+    expect(promoWithTrip.code).toBe('INVALID_NOTIFICATION_REF');
+  });
 });

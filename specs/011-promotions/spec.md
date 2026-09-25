@@ -39,10 +39,9 @@
   force-expire via `isActive=false` (`POST .../:id/expire` convenience = same),
   `GET /platform/promotions/:id/usages` (cursor, per-user consumption dashboard).
 - Passenger: `GET /promotions/active` — readonly list of ACTIVE, currently-valid GLOBAL codes
-  (code text + type + value + cap + expiry; no usage internals). `promoCode` field on booking
+  (code text + type + value + expiry; no usage internals). `promoCode` field on booking
   create DTO; `POST /promotions/validate` dry-run preview (discount for a trip/seats, no writes).
-- Default type for dashboard create form: `PROMO_DEFAULT_TYPE=percentage`.
-- Validation: code 3–32 chars `[A-Z0-9_-]` (normalized); FIXED value > 0; PERCENTAGE 1–100;
+- Validation: code 3–32 chars `[A-Z0-9_-]` (normalized); FIXED value > 0 (positive EGP amount); non-FIXED type rejected at the DTO boundary (400); DB CHECK `promotions_type_check` enforces FIXED.
   `maxUsesPerUser >= 1`; `startsAt < expiresAt` when both set.
 - RLS: promotions/usages are platform-managed, no fleet scoping → NO RLS policies (like fleets);
   services use the system path. Passenger reads go through the system path with no user input
@@ -52,7 +51,7 @@
 
 ## Scenarios
 
-1. Create percentage code → 201; invalid type/value → 400/422.
+1. Create FIXED code → 201 with targetUserIds echoed; non-FIXED type → 400; non-positive value → 422.
 2. Checkout with valid global code → 201, `discountAmount` correct, `promoCode` snapshot stored,
    usage row written; second checkout same user+code → 422 `PROMO_ALREADY_USED`.
 3. Global code usable by a second user → 201 (each user once).

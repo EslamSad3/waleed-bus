@@ -5,7 +5,7 @@ import { SystemPrismaService } from '../prisma/prisma.module.js';
 
 const fleetSearchInclude = {
   owner: { select: { id: true, name: true, nickname: true } },
-  vipTier: { select: { id: true, name: true, rank: true } },
+  vipTier: { select: { id: true, name: true, rank: true, isActive: true } },
 } satisfies Prisma.FleetInclude;
 
 export type FleetOwnerSearchFleet = {
@@ -51,8 +51,13 @@ export class DiscoveryService {
    * Owner-grouped directory search (call §§13-15). Fleets match on fleet
    * name, owner name/nickname, or route geography; results collapse to one
    * item per owner ordered by best VIP rank (untiered last), then owner name.
-   * The directory is small and search-scoped, so grouping runs in memory over
-   * a bounded fleet fetch instead of cursor pagination.
+   *
+   * Two-stage selection (correct first-N owners, no window heuristic):
+   *  1. load ALL matching fleets as light (ownerId + tier rank) rows,
+   *     derive distinct owners with best-rank ordering in memory;
+   *  2. fetch full fleet rows for exactly the chosen owners.
+   * The directory is small and search-scoped, so the bounded full-match scan
+   * keeps grouping exact; the response itself is capped at `limit` owners.
    */
   async searchFleetOwners(query: {
     q?: string;
@@ -123,55 +128,91 @@ export class DiscoveryService {
         }
       : undefined;
 
-    const rows = await this.system.fleet.findMany({
-      take: pageSize * 5,
-      where: {
-        isActive: true,
-        owner: { isActive: true },
-        ...(contains
-          ? {
-              OR: [
-                { name: contains },
-                { owner: { name: contains } },
-                { owner: { nickname: contains } },
-                geoFilter!,
-              ],
-            }
-          : undefined),
+    const matchWhere: Prisma.FleetWhereInput = {
+      isActive: true,
+      owner: { isActive: true },
+      ...(contains
+        ? {
+            OR: [
+              { name: contains },
+              { owner: { name: contains } },
+              { owner: { nickname: contains } },
+              geoFilter!,
+            ],
+          }
+        : undefined),
+    };
+
+    // Stage 1: every matching fleet as a light row — no take-window, so no
+    // owner can be crowded out by another owner's fleet count.
+    const matches = await this.system.fleet.findMany({
+      where: matchWhere,
+      select: {
+        ownerId: true,
+        vipTier: { select: { rank: true, isActive: true } },
       },
+    });
+    const bestRank = new Map<string, number | null>();
+    for (const row of matches) {
+      // Inactive tiers are treated as untiered (explicit business rule).
+      const rank =
+        row.vipTier && row.vipTier.isActive ? row.vipTier.rank : null;
+      const current = bestRank.get(row.ownerId);
+      if (current === undefined || (rank !== null && (current === null || rank < current))) {
+        bestRank.set(row.ownerId, rank);
+      }
+    }
+    const owners = await this.system.user.findMany({
+      where: { id: { in: [...bestRank.keys()] } },
+      select: { id: true, name: true, nickname: true },
+    });
+    const chosen = owners
+      .map((owner) => ({
+        owner,
+        rank: bestRank.get(owner.id) ?? null,
+      }))
+      .sort((a, b) => {
+        if (a.rank === null && b.rank === null) return 0;
+        if (a.rank === null) return 1;
+        if (b.rank === null) return -1;
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        const aName = a.owner.name ?? a.owner.nickname ?? '';
+        const bName = b.owner.name ?? b.owner.nickname ?? '';
+        return aName.localeCompare(bName);
+      })
+      .slice(0, pageSize);
+
+    // Stage 2: full rows for exactly the chosen owners — nested fleets[] is
+    // complete by construction.
+    const rows = await this.system.fleet.findMany({
+      where: { ...matchWhere, ownerId: { in: chosen.map((c) => c.owner.id) } },
       // Note: PostgreSQL ASC sorts NULLS LAST, so untiered fleets trail
-      // ranked ones; the owner-level sort below is explicitly nulls-last.
+      // ranked ones within an owner.
       orderBy: [{ vipTier: { rank: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
       include: fleetSearchInclude,
     });
-
+    const byOwner = new Map(chosen.map((c) => [c.owner.id, c]));
     const groups = new Map<string, FleetOwnerSearchItem>();
-    for (const row of rows) {
-      let group = groups.get(row.owner.id);
-      if (!group) {
-        group = {
-          fleetOwnerId: row.owner.id,
-          fleetOwnerName: row.owner.name ?? row.owner.nickname,
-          vipRank: null,
-          fleets: [],
-        };
-        groups.set(row.owner.id, group);
-      }
-      group.fleets.push({ id: row.id, name: row.name, vipTier: row.vipTier });
-      if (row.vipTier && (group.vipRank === null || row.vipTier.rank < group.vipRank)) {
-        group.vipRank = row.vipTier.rank;
-      }
+    for (const id of chosen.map((c) => c.owner.id)) {
+      const c = byOwner.get(id)!;
+      groups.set(id, {
+        fleetOwnerId: id,
+        fleetOwnerName: c.owner.name ?? c.owner.nickname,
+        vipRank: c.rank,
+        fleets: [],
+      });
     }
-    const items = [...groups.values()]
-      .sort((a, b) => {
-        if (a.vipRank === null && b.vipRank === null) return 0;
-        if (a.vipRank === null) return 1;
-        if (b.vipRank === null) return -1;
-        if (a.vipRank !== b.vipRank) return a.vipRank - b.vipRank;
-        return (a.fleetOwnerName ?? '').localeCompare(b.fleetOwnerName ?? '');
-      })
-      .slice(0, pageSize);
-    return { items };
+    for (const row of rows) {
+      const tier = row.vipTier && row.vipTier.isActive ? row.vipTier : null;
+      groups.get(row.ownerId)?.fleets.push({
+        id: row.id,
+        name: row.name,
+        vipTier: tier
+          ? { id: tier.id, name: tier.name, rank: tier.rank }
+          : null,
+      });
+    }
+    return { items: [...groups.values()] };
   }
 
   async fleetBuses(fleetId: string) {

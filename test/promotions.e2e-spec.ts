@@ -224,6 +224,35 @@ describe('Promotions (e2e, spec 011)', () => {
     expect(reused.body.code).toBe('PROMO_ALREADY_USED');
   });
 
+  it('notifies only newly-added users when targets change (§42)', async () => {
+    const userA = await t.system.user.findUniqueOrThrow({ where: { phoneNumber: '01009990301' } });
+    const userB = await t.system.user.findUniqueOrThrow({ where: { phoneNumber: '01009990302' } });
+    const created = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({ code: 'SEG50', type: 'FIXED', value: 50, isGlobal: false, targetUserIds: [userA.id] })
+      .expect(201);
+    const promoId = created.body.data.id as string;
+    const countFor = async (token: string) =>
+      (await api().get('/notifications/unread-count').set({ Authorization: `Bearer ${token}` }).expect(200)).body.data
+        .unreadCount as number;
+    expect(await countFor(tokenA)).toBe(1);
+    expect(await countFor(tokenB)).toBe(0);
+    await api()
+      .patch(`/platform/promotions/${promoId}`)
+      .set(admin())
+      .send({ targetUserIds: [userA.id, userB.id] })
+      .expect(200);
+    // A re-added (not newly-added): no second row. B newly-added: one row.
+    expect(await countFor(tokenA)).toBe(1);
+    expect(await countFor(tokenB)).toBe(1);
+    const itemsB = (
+      await api().get('/notifications').set({ Authorization: `Bearer ${tokenB}` }).expect(200)
+    ).body.data.items as Array<{ category: string; promotionId: string | null }>;
+    expect(itemsB).toHaveLength(1);
+    expect(itemsB[0]).toMatchObject({ category: 'DISCOUNT_CODE', promotionId: promoId });
+  });
+
   it('force-expire moves checkout to full price with INACTIVE echo', async () => {
     const created = await api()
       .post('/platform/promotions')

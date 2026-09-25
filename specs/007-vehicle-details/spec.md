@@ -13,7 +13,7 @@
 - `VehicleBrand` is an admin-managed dictionary (frozen 2026-09-24).
 - Required on create: `plateNumber`, `color`, `imageUrl`. Optional: `brandId`, `isAirConditioned`, `modelYear`.
 - DB columns added nullable-first (backfill strategy); required-ness enforced at the create-DTO layer so existing rows stay valid.
-- `imageUrl` is a validated absolute HTTPS URL stored on the bus. Supabase Storage bucket provisioning + signed-URL upload flow is an explicit follow-up (no storage infra or credentials exist in either repo today).
+- `imageUrl` is a validated absolute HTTPS URL stored on the bus. Canonical source is Supabase Storage: `POST /fleets/:fleetId/uploads/bus-image` (multipart, 5MB, JPEG/PNG/WebP magic-byte, sharp 1600px/q80, service-role upload, public URL) — implemented, with upload e2e/unit coverage. The dashboard create form is upload-only (no external paste field).
 
 ## User Scenarios
 

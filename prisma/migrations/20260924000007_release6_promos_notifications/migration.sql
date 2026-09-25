@@ -53,7 +53,13 @@ CREATE TABLE "notifications" (
     "read_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "notifications_category_check" CHECK ("category" IN ('TEXT', 'TRIP', 'DISCOUNT_CODE'))
+    -- Call §§43-44 reference invariants: TEXT carries no refs, TRIP requires
+    -- trip_id only, DISCOUNT_CODE requires promotion_id only.
+    CONSTRAINT "notifications_ref_check" CHECK (
+      ("category" = 'TEXT' AND "trip_id" IS NULL AND "promotion_id" IS NULL) OR
+      ("category" = 'TRIP' AND "trip_id" IS NOT NULL AND "promotion_id" IS NULL) OR
+      ("category" = 'DISCOUNT_CODE' AND "trip_id" IS NULL AND "promotion_id" IS NOT NULL)
+    )
 );
 -- CreateIndex
 CREATE UNIQUE INDEX "promotions_code_key" ON "promotions"("code");

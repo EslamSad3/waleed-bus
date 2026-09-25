@@ -39,10 +39,11 @@
 
 ## Scenarios
 
-1. Booking created → booker inbox has BOOKING confirmed notification; OTHER with linked traveler
-   account → traveler also notified.
-2. Re-emit same dedupeKey → single row (idempotency).
-3. List/unread-count reflect state; mark one read; mark all read; delete one; delete all.
-4. Another user's notification id → 404.
-5. Notify failure (e.g. DB error) does not fail booking creation.
-6. Payment PAID → PAYMENT notification; cancel → TRIP/BOOKING cancelled; refund → PAYMENT refund.
+1. Seeded TEXT (no refs) + TRIP (tripId, promotionId null) rows served with explicit references.
+2. Creating a USER-scoped promotion → each target user gains one DISCOUNT_CODE row (promotionId set); non-targeted users see nothing new (no oracle).
+3. Duplicate promo creation (409) emits no second notification.
+4. Updating targets A,B → A,B,C notifies C only (newly-added); A keeps a single row.
+5. Re-emit same dedupeKey → single row (idempotency, P2002 path returns existing).
+6. List/unread-count reflect state; mark one read; mark all read; delete one; delete all.
+7. Another user's notification id → 404.
+8. Unknown category / missing or cross-category refs → 422 INVALID_NOTIFICATION_CATEGORY / INVALID_NOTIFICATION_REF (mirrored by DB CHECK notifications_ref_check).
