@@ -728,8 +728,10 @@ model RouteStation {
   route   Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
   station Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
 
+  // NOTE: there is intentionally NO (routeId, stationId) uniqueness — a
+  // converted BOTH station lives as an adjacent BOARDING + LANDING pair on
+  // the same station (ordering still unique per route via stopOrder).
   @@unique([routeId, stopOrder])
-  @@unique([routeId, stationId])
   @@index([stationId])
   @@map("route_stations")
 }

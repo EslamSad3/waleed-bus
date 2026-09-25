@@ -71,6 +71,19 @@ export class TargetOptionDto {
   phoneNumber?: string | null;
 }
 
+/** Validated query for GET /users/target-options (server-side eligible search). */
+export class TargetOptionsQueryDto {
+  @ApiPropertyOptional({ example: 'Dalia', description: 'Name/email/phone fragment (Arabic supported).' })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional({ example: 20, description: 'Max options (1-50, default 20).' })
+  @IsOptional()
+  @IsString()
+  limit?: string;
+}
+
 /** Documentation-only model for the caller's own memberships (GET /fleets/mine). */
 export class MyMembershipDto {
   @ApiProperty({ format: 'uuid' })

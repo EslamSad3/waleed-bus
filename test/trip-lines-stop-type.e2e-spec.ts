@@ -4,13 +4,14 @@ import { loadConfig } from '../src/config/configuration.js';
 import type { TestApp } from './helpers/app.js';
 import { createTestApp } from './helpers/app.js';
 import { resetDatabase } from './helpers/db.js';
-import { createRole, createUser } from './helpers/world.js';
+import { createRole, createUser, createPhoneUser } from './helpers/world.js';
 
 describe('Trip-line stop types (e2e, spec 006 follow-up)', () => {
   let t: TestApp;
   let adminToken: string;
   let stopA: string;
   let stopB: string;
+  let stopC: string;
 
   const api = () => request(t.app.getHttpServer());
 
@@ -62,6 +63,17 @@ describe('Trip-line stop types (e2e, spec 006 follow-up)', () => {
       .expect(201);
     stopA = a.body.data.id;
     stopB = b.body.data.id;
+    const c = await api()
+      .post('/stops')
+      .set(headers)
+      .send({
+        name: 'Stop Type C',
+        latitude: 30.3,
+        longitude: 31.4,
+        governorateId: gov.id,
+      })
+      .expect(201);
+    stopC = c.body.data.id;
   });
 
   afterAll(async () => {
@@ -143,5 +155,171 @@ describe('Trip-line stop types (e2e, spec 006 follow-up)', () => {
         ],
       })
       .expect(400);
+  });
+
+  it('accepts a converted BOTH pair (same station BOARDING + LANDING)', async () => {
+    const res = await api()
+      .post('/trip-lines')
+      .set({ Authorization: `Bearer ${adminToken}` })
+      .send({
+        name: 'Pair Line',
+        code: `PAIR-${Date.now()}`,
+        outboundStops: [
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'LANDING' },
+          { stopId: stopC, stopType: 'LANDING' },
+        ],
+        returnStops: [
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'LANDING' },
+        ],
+      })
+      .expect(201);
+    const stations = res.body.data.stations as Array<{ stationId?: string; stopType: string }>;
+    expect(stations.filter((s) => s.stopType === 'BOARDING')).toHaveLength(2);
+    expect(stations.filter((s) => s.stopType === 'LANDING')).toHaveLength(2);
+  });
+
+  it('rejects same-station repeats that are not a BOARDING+LANDING pair', async () => {
+    const headers = { Authorization: `Bearer ${adminToken}` };
+    // Same capability twice.
+    const twice = await api()
+      .post('/trip-lines')
+      .set(headers)
+      .send({
+        name: 'Dup Line',
+        code: `DUP-${Date.now()}`,
+        outboundStops: [
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopC, stopType: 'LANDING' },
+        ],
+        returnStops: [
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'LANDING' },
+        ],
+      });
+    expect(twice.status).toBe(422);
+    expect(twice.body.code).toBe('DUPLICATE_STOP');
+    // Three occurrences (pair + extra).
+    const thrice = await api()
+      .post('/trip-lines')
+      .set(headers)
+      .send({
+        name: 'Triple Line',
+        code: `TRI-${Date.now()}`,
+        outboundStops: [
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'LANDING' },
+          { stopId: stopB, stopType: 'BOARDING' },
+          { stopId: stopC, stopType: 'LANDING' },
+        ],
+        returnStops: [
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'LANDING' },
+        ],
+      });
+    expect(thrice.status).toBe(422);
+    expect(thrice.body.code).toBe('DUPLICATE_STOP');
+  });
+
+  it('books to and from a converted pair station (capability-aware lookup)', async () => {
+    const headers = { Authorization: `Bearer ${adminToken}` };
+    const created = await api()
+      .post('/trip-lines')
+      .set(headers)
+      .send({
+        name: 'Booking Pair Line',
+        code: `BK-${Date.now()}`,
+        outboundStops: [
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'LANDING' },
+          { stopId: stopC, stopType: 'LANDING' },
+        ],
+        returnStops: [
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'LANDING' },
+        ],
+      })
+      .expect(201);
+    const line = await t.system.line.findUniqueOrThrow({
+      where: { id: created.body.data.id as string },
+      include: { directions: true },
+    });
+    const outboundId = line.directions.find((d) => d.direction === 'OUTBOUND')!.id;
+
+    const owner = await createPhoneUser(t.system, {
+      phone: '01009990509',
+      password: 'Password123!',
+      name: 'Pair Owner',
+    });
+    const fleet = await t.system.fleet.create({ data: { name: 'Pair Fleet', ownerId: owner.id } });
+    const bus = await t.system.bus.create({
+      data: { fleetId: fleet.id, registrationNumber: 'PAIR-BUS-1', capacity: 40 },
+    });
+    const trip = await t.system.trip.create({
+      data: {
+        fleetId: fleet.id,
+        busId: bus.id,
+        routeId: outboundId,
+        origin: 'A',
+        destination: 'C',
+        departAt: new Date(Date.now() + 86400000),
+        fare: 100,
+      },
+    });
+
+    await t.system.role.upsert({
+      where: { slug: 'passenger' },
+      update: {},
+      create: { name: 'Passenger', slug: 'passenger', isSystem: true },
+    });
+    await createPhoneUser(t.system, { phone: '01009990501', password: 'Password123!', name: 'Pair Pax' });
+    const rider = await t.system.user.findUniqueOrThrow({ where: { phoneNumber: '01009990501' } });
+    const passengerRole = await t.system.role.findUniqueOrThrow({ where: { slug: 'passenger' } });
+    await t.system.userRole.upsert({
+      where: { userId_roleId: { userId: rider.id, roleId: passengerRole.id } },
+      update: {},
+      create: { userId: rider.id, roleId: passengerRole.id },
+    });
+    const passengerToken = (
+      await api().post('/auth/login').send({ loginType: 'PASSENGER', phone: '01009990501', password: 'Password123!' })
+    ).body.data.accessToken as string;
+    const book = (body: Record<string, unknown>) =>
+      api().post('/bookings').set({ Authorization: `Bearer ${passengerToken}` }).send(body);
+
+    // Destination = converted station: lookup must hit the LANDING twin
+    // (first-row-by-station would return BOARDING and reject).
+    await book({
+      tripId: trip.id,
+      seatCount: 1,
+      paymentMethod: 'CASH',
+      boardingStationId: stopA,
+      landingStationId: stopB,
+      confirmTimeConflict: true,
+    }).expect(201);
+    // Origin = converted station: lookup must hit the BOARDING twin.
+    await book({
+      tripId: trip.id,
+      seatCount: 1,
+      paymentMethod: 'CASH',
+      boardingStationId: stopB,
+      landingStationId: stopC,
+      confirmTimeConflict: true,
+    }).expect(201);
+    // Order still enforced: landing before boarding rejects.
+    const reversed = await book({
+      tripId: trip.id,
+      seatCount: 1,
+      paymentMethod: 'CASH',
+      boardingStationId: stopC,
+      landingStationId: stopA,
+      confirmTimeConflict: true,
+    });
+    expect(reversed.status).toBe(422);
+    expect(reversed.body.code).toBe('INVALID_TRIP_STOPS');
   });
 });

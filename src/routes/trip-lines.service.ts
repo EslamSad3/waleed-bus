@@ -140,11 +140,25 @@ export class TripLinesService {
   }
 
   private async resolveStops(stopInputs: TripLineStopDto[]) {
-    if (new Set(stopInputs.map((stop) => stop.stopId)).size !== stopInputs.length) {
-      throw new CodedException(422, 'DUPLICATE_STOP', 'لا يمكن تكرار نقطة التوقف نفسها داخل خط واحد.', { fields: { stops: 'كل نقطة توقف يجب أن تظهر مرة واحدة فقط.' } });
+    // Pair model (post-BOTH-split): a station may appear at most twice, and a
+    // repeat is legal ONLY as exactly one BOARDING + one LANDING row (the
+    // converted BOTH pair). Anything else is still DUPLICATE_STOP.
+    const byStation = new Map<string, string[]>();
+    for (const stop of stopInputs) {
+      const list = byStation.get(stop.stopId) ?? [];
+      list.push(stop.stopType);
+      byStation.set(stop.stopId, list);
     }
-    const stops = await this.system.station.findMany({ where: { isActive: true, id: { in: stopInputs.map((stop) => stop.stopId) } } });
-    if (stops.length !== stopInputs.length) throw new CodedException(422, 'INVALID_STOP', 'بعض نقاط التوقف غير متاحة.', { fields: { stops: 'اختر نقاط توقف نشطة.' } });
+    for (const types of byStation.values()) {
+      if (types.length === 1) continue;
+      const sorted = [...types].sort();
+      if (sorted.length !== 2 || sorted[0] !== 'BOARDING' || sorted[1] !== 'LANDING') {
+        throw new CodedException(422, 'DUPLICATE_STOP', 'لا يمكن تكرار نقطة التوقف نفسها داخل خط واحد.', { fields: { stops: 'التكرار الوحيد المسموح: BOARDING + LANDING لنفس المحطة.' } });
+      }
+    }
+    const distinctIds = [...byStation.keys()];
+    const stops = await this.system.station.findMany({ where: { isActive: true, id: { in: distinctIds } } });
+    if (stops.length !== distinctIds.length) throw new CodedException(422, 'INVALID_STOP', 'بعض نقاط التوقف غير متاحة.', { fields: { stops: 'اختر نقاط توقف نشطة.' } });
     const indexed = new Map(stops.map((stop) => [stop.id, stop]));
     return stopInputs.map((input) => indexed.get(input.stopId)!);
   }

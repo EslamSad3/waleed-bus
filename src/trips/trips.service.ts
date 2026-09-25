@@ -295,6 +295,7 @@ export class TripsService {
               orderBy: { stopOrder: 'asc' },
               select: {
                 stopOrder: true,
+                stopType: true,
                 estimatedStopMinutes: true,
                 station: {
                   select: {
@@ -340,6 +341,7 @@ export class TripsService {
               id: s.station.id,
               name: s.station.name,
               stopOrder: s.stopOrder,
+              stopType: s.stopType,
               estimatedStopMinutes: s.estimatedStopMinutes,
             })),
           }

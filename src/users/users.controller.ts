@@ -29,6 +29,7 @@ import { UsersService } from './users.service.js';
 import {
   CreateUserDto,
   SetUserRolesDto,
+  TargetOptionsQueryDto,
   TargetOptionDto,
   UpdateUserDto,
   UserDto,
@@ -85,7 +86,7 @@ export class UsersController {
     TargetOptionDto,
     true,
   )
-  findTargetOptions(@Query() query: { q?: string; limit?: string }) {
+  findTargetOptions(@Query() query: TargetOptionsQueryDto) {
     return this.usersService.findTargetOptions(query);
   }
 

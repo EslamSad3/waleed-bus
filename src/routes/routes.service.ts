@@ -99,6 +99,7 @@ export class RoutesService {
       governorate: rs.station.governorate,
       locality: rs.station.locality,
       stopOrder: rs.stopOrder,
+      stopType: rs.stopType,
       estimatedStopMinutes: rs.estimatedStopMinutes,
     }));
 

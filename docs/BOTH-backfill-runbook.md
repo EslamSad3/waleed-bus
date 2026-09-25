@@ -53,6 +53,8 @@ ORDER BY r.code, rs.stop_order;
 -- a UNIQUE INDEX (not a table constraint), so it must be dropped with
 -- DROP INDEX — ALTER TABLE ... DROP CONSTRAINT would silently do nothing
 -- (IF EXISTS) and the pair INSERT below would fail on conflict.
+-- (Shipped in prisma migration ...00011; kept here as an idempotent guard
+-- for databases that predate it.)
 DROP INDEX IF EXISTS "route_stations_route_id_station_id_key";
 
 -- 2. Open ordering gaps.
@@ -117,16 +119,30 @@ forms link out to Maps from the stored coordinates for verification.
 
 ## Follow-up schema change (do this AFTER the DB conversion)
 
-In this order — otherwise the next `db:migrate:diff` re-adds the dropped uniqueness:
+In this order — otherwise the next `db:migrate:diff` re-adds dropped state:
 
 1. Confirm the DB state: pair rows exist, default is `BOARDING`, the
    `route_stations_route_id_station_id_key` unique INDEX is gone
    (`SELECT indexname FROM pg_indexes WHERE indexname =
    'route_stations_route_id_station_id_key';` → 0 rows).
 2. Update `prisma/schema.prisma`:
-   - REMOVE the `@@unique([routeId, stationId])` line from `RouteStation`
-     (keep `@@unique([routeId, stopOrder])`).
+   - ~~REMOVE the `@@unique([routeId, stationId])` line~~ — already removed
+     (migration `...00011_route_station_pair_support`, shipped with the
+     application pair support so converted routes round-trip through the
+     editor and booking validation before conversion day).
    - Change `stopType` to `@default("BOARDING")`.
 3. `pnpm run db:migrate:diff` → save as a new migration
-   (`<ts>_route_station_both_cleanup`) → review the SQL (it must NOT
-   re-create the dropped uniqueness) → deploy → `db:check-rls`.
+   (`<ts>_route_station_both_cleanup`) → review the SQL (it must only flip
+   the default — no re-created uniqueness) → deploy → `db:check-rls`.
+
+## Application support (shipped BEFORE conversion — review round 6)
+
+The migration alone is not enough: the app must consume pairs. Verified:
+
+- `TripLinesService.resolveStops()` permits exactly one BOARDING + one
+  LANDING row per station (anything else is still `DUPLICATE_STOP`).
+- Booking + favorite-stop validation match station AND capability
+  (`BOARDING`/`LANDING`/`BOTH`) and compare `stopOrder` — a converted
+  station is bookable in both directions.
+- Passenger route-stop representations carry `stopType` (trip detail,
+  public route, trip search) so clients can tell the twins apart.

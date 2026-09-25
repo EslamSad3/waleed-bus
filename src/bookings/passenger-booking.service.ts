@@ -110,9 +110,17 @@ export class PassengerBookingService {
         orderBy: { stopOrder: 'asc' },
         select: { stationId: true, stopOrder: true, stopType: true },
       });
-      const boarding = routeStops.find((stop) => stop.stationId === input.boardingStationId);
-      const landing = routeStops.find((stop) => stop.stationId === input.landingStationId);
-      if (!boarding || !['BOARDING', 'BOTH'].includes(boarding.stopType) || !landing || !['LANDING', 'BOTH'].includes(landing.stopType) || boarding.stopOrder >= landing.stopOrder) {
+      // Capability-aware lookup: a converted BOTH station exists as an
+      // adjacent BOARDING + LANDING pair, so match station AND capability
+      // (first-row-by-station would always return the BOARDING twin and make
+      // the station unbookable as a destination). stopOrder decides validity.
+      const boarding = routeStops.find(
+        (stop) => stop.stationId === input.boardingStationId && ['BOARDING', 'BOTH'].includes(stop.stopType),
+      );
+      const landing = routeStops.find(
+        (stop) => stop.stationId === input.landingStationId && ['LANDING', 'BOTH'].includes(stop.stopType),
+      );
+      if (!boarding || !landing || boarding.stopOrder >= landing.stopOrder) {
         throw new CodedException(422, 'INVALID_TRIP_STOPS', 'Choose a boarding stop before a landing stop that this trip serves.');
       }
 

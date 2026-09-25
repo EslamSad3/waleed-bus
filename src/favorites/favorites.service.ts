@@ -287,13 +287,16 @@ export class FavoritesService {
         byRoute.set(rs.routeId, list);
       }
       const valid = [...byRoute.values()].some((stops) => {
-        const boarding = stops.find((s) => s.stationId === boardingStationId);
-        const landing = stops.find((s) => s.stationId === landingStationId);
+        // Capability-aware (same converted-pair rule as booking validation).
+        const boarding = stops.find(
+          (s) => s.stationId === boardingStationId && ['BOARDING', 'BOTH'].includes(s.stopType),
+        );
+        const landing = stops.find(
+          (s) => s.stationId === landingStationId && ['LANDING', 'BOTH'].includes(s.stopType),
+        );
         return (
           boarding &&
           landing &&
-          ['BOARDING', 'BOTH'].includes(boarding.stopType) &&
-          ['LANDING', 'BOTH'].includes(landing.stopType) &&
           boarding.stopOrder < landing.stopOrder
         );
       });

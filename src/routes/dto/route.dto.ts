@@ -49,6 +49,9 @@ export class StationDto {
   @ApiPropertyOptional({ example: 1 })
   stopOrder?: number;
 
+  @ApiPropertyOptional({ enum: ['BOARDING', 'LANDING', 'BOTH'], description: 'Stop capability; converted BOTH stations appear as an adjacent BOARDING + LANDING pair.' })
+  stopType?: string;
+
   @ApiPropertyOptional({ type: Number, nullable: true, example: 0 })
   estimatedStopMinutes?: number | null;
 

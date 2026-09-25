@@ -2258,7 +2258,28 @@
     "/users/target-options": {
       "get": {
         "operationId": "UsersController_findTargetOptions",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Name/email/phone fragment (Arabic supported).",
+            "schema": {
+              "example": "Dalia",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Max options (1-50, default 20).",
+            "schema": {
+              "example": 20,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Up to `limit` (default 20, max 50) matching users: id/name/email/phoneNumber.",
@@ -12740,6 +12761,15 @@
             "type": "number",
             "example": 1
           },
+          "stopType": {
+            "type": "string",
+            "enum": [
+              "BOARDING",
+              "LANDING",
+              "BOTH"
+            ],
+            "description": "Stop capability; converted BOTH stations appear as an adjacent BOARDING + LANDING pair."
+          },
           "estimatedStopMinutes": {
             "type": "number",
             "example": 0,
@@ -12749,7 +12779,8 @@
         "required": [
           "id",
           "name",
-          "stopOrder"
+          "stopOrder",
+          "stopType"
         ]
       },
       "TripRouteDto": {
@@ -13015,6 +13046,15 @@
           "stopOrder": {
             "type": "number",
             "example": 1
+          },
+          "stopType": {
+            "type": "string",
+            "enum": [
+              "BOARDING",
+              "LANDING",
+              "BOTH"
+            ],
+            "description": "Stop capability; converted BOTH stations appear as an adjacent BOARDING + LANDING pair."
           },
           "estimatedStopMinutes": {
             "type": "number",
