@@ -58,4 +58,41 @@ describe('TenantContextService', () => {
     ).rejects.toThrow('boom');
     expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
   });
+
+  it('retries transaction-start timeouts (P2028) without re-running completed work', async () => {
+    const { tenant } = makeTenantClient();
+    const startError = Object.assign(new Error('Transaction API error'), { code: 'P2028' });
+    tenant.$transaction
+      .mockRejectedValueOnce(startError)
+      .mockRejectedValueOnce(startError);
+    const service = new TenantContextService(tenant as never);
+    const result = await service.withUserContext('user-1', async () => 'recovered');
+    expect(result).toBe('recovered');
+    // 2 failed starts + 1 success; the callback only ran on the success.
+    expect(tenant.$transaction).toHaveBeenCalledTimes(3);
+  });
+
+  it('gives up after max attempts and surfaces the start error', async () => {
+    const { tenant } = makeTenantClient();
+    tenant.$transaction.mockRejectedValue(
+      Object.assign(new Error('pool busy'), { code: 'P2024' }),
+    );
+    const service = new TenantContextService(tenant as never);
+    await expect(
+      service.withFleetContext({ userId: 'u', fleetId: 'f' }, async () => 'x'),
+    ).rejects.toThrow('pool busy');
+    expect(tenant.$transaction).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not retry non-start errors (callback failures throw immediately)', async () => {
+    const { tenant } = makeTenantClient();
+    tenant.$transaction.mockRejectedValue(
+      Object.assign(new Error('unique violation'), { code: 'P2002' }),
+    );
+    const service = new TenantContextService(tenant as never);
+    await expect(
+      service.withUserContext('u', async () => 'x'),
+    ).rejects.toThrow('unique violation');
+    expect(tenant.$transaction).toHaveBeenCalledTimes(1);
+  });
 });
