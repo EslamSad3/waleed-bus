@@ -10,7 +10,7 @@ import {
   toCursorPage,
   type CursorPage,
 } from '../common/pagination.js';
-import type { Prisma, Trip } from '../generated/prisma/client.js';
+import { Prisma, type Trip } from '../generated/prisma/client.js';
 import type {
   TripDetailsResponseDto,
   TripSearchQueryDto,
@@ -155,50 +155,18 @@ export class TripsService {
   }
 
   /**
-   * Public search for scheduled microbus trips with live available seat counts (spec 004 US1).
-   * Strict calendar day matching (returns [] when none match).
+   * Trip rows for passenger search. One shared shape for every branch so the
+   * boarding/landing order check never runs in Node after pagination.
    */
-  async searchTrips(
-    query: TripSearchQueryDto,
-  ): Promise<CursorPage<TripSearchResultItemDto>> {
-    const stopSearch = query.originStopId !== undefined || query.destinationStopId !== undefined;
-    if (stopSearch && (!query.originStopId || !query.destinationStopId)) {
-      throw new CodedException(422, 'VALIDATION_FAILED', 'Both stop ids are required for stop-based search.');
-    }
-    if (!stopSearch && (!query.origin?.trim() || !query.destination?.trim())) {
-      throw new CodedException(422, 'VALIDATION_FAILED', 'Origin and destination are required.');
-    }
-    const { pageSize, ...cursorArgs } = buildCursorArgs({
-      cursor: query.cursor,
-      limit: query.limit !== undefined ? String(query.limit) : undefined,
-    });
-
-    const dayStart = new Date(`${query.date}T00:00:00.000Z`);
-    const dayEnd = new Date(`${query.date}T23:59:59.999Z`);
-
-    const trips = await this.system.trip.findMany({
-      where: {
-        ...(stopSearch
-          ? {
-              route: {
-                AND: [
-                  { stations: { some: { stationId: query.originStopId, stopType: { in: ['BOARDING', 'BOTH'] } } } },
-                  { stations: { some: { stationId: query.destinationStopId, stopType: { in: ['LANDING', 'BOTH'] } } } },
-                ],
-              },
-            }
-          : {
-              origin: { equals: query.origin!.trim(), mode: 'insensitive' },
-              destination: { equals: query.destination!.trim(), mode: 'insensitive' },
-            }),
-        status: 'SCHEDULED',
-        departAt: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-      ...cursorArgs,
-      orderBy: { departAt: 'asc' },
+  private fetchTripSearchRows(args: {
+    where: Prisma.TripWhereInput;
+    orderBy?: Prisma.TripOrderByWithRelationInput | Prisma.TripOrderByWithRelationInput[];
+    cursor?: { id: string };
+    skip?: number;
+    take?: number;
+  }) {
+    return this.system.trip.findMany({
+      ...args,
       include: {
         bus: {
           select: {
@@ -225,16 +193,96 @@ export class TripsService {
         },
       },
     });
+  }
 
-    const servingTrips = stopSearch
-      ? trips.filter((trip) => {
-          const stations = trip.route?.stations ?? [];
-          const originIndex = stations.findIndex((station) => station.stationId === query.originStopId! && ['BOARDING', 'BOTH'].includes(station.stopType));
-          const destinationIndex = stations.findIndex((station) => station.stationId === query.destinationStopId! && ['LANDING', 'BOTH'].includes(station.stopType));
-          return originIndex >= 0 && destinationIndex >= 0 && originIndex < destinationIndex;
-        })
-      : trips;
-    const items: TripSearchResultItemDto[] = servingTrips.map((t) => {
+  /**
+   * Public search for scheduled microbus trips with live available seat counts (spec 004 US1).
+   * Strict calendar day matching (returns [] when none match).
+   */
+  async searchTrips(
+    query: TripSearchQueryDto,
+  ): Promise<CursorPage<TripSearchResultItemDto>> {
+    const stopSearch = query.originStopId !== undefined || query.destinationStopId !== undefined;
+    if (stopSearch && (!query.originStopId || !query.destinationStopId)) {
+      throw new CodedException(422, 'VALIDATION_FAILED', 'Both stop ids are required for stop-based search.');
+    }
+    if (!stopSearch && (!query.origin?.trim() || !query.destination?.trim())) {
+      throw new CodedException(422, 'VALIDATION_FAILED', 'Origin and destination are required.');
+    }
+    const { pageSize, ...cursorArgs } = buildCursorArgs({
+      cursor: query.cursor,
+      limit: query.limit !== undefined ? String(query.limit) : undefined,
+    });
+
+    const dayStart = new Date(`${query.date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${query.date}T23:59:59.999Z`);
+
+    // Stop-based search filters (capability + boarding-before-landing order)
+    // in PostgreSQL and pages over the FILTERED set with a (departAt, id)
+    // keyset. Filtering in Node after LIMIT would silently drop valid trips
+    // sitting past the first raw page.
+    let trips: Awaited<ReturnType<TripsService['fetchTripSearchRows']>>;
+    if (stopSearch) {
+      // Resolve the cursor row's departAt once so the keyset bound matches
+      // the ORDER BY. A stale cursor (trip deleted since) restarts from the
+      // first page instead of failing mid-search.
+      let cursorBound = Prisma.sql``;
+      const cursorId = cursorArgs.cursor?.id;
+      if (cursorId) {
+        const cursorTrip = await this.system.trip.findUnique({
+          where: { id: cursorId },
+          select: { departAt: true },
+        });
+        if (cursorTrip) {
+          cursorBound = Prisma.sql`AND (t.depart_at, t.id) > (${cursorTrip.departAt}, ${cursorId}::uuid)`;
+        }
+      }
+      const idRows = await this.system.$queryRaw<Array<{ id: string }>>`
+        SELECT t.id AS id
+        FROM trips t
+        INNER JOIN route_stations o
+          ON o.route_id = t.route_id
+          AND o.station_id = ${query.originStopId!}::uuid
+          AND o.stop_type IN ('BOARDING', 'BOTH')
+        INNER JOIN route_stations d
+          ON d.route_id = t.route_id
+          AND d.station_id = ${query.destinationStopId!}::uuid
+          AND d.stop_type IN ('LANDING', 'BOTH')
+          AND d.stop_order > o.stop_order
+        WHERE t.status = 'SCHEDULED'
+          AND t.depart_at >= ${dayStart}
+          AND t.depart_at <= ${dayEnd}
+          ${cursorBound}
+        ORDER BY t.depart_at ASC, t.id ASC
+        LIMIT ${pageSize + 1}
+      `;
+      const orderedIds = idRows.map((row) => row.id);
+      const rows =
+        orderedIds.length > 0
+          ? await this.fetchTripSearchRows({ where: { id: { in: orderedIds } } })
+          : [];
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      trips = orderedIds.flatMap((id) => {
+        const row = byId.get(id);
+        return row ? [row] : [];
+      });
+    } else {
+      trips = await this.fetchTripSearchRows({
+        where: {
+          origin: { equals: query.origin!.trim(), mode: 'insensitive' },
+          destination: { equals: query.destination!.trim(), mode: 'insensitive' },
+          status: 'SCHEDULED',
+          departAt: {
+            gte: dayStart,
+            lte: dayEnd,
+          },
+        },
+        ...cursorArgs,
+        orderBy: [{ departAt: 'asc' }, { id: 'asc' }],
+      });
+    }
+
+    const items: TripSearchResultItemDto[] = trips.map((t) => {
       const bookedSeats = t.bookings.reduce((sum, b) => sum + b.seats, 0);
       const capacity = t.bus?.capacity ?? 0;
       const availableSeats = Math.max(0, capacity - bookedSeats);

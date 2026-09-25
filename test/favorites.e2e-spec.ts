@@ -187,6 +187,43 @@ describe('Favorites (e2e, spec 009)', () => {
     expect(res.body.code).toBe('INVALID_FAVORITE_STOPS');
   });
 
+  it('validates single stop prefs against capability (LANDING-only is not a boarding stop)', async () => {
+    // stopB is LANDING-only on the fleet route: boarding-only pref must fail.
+    const boardingBus = await t.system.bus.create({
+      data: { fleetId, registrationNumber: 'FAV-BUS-3', capacity: 14 },
+    });
+    const badBoarding = await api()
+      .post('/favorites')
+      .set(auth(otherToken))
+      .send({ type: 'BUS', busId: boardingBus.id, boardingStationId: stopB });
+    expect(badBoarding.status).toBe(422);
+    expect(badBoarding.body.code).toBe('INVALID_FAVORITE_STOPS');
+    // stopA is BOARDING-only: landing-only pref must fail.
+    const landingBus = await t.system.bus.create({
+      data: { fleetId, registrationNumber: 'FAV-BUS-4', capacity: 14 },
+    });
+    const badLanding = await api()
+      .post('/favorites')
+      .set(auth(otherToken))
+      .send({ type: 'BUS', busId: landingBus.id, landingStationId: stopA });
+    expect(badLanding.status).toBe(422);
+    expect(badLanding.body.code).toBe('INVALID_FAVORITE_STOPS');
+    // Control: BOARDING-capable boarding-only pref is accepted (cleaned up
+    // so the later list-count assertion for this actor still holds).
+    const controlBus = await t.system.bus.create({
+      data: { fleetId, registrationNumber: 'FAV-BUS-5', capacity: 14 },
+    });
+    const control = await api()
+      .post('/favorites')
+      .set(auth(otherToken))
+      .send({ type: 'BUS', busId: controlBus.id, boardingStationId: stopA })
+      .expect(201);
+    await api()
+      .delete(`/favorites/${control.body.data.id as string}`)
+      .set(auth(otherToken))
+      .expect(200);
+  });
+
   it('rejects favoriting an inactive bus', async () => {
     const offBus = await t.system.bus.create({
       data: { fleetId, registrationNumber: 'FAV-BUS-OFF', capacity: 14, isActive: false },

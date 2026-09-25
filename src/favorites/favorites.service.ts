@@ -280,6 +280,15 @@ export class FavoritesService {
       select: { routeId: true, stationId: true, stopOrder: true, stopType: true },
     });
     if (boardingStationId && landingStationId) {
+      // Same-station favorites are not meaningful (mirrors the booking rule:
+      // a converted pair would otherwise satisfy the order check for X→X).
+      if (boardingStationId === landingStationId) {
+        throw new CodedException(
+          422,
+          'INVALID_FAVORITE_STOPS',
+          'Boarding and landing stops must be different stations.',
+        );
+      }
       const byRoute = new Map<string, typeof routeStations>();
       for (const rs of routeStations) {
         const list = byRoute.get(rs.routeId) ?? [];
@@ -310,7 +319,11 @@ export class FavoritesService {
       return;
     }
     const singleId = (boardingStationId ?? landingStationId)!;
-    if (!routeStations.some((rs) => rs.stationId === singleId)) {
+    // Single-preference validation is capability-aware too: a boarding-only
+    // preference needs a BOARDING|BOTH row, a landing-only preference a
+    // LANDING|BOTH row (a LANDING-only station is not a valid boarding stop).
+    const singleAllowed = boardingStationId ? ['BOARDING', 'BOTH'] : ['LANDING', 'BOTH'];
+    if (!routeStations.some((rs) => rs.stationId === singleId && singleAllowed.includes(rs.stopType))) {
       throw new CodedException(
         422,
         'INVALID_FAVORITE_STOPS',

@@ -141,22 +141,27 @@ export class TripLinesService {
 
   private async resolveStops(stopInputs: TripLineStopDto[]) {
     // Pair model (post-BOTH-split): a station may appear at most twice, and a
-    // repeat is legal ONLY as exactly one BOARDING + one LANDING row (the
-    // converted BOTH pair). Anything else is still DUPLICATE_STOP.
-    const byStation = new Map<string, string[]>();
-    for (const stop of stopInputs) {
-      const list = byStation.get(stop.stopId) ?? [];
-      list.push(stop.stopType);
-      byStation.set(stop.stopId, list);
-    }
-    for (const types of byStation.values()) {
-      if (types.length === 1) continue;
-      const sorted = [...types].sort();
-      if (sorted.length !== 2 || sorted[0] !== 'BOARDING' || sorted[1] !== 'LANDING') {
-        throw new CodedException(422, 'DUPLICATE_STOP', 'لا يمكن تكرار نقطة التوقف نفسها داخل خط واحد.', { fields: { stops: 'التكرار الوحيد المسموح: BOARDING + LANDING لنفس المحطة.' } });
+    // repeat is legal ONLY as an adjacent BOARDING-then-LANDING pair (the
+    // converted BOTH representation). Split twins (A BOARDING … B … A
+    // LANDING) and reversed twins (A LANDING, A BOARDING) are DUPLICATE_STOP.
+    const occurrences = new Map<string, Array<{ index: number; stopType: string }>>();
+    stopInputs.forEach((stop, index) => {
+      const list = occurrences.get(stop.stopId) ?? [];
+      list.push({ index, stopType: stop.stopType });
+      occurrences.set(stop.stopId, list);
+    });
+    for (const occ of occurrences.values()) {
+      if (occ.length === 1) continue;
+      const adjacentPair =
+        occ.length === 2 &&
+        occ[1].index === occ[0].index + 1 &&
+        occ[0].stopType === 'BOARDING' &&
+        occ[1].stopType === 'LANDING';
+      if (!adjacentPair) {
+        throw new CodedException(422, 'DUPLICATE_STOP', 'لا يمكن تكرار نقطة التوقف نفسها داخل خط واحد.', { fields: { stops: 'التكرار الوحيد المسموح: BOARDING يليه LANDING مباشرة لنفس المحطة.' } });
       }
     }
-    const distinctIds = [...byStation.keys()];
+    const distinctIds = [...occurrences.keys()];
     const stops = await this.system.station.findMany({ where: { isActive: true, id: { in: distinctIds } } });
     if (stops.length !== distinctIds.length) throw new CodedException(422, 'INVALID_STOP', 'بعض نقاط التوقف غير متاحة.', { fields: { stops: 'اختر نقاط توقف نشطة.' } });
     const indexed = new Map(stops.map((stop) => [stop.id, stop]));

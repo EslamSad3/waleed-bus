@@ -105,6 +105,12 @@ export class PassengerBookingService {
       if (!trip.route_id) {
         throw new CodedException(409, 'TRIP_ROUTE_MISSING', 'Trip does not have a bookable route.');
       }
+      // Same-station trips are not bookable: a converted BOTH pair would
+      // otherwise satisfy the order check (BOARDING twin before LANDING
+      // twin) and allow Station X → Station X.
+      if (input.boardingStationId === input.landingStationId) {
+        throw new CodedException(422, 'INVALID_TRIP_STOPS', 'Boarding and landing stops must be different stations.');
+      }
       const routeStops = await tx.routeStation.findMany({
         where: { routeId: trip.route_id },
         orderBy: { stopOrder: 'asc' },

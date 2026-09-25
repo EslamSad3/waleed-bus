@@ -223,6 +223,46 @@ describe('Trip-line stop types (e2e, spec 006 follow-up)', () => {
       });
     expect(thrice.status).toBe(422);
     expect(thrice.body.code).toBe('DUPLICATE_STOP');
+    // Split pair (twin separated by another stop) is not the converted form.
+    const split = await api()
+      .post('/trip-lines')
+      .set(headers)
+      .send({
+        name: 'Split Line',
+        code: `SPL-${Date.now()}`,
+        outboundStops: [
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'BOARDING' },
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'LANDING' },
+        ],
+        returnStops: [
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'LANDING' },
+        ],
+      });
+    expect(split.status).toBe(422);
+    expect(split.body.code).toBe('DUPLICATE_STOP');
+    // Reversed pair (LANDING before BOARDING) is not the converted form.
+    const reversedPair = await api()
+      .post('/trip-lines')
+      .set(headers)
+      .send({
+        name: 'Rev Pair Line',
+        code: `RP-${Date.now()}`,
+        outboundStops: [
+          { stopId: stopA, stopType: 'BOARDING' },
+          { stopId: stopB, stopType: 'LANDING' },
+          { stopId: stopB, stopType: 'BOARDING' },
+          { stopId: stopC, stopType: 'LANDING' },
+        ],
+        returnStops: [
+          { stopId: stopC, stopType: 'BOARDING' },
+          { stopId: stopA, stopType: 'LANDING' },
+        ],
+      });
+    expect(reversedPair.status).toBe(422);
+    expect(reversedPair.body.code).toBe('DUPLICATE_STOP');
   });
 
   it('books to and from a converted pair station (capability-aware lookup)', async () => {
@@ -321,5 +361,16 @@ describe('Trip-line stop types (e2e, spec 006 follow-up)', () => {
     });
     expect(reversed.status).toBe(422);
     expect(reversed.body.code).toBe('INVALID_TRIP_STOPS');
+    // Same-station booking is not a trip even when the pair order would allow it.
+    const sameStation = await book({
+      tripId: trip.id,
+      seatCount: 1,
+      paymentMethod: 'CASH',
+      boardingStationId: stopB,
+      landingStationId: stopB,
+      confirmTimeConflict: true,
+    });
+    expect(sameStation.status).toBe(422);
+    expect(sameStation.body.code).toBe('INVALID_TRIP_STOPS');
   });
 });

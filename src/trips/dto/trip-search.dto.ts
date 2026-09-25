@@ -46,11 +46,10 @@ export class TripSearchQueryDto {
   date!: string;
 
   @ApiPropertyOptional({
-    format: 'uuid',
-    description: 'Cursor pagination token',
+    description: 'Cursor pagination token (opaque; pass back nextCursor verbatim).',
   })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   cursor?: string;
 
   @ApiPropertyOptional({ example: 20, default: 20, minimum: 1, maximum: 50 })
