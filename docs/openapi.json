@@ -14556,6 +14556,16 @@
             "format": "uuid",
             "nullable": true
           },
+          "boardingStationName": {
+            "type": "string",
+            "example": "محطة رمسيس",
+            "nullable": true
+          },
+          "landingStationName": {
+            "type": "string",
+            "example": "محطة سيدي جابر",
+            "nullable": true
+          },
           "totalAmount": {
             "type": "string",
             "example": "100.00",

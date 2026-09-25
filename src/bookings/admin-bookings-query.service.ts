@@ -187,6 +187,44 @@ export class AdminBookingsQueryService {
         }
       : null;
 
+    let boardingStationName =
+      booking.trip.route?.stations.find(
+        (s) => s.stationId === booking.boardingStationId,
+      )?.station.name ?? null;
+
+    let landingStationName =
+      booking.trip.route?.stations.find(
+        (s) => s.stationId === booking.landingStationId,
+      )?.station.name ?? null;
+
+    if (
+      (booking.boardingStationId && !boardingStationName) ||
+      (booking.landingStationId && !landingStationName)
+    ) {
+      const missingIds: string[] = [];
+      if (booking.boardingStationId && !boardingStationName) {
+        missingIds.push(booking.boardingStationId);
+      }
+      if (booking.landingStationId && !landingStationName) {
+        missingIds.push(booking.landingStationId);
+      }
+
+      if (
+        missingIds.length > 0 &&
+        typeof (this.system as unknown as { station?: { findMany?: unknown } })
+          .station?.findMany === 'function'
+      ) {
+        const found = await this.system.station.findMany({
+          where: { id: { in: missingIds } },
+          select: { id: true, name: true },
+        });
+        for (const st of found) {
+          if (st.id === booking.boardingStationId) boardingStationName = st.name;
+          if (st.id === booking.landingStationId) landingStationName = st.name;
+        }
+      }
+    }
+
     return {
       id: booking.id,
       fleetId: booking.fleetId,
@@ -200,6 +238,8 @@ export class AdminBookingsQueryService {
       note: booking.note,
       boardingStationId: booking.boardingStationId,
       landingStationId: booking.landingStationId,
+      boardingStationName,
+      landingStationName,
       totalAmount: booking.totalAmount?.toString() ?? null,
       promoCode: booking.promoCode,
       discountAmount: Number(booking.discountAmount ?? 0).toFixed(2),

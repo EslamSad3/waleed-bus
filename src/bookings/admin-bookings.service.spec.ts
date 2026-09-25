@@ -228,8 +228,15 @@ describe('AdminBookingsService', () => {
               },
             ],
           },
-          route: { stations: [] },
+          route: {
+            stations: [
+              { stationId: 'st-1', station: { name: 'Ramses' } },
+              { stationId: 'st-2', station: { name: 'Sidi Gaber' } },
+            ],
+          },
         },
+        boardingStationId: 'st-1',
+        landingStationId: 'st-2',
         reports: [],
         status: 'CONFIRMED',
         seats: 2,
@@ -262,6 +269,8 @@ describe('AdminBookingsService', () => {
       >;
       expect(res.id).toBe('booking-1');
       expect(res.fleetName).toBe('Express');
+      expect(res.boardingStationName).toBe('Ramses');
+      expect(res.landingStationName).toBe('Sidi Gaber');
       const trip = res.trip as Record<string, unknown>;
       expect(trip.availableSeats).toBe(10);
       expect(trip.driver).toEqual({
