@@ -201,6 +201,12 @@ export class AdminBookingDetailDto {
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   landingStationId!: string | null;
 
+  @ApiPropertyOptional({ type: String, example: 'محطة رمسيس', nullable: true })
+  boardingStationName?: string | null;
+
+  @ApiPropertyOptional({ type: String, example: 'محطة سيدي جابر', nullable: true })
+  landingStationName?: string | null;
+
   @ApiPropertyOptional({ type: String, example: '100.00', nullable: true })
   totalAmount!: string | null;
 
