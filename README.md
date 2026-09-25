@@ -83,6 +83,25 @@ lint, unit + e2e with the coverage thresholds, and build — on every PR that
 targets `main` (against a `postgres:16` service container) and again on every
 push to `main`.
 
+## Supabase Storage — bus-images bucket (required for bus photos)
+
+Bus photos are canonical Supabase Storage objects, **not** external URLs.
+The bucket + public-read policy live in
+`supabase/migrations/20260924180606_bus_images_bucket.sql`, which is
+deliberately outside the Prisma chain (Prisma cannot manage Storage
+objects) — so every fresh environment needs this one extra step:
+
+```bash
+supabase link --project-ref <project-ref>   # once per machine
+supabase db push --linked                   # applies supabase/migrations/
+```
+
+Verify: `SELECT * FROM storage.buckets WHERE id = 'bus-images';` → 1 row.
+Without it, `POST /fleets/:fleetId/uploads/bus-image` returns 503
+(`STORAGE_NOT_CONFIGURED`) and bus create/update cannot attach photos.
+The app also requires `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` at
+runtime (see `.env.example`); Vercel needs both variables set.
+
 ## Deployment (Vercel)
 
 The API deploys as a single serverless function through Vercel's Node

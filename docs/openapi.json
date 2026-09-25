@@ -2255,6 +2255,55 @@
         ]
       }
     },
+    "/users/target-options": {
+      "get": {
+        "operationId": "UsersController_findTargetOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Up to `limit` (default 20, max 50) matching users: id/name/email/phoneNumber.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TargetOptionDto"
+                      }
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search eligible promotion targets (active passenger accounts, server-side).",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/users/{id}": {
       "get": {
         "operationId": "UsersController_findOne",
@@ -12044,6 +12093,31 @@
         "required": [
           "email",
           "password"
+        ]
+      },
+      "TargetOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "object",
+            "example": "Promo A"
+          },
+          "email": {
+            "type": "object",
+            "example": "a@example.com",
+            "format": "email"
+          },
+          "phoneNumber": {
+            "type": "object",
+            "example": "01009990301"
+          }
+        },
+        "required": [
+          "id"
         ]
       },
       "UpdateUserDto": {

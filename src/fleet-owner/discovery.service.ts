@@ -178,7 +178,7 @@ export class DiscoveryService {
         if (a.rank !== b.rank) return a.rank - b.rank;
         const aName = a.owner.name ?? a.owner.nickname ?? '';
         const bName = b.owner.name ?? b.owner.nickname ?? '';
-        return aName.localeCompare(bName);
+        return aName.localeCompare(bName) || a.owner.id.localeCompare(b.owner.id);
       })
       .slice(0, pageSize);
 

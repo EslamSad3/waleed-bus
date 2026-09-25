@@ -82,5 +82,45 @@ SELECT code FROM routes r WHERE EXISTS (
 ); -- every converted route keeps both directions
 ```
 
-Then: update `prisma/schema.prisma` (`stopType @default("BOARDING")`),
-`pnpm db:migrate:diff` → new migration → deploy → `db:check-rls`.
+## Production backfill scope (beyond BOTH)
+
+Several columns are nullable in the DB but required at the create-DTO layer
+(existing rows predate the requirement). Before declaring the release
+production-complete, backfill + add NOT NULL for each field that is truly
+required — not just `color`/`imageUrl`/`localityId`:
+
+| Table | Column | Required since | Notes |
+|---|---|---|---|
+| `stations` | `locality_id` | spec 006 | every station needs a locality |
+| `stations` | `latitude` / `longitude` | station create DTO | canonical location (see "Google Maps" decision below) |
+| `buses` | `plate_number` | spec 007 | legacy rows may predate it |
+| `buses` | `color`, `image_url` | spec 007 | upload-only going forward |
+| `route_stations` | `stop_type` default | this runbook | BOTH → BOARDING/LANDING pairs |
+
+Pattern per column: Step-0 `SELECT count(*) … WHERE col IS NULL` on prod →
+backfill values with the business owner → `ALTER TABLE … SET NOT NULL` in the
+same follow-up migration → tighten the Prisma schema (`String` → required).
+
+## Google Maps location: decision (call requirement settled)
+
+The original requirement asked for the station's "Google Maps location". The
+canonical persisted representation is **`latitude` + `longitude`** (decimal
+degrees, Google-Maps-derived at entry time) — there is intentionally no
+separate `googleMapsUrl` column: a Maps URL is a pure function of the
+coordinates (`https://www.google.com/maps/search/?api=1&query=<lat>,<lng>`)
+and persisting it would duplicate data that can drift. Dashboard station
+forms link out to Maps from the stored coordinates for verification.
+
+## Follow-up schema change (do this AFTER the DB conversion)
+
+In this order — otherwise the next `db:migrate:diff` re-adds the dropped constraint:
+
+1. Confirm the DB state: pair rows exist, default is `BOARDING`, the
+   `route_stations_route_id_station_id_key` constraint is gone.
+2. Update `prisma/schema.prisma`:
+   - REMOVE the `@@unique([routeId, stationId])` line from `RouteStation`
+     (keep `@@unique([routeId, stopOrder])`).
+   - Change `stopType` to `@default("BOARDING")`.
+3. `pnpm run db:migrate:diff` → save as a new migration
+   (`<ts>_route_station_both_cleanup`) → review the SQL (it must NOT
+   re-create the dropped unique constraint) → deploy → `db:check-rls`.

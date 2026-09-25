@@ -253,6 +253,63 @@ describe('Promotions (e2e, spec 011)', () => {
     expect(itemsB[0]).toMatchObject({ category: 'DISCOUNT_CODE', promotionId: promoId });
   });
 
+  it('rejects empty target replacement on a non-global code (PATCH)', async () => {
+    const userA = await t.system.user.findUniqueOrThrow({ where: { phoneNumber: '01009990301' } });
+    const created = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({ code: 'NONEMPTY', type: 'FIXED', value: 10, isGlobal: false, targetUserIds: [userA.id] })
+      .expect(201);
+    const res = await api()
+      .patch(`/platform/promotions/${created.body.data.id as string}`)
+      .set(admin())
+      .send({ targetUserIds: [] });
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('INVALID_PROMO_TARGETS');
+    // Targets untouched: A still redeems.
+    const still = await t.system.promotionTarget.findMany({
+      where: { promotionId: created.body.data.id as string },
+    });
+    expect(still.map((r) => r.userId)).toEqual([userA.id]);
+  });
+
+  it('rejects unknown target users and dedupes repeats', async () => {
+    const userA = await t.system.user.findUniqueOrThrow({ where: { phoneNumber: '01009990301' } });
+    const ghost = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({
+        code: 'GHOST10',
+        type: 'FIXED',
+        value: 10,
+        isGlobal: false,
+        targetUserIds: ['00000000-0000-4000-8000-000000000099'],
+      });
+    expect(ghost.status).toBe(422);
+    expect(ghost.body.code).toBe('INVALID_PROMO_TARGETS');
+    const dupes = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({
+        code: 'DEDUP10',
+        type: 'FIXED',
+        value: 10,
+        isGlobal: false,
+        targetUserIds: [userA.id, userA.id],
+      });
+    expect(dupes.status).toBe(400);
+  });
+
+  it('searches eligible targets server-side (active passengers only)', async () => {
+    const all = await api().get('/users/target-options').set(admin()).expect(200);
+    const names = (all.body.data as Array<{ name: string | null }>).map((u) => u.name);
+    expect(names).toContain('Promo A');
+    expect(names).toContain('Promo B');
+    expect(names).not.toContain('Promo Admin');
+    const searched = await api().get('/users/target-options?q=Promo B').set(admin()).expect(200);
+    expect((searched.body.data as Array<{ name: string | null }>).map((u) => u.name)).toEqual(['Promo B']);
+  });
+
   it('force-expire moves checkout to full price with INACTIVE echo', async () => {
     const created = await api()
       .post('/platform/promotions')

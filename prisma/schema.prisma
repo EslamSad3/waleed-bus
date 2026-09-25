@@ -39,6 +39,7 @@ model User {
   passengerBookings Booking[]         @relation("PassengerBookings")
   favorites      Favorite[]
   notifications  Notification[]
+  promotionTargets PromotionTarget[]
 
   @@map("users")
 }
@@ -506,6 +507,10 @@ model PromotionTarget {
   userId      String @map("user_id") @db.Uuid
 
   promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  /// Every target must be a real user: unknown/ex-stale ids are rejected at
+  /// write time (service validation) and enforced by this FK (CASCADE so
+  /// deleting a user cleans up their targeting rows).
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([promotionId, userId])
   @@index([userId])
@@ -539,9 +544,12 @@ model Notification {
   category  String    @db.VarChar(20)
   title     String    @db.VarChar(200)
   body      String    @db.VarChar(2000)
-  /// Set for TRIP; null otherwise. Trip deletion keeps the row (SET NULL).
+  /// Set for TRIP; null otherwise. Deleting a referenced trip is blocked
+  /// (RESTRICT) so the CHECK notifications_ref_check can never observe a
+  /// nulled-out reference; trips use soft lifecycle (status), not hard delete.
   tripId    String?   @map("trip_id") @db.Uuid
-  /// Set for DISCOUNT_CODE; null otherwise. Promotion deletion keeps the row.
+  /// Set for DISCOUNT_CODE; null otherwise. Same RESTRICT contract as trips;
+  /// promotions are expired (isActive=false), never hard-deleted.
   promotionId String? @map("promotion_id") @db.Uuid
   /// Idempotency key; re-emit with the same key returns the existing row.
   dedupeKey String?   @unique @map("dedupe_key") @db.VarChar(128)
@@ -550,8 +558,8 @@ model Notification {
   createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trip Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
-  promotion Promotion? @relation("PromotionNotifications", fields: [promotionId], references: [id], onDelete: SetNull)
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  promotion Promotion? @relation("PromotionNotifications", fields: [promotionId], references: [id], onDelete: Restrict)
 
   @@index([userId, isRead, createdAt])
   @@map("notifications")

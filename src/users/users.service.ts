@@ -98,6 +98,45 @@ export class UsersService {
     );
   }
 
+  /**
+   * Eligible promotion-target picker (spec 011): active users holding the
+   * `passenger` role, with server-side search over name/email/phone. Bounded
+   * (default 20, max 50) so the dashboard picker searches the whole
+   * population instead of filtering the first /users page client-side.
+   */
+  async findTargetOptions(query: {
+    q?: string;
+    limit?: string;
+  }): Promise<
+    Array<{
+      id: string;
+      name: string | null;
+      email: string | null;
+      phoneNumber: string | null;
+    }>
+  > {
+    const q = (query.q ?? '').trim();
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 50);
+    return this.system.user.findMany({
+      where: {
+        isActive: true,
+        globalRoles: { some: { role: { slug: 'passenger', isActive: true } } },
+        ...(q
+          ? {
+              OR: [
+                { name: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+                { phoneNumber: { contains: q } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, name: true, email: true, phoneNumber: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: limit,
+    });
+  }
+
   async findOne(id: string): Promise<SafeUser> {
     const user = await this.system.user.findUnique({
       where: { id },

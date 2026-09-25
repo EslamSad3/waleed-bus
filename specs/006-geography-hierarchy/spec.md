@@ -40,7 +40,7 @@ A super-admin creates a Locality (`CITY` | `VILLAGE`) under exactly one Markaz. 
 
 ### Story 3 — Create Station under Locality with coordinates (P1)
 
-A super-admin creates a physical Station via Governorate → Markaz → Locality → name + Google-Maps-derived coordinates. The API enforces hierarchy consistency independently of the UI: the station's governorate must equal the locality's markaz's governorate.
+A super-admin creates a physical Station via Governorate → Markaz → Locality → name + Google-Maps-derived coordinates. The API enforces hierarchy consistency independently of the UI: the station's governorate must equal the locality's markaz's governorate. "Google Maps location" is canonically `latitude` + `longitude` — there is intentionally no `googleMapsUrl` column (a Maps URL is a pure function of the coordinates; see `docs/BOTH-backfill-runbook.md` "Google Maps location: decision").
 
 **Acceptance**:
 1. Given a consistent chain + `latitude ∈ [-90,90]`, `longitude ∈ [-180,180]`, when creating a Station, then it is persisted with `localityId` set.

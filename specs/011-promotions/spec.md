@@ -20,6 +20,11 @@
 - Scope: `isGlobal` (default true) — a global code is usable by every user; non-global codes carry
   an allowlist (`PromotionTarget` userIds) for user-segment assignment (§109). Non-targeted user
   attempting a targeted code → treated as unknown code (no oracle).
+- Target integrity (both create and PATCH): a non-global code must always have ≥1 target
+  (empty list → 422 `INVALID_PROMO_TARGETS`); duplicate ids rejected at the DTO boundary (400);
+  every id must belong to an existing, active user (else 422), enforced also by FK
+  `promotion_targets.user_id → users(id)` ON DELETE CASCADE. Eligible-picker endpoint
+  `GET /users/target-options?q=&limit=` searches active `passenger`-role accounts server-side.
 - Once-per-user: `maxUsesPerUser` default 1 (enforced ON by default per user decision). Global
   kill-switch `PROMO_ENFORCE_ONCE_PER_USER` (default `true`); when `false`, per-user counting is
   skipped but total caps still apply. Platform can raise `maxUsesPerUser` per code (§104 "extend").

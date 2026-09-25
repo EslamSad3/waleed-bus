@@ -39,6 +39,43 @@ export interface PromoResolution {
 
 type Tx = Prisma.TransactionClient;
 
+/**
+ * Target-user gate shared by create + update (spec 011): every id must belong
+ * to an existing, active user. Without this a targeted code could reference a
+ * nonexistent account — the §42 notification would be silently dropped and the
+ * row could never be redeemed. The FK promotion_targets.user_id → users(id)
+ * enforces the same rule at the database layer.
+ */
+async function assertTargetsEligible(
+  db: {
+    user: { findMany(args: unknown): Promise<Array<{ id: string }>> };
+  },
+  userIds: string[],
+): Promise<string[]> {
+  const unique = [...new Set(userIds)];
+  if (unique.length === 0) {
+    throw new CodedException(
+      422,
+      'INVALID_PROMO_TARGETS',
+      'Non-global codes require at least one target user.',
+    );
+  }
+  const rows = await db.user.findMany({
+    where: { id: { in: unique }, isActive: true },
+    select: { id: true },
+  });
+  const found = new Set(rows.map((r) => r.id));
+  const bad = unique.filter((id) => !found.has(id));
+  if (bad.length > 0) {
+    throw new CodedException(
+      422,
+      'INVALID_PROMO_TARGETS',
+      `Unknown or inactive target users: ${bad.join(', ')}.`,
+    );
+  }
+  return unique;
+}
+
 function toDto(p: {
   id: string;
   code: string;
@@ -102,9 +139,9 @@ export class PromotionsService {
       throw new CodedException(422, 'INVALID_PROMO_WINDOW', 'startsAt must be before expiresAt.');
     }
     const isGlobal = dto.isGlobal ?? true;
-    if (!isGlobal && (!dto.targetUserIds || dto.targetUserIds.length === 0)) {
-      throw new CodedException(422, 'INVALID_PROMO_TARGETS', 'Non-global codes require at least one target user.');
-    }
+    const targetUserIds = !isGlobal
+      ? await assertTargetsEligible(this.system, dto.targetUserIds ?? [])
+      : [];
     try {
       const created = await this.system.promotion.create({
         data: {
@@ -121,7 +158,7 @@ export class PromotionsService {
             ? {}
             : {
                 targets: {
-                  create: (dto.targetUserIds ?? []).map((userId) => ({ userId })),
+                  create: targetUserIds.map((userId) => ({ userId })),
                 },
               }),
         },
@@ -137,17 +174,21 @@ export class PromotionsService {
       // Call §42: a USER-scoped code assigned to specific users emits one
       // DISCOUNT_CODE notification per target (post-commit, best-effort).
       // Global/public codes need no automatic notification.
+      // Awaited via allSettled: failures never roll back the promotion, but
+      // the request does not return before persistence is attempted.
       if (!isGlobal) {
-        for (const userId of dto.targetUserIds ?? []) {
-          void this.notifications.notifyBestEffort({
-            userId,
-            category: 'DISCOUNT_CODE',
-            title: 'كود خصم جديد لك',
-            body: `تم تخصيص كود الخصم ${code} لك. انسخه واستخدمه عند الحجز.`,
-            promotionId: created.id,
-            dedupeKey: `promo:${created.id}:assigned:${userId}`,
-          });
-        }
+        await Promise.allSettled(
+          targetUserIds.map((userId) =>
+            this.notifications.notifyBestEffort({
+              userId,
+              category: 'DISCOUNT_CODE',
+              title: 'كود خصم جديد لك',
+              body: `تم تخصيص كود الخصم ${code} لك. انسخه واستخدمه عند الحجز.`,
+              promotionId: created.id,
+              dedupeKey: `promo:${created.id}:assigned:${userId}`,
+            }),
+          ),
+        );
       }
       return toDto(created);
     } catch (err) {
@@ -166,30 +207,40 @@ export class PromotionsService {
     if (dto.value !== undefined && !(dto.value > 0)) {
       throw new CodedException(422, 'INVALID_PROMO_VALUE', 'Fixed value must be a positive amount.');
     }
-    // Snapshot current targets so newly-added users can be notified (§42)
-    // after the replacement commits. Empty set when targets untouched.
-    const beforeTargets =
-      dto.targetUserIds !== undefined
-        ? new Set(
-            (
-              await this.system.promotionTarget.findMany({
-                where: { promotionId: id },
-                select: { userId: true },
-              })
-            ).map((t) => t.userId),
-          )
-        : null;
+    // Target replacement (same invariant as create: a non-global promotion
+    // must always have ≥1 eligible target — an empty list would leave a code
+    // nobody can redeem). beforeTargets snapshots current rows for the §42
+    // newly-added diff; null when targets untouched.
+    let nextTargets: string[] | null = null;
+    let beforeTargets: Set<string> | null = null;
+    if (dto.targetUserIds !== undefined) {
+      const unique = [...new Set(dto.targetUserIds)];
+      // Empty replacement on a global code is a no-op; on a non-global code
+      // it would orphan the promotion (redeemable by nobody) → 422.
+      nextTargets =
+        unique.length === 0 && existing.isGlobal
+          ? []
+          : await assertTargetsEligible(this.system, unique);
+      beforeTargets = new Set(
+        (
+          await this.system.promotionTarget.findMany({
+            where: { promotionId: id },
+            select: { userId: true },
+          })
+        ).map((t) => t.userId),
+      );
+    }
     const startsAt = dto.startsAt !== undefined ? (dto.startsAt ? new Date(dto.startsAt) : null) : existing.startsAt;
     const expiresAt = dto.expiresAt !== undefined ? (dto.expiresAt ? new Date(dto.expiresAt) : null) : existing.expiresAt;
     if (startsAt && expiresAt && startsAt >= expiresAt) {
       throw new CodedException(422, 'INVALID_PROMO_WINDOW', 'startsAt must be before expiresAt.');
     }
     const updated = await this.system.$transaction(async (tx) => {
-      if (dto.targetUserIds !== undefined) {
+      if (nextTargets !== null) {
         await tx.promotionTarget.deleteMany({ where: { promotionId: id } });
-        if (dto.targetUserIds.length > 0) {
+        if (nextTargets.length > 0) {
           await tx.promotionTarget.createMany({
-            data: dto.targetUserIds.map((userId) => ({ promotionId: id, userId })),
+            data: nextTargets.map((userId) => ({ promotionId: id, userId })),
           });
         }
       }
@@ -214,19 +265,21 @@ export class PromotionsService {
       metadata: { code: existing.code },
     });
     // Newly-added targets (A,B → A,B,C notifies C only): same §42 copy,
-    // idempotent via dedupeKey, best-effort post-commit.
-    if (beforeTargets !== null && !existing.isGlobal) {
-      const added = (dto.targetUserIds ?? []).filter((u) => !beforeTargets.has(u));
-      for (const userId of added) {
-        void this.notifications.notifyBestEffort({
-          userId,
-          category: 'DISCOUNT_CODE',
-          title: 'كود خصم جديد لك',
-          body: `تم تخصيص كود الخصم ${existing.code} لك. انسخه واستخدمه عند الحجز.`,
-          promotionId: id,
-          dedupeKey: `promo:${id}:assigned:${userId}`,
-        });
-      }
+    // idempotent via dedupeKey, best-effort post-commit (awaited, settled).
+    if (beforeTargets !== null && nextTargets !== null && !existing.isGlobal) {
+      const added = nextTargets.filter((u) => !beforeTargets.has(u));
+      await Promise.allSettled(
+        added.map((userId) =>
+          this.notifications.notifyBestEffort({
+            userId,
+            category: 'DISCOUNT_CODE',
+            title: 'كود خصم جديد لك',
+            body: `تم تخصيص كود الخصم ${existing.code} لك. انسخه واستخدمه عند الحجز.`,
+            promotionId: id,
+            dedupeKey: `promo:${id}:assigned:${userId}`,
+          }),
+        ),
+      );
     }
     return toDto(updated);
   }

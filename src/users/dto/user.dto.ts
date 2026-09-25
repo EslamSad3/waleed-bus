@@ -54,6 +54,21 @@ export class UserDto {
   updatedAt!: Date;
 }
 
+/** Documentation-only model for an eligible promotion-target option (GET /users/target-options). */
+export class TargetOptionDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiPropertyOptional({ example: 'Promo A' })
+  name?: string | null;
+
+  @ApiPropertyOptional({ example: 'a@example.com', format: 'email' })
+  email?: string | null;
+
+  @ApiPropertyOptional({ example: '01009990301' })
+  phoneNumber?: string | null;
+}
+
 /** Documentation-only model for the caller's own memberships (GET /fleets/mine). */
 export class MyMembershipDto {
   @ApiProperty({ format: 'uuid' })

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsIn,
@@ -38,6 +39,7 @@ export class CreatePromotionDto {
   @ApiPropertyOptional({ example: ['user-uuid'], description: 'Required when isGlobal=false.' })
   @IsOptional()
   @IsArray()
+  @ArrayUnique()
   @IsUUID('4', { each: true })
   targetUserIds?: string[];
 
@@ -101,6 +103,7 @@ export class UpdatePromotionDto {
   @ApiPropertyOptional({ example: ['user-uuid'] })
   @IsOptional()
   @IsArray()
+  @ArrayUnique()
   @IsUUID('4', { each: true })
   targetUserIds?: string[];
 }
