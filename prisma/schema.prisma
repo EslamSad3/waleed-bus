@@ -534,7 +534,7 @@ model PromotionUsage {
   @@map("promotion_usages")
 }
 
-/// User inbox row (spec 012). Category: BOOKING | PAYMENT | TRIP | PROMO | SYSTEM.
+/// User inbox row (spec 012). Category: TEXT | TRIP | DISCOUNT_CODE.
 /// Emitted server-side only; readers are strictly actor-scoped.
 model Notification {
   id        String    @id @default(uuid()) @db.Uuid

@@ -141,6 +141,27 @@ describe('Notifications inbox (e2e, spec 012)', () => {
     expect(after.length).toBe(before.length);
   });
 
+  it('blocks hard-delete of referenced trips/promotions (RESTRICT, not SET NULL)', async () => {
+    const created = await api()
+      .post('/platform/promotions')
+      .set({ Authorization: `Bearer ${adminToken}` })
+      .send({ code: 'LOCKED9', type: 'FIXED', value: 9, isGlobal: false, targetUserIds: [userAId] })
+      .expect(201);
+    const promoId = created.body.data.id as string;
+    // A referenced promotion cannot be hard-deleted (would otherwise null the
+    // DISCOUNT_CODE ref and violate notifications_ref_check).
+    await expect(t.system.promotion.delete({ where: { id: promoId } })).rejects.toMatchObject({
+      code: 'P2003',
+    });
+    // Same for a trip referenced by a TRIP notification (seeded in beforeAll).
+    await expect(t.system.trip.delete({ where: { id: tripId } })).rejects.toMatchObject({
+      code: 'P2003',
+    });
+    // And the rows are intact with their references.
+    expect(await t.system.promotion.findUnique({ where: { id: promoId } })).not.toBeNull();
+    expect(await t.system.trip.findUnique({ where: { id: tripId } })).not.toBeNull();
+  });
+
   it('marks one read, marks all read, deletes one, deletes all', async () => {
     const items = (await inbox(userAToken).list().expect(200)).body.data.items as Array<{ id: string }>;
     expect(items.length).toBeGreaterThan(0);

@@ -37,7 +37,7 @@ export class TripDto {
   @ApiProperty({ example: '2026-09-10T08:00:00.000Z', format: 'date-time' })
   departAt!: Date;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   routeId?: string | null;
 
   @ApiProperty({ example: '50.00' })

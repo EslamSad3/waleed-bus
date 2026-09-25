@@ -28,7 +28,7 @@ export class UserDto {
   @ApiProperty({ example: true })
   isActive!: boolean;
 
-  @ApiPropertyOptional({
+  @ApiPropertyOptional({ type: Number, 
     example: 8,
     nullable: true,
     description: 'Per-user seat override; null means the platform default (5).',
@@ -59,13 +59,15 @@ export class TargetOptionDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ example: 'Promo A' })
+  // NOTE: `type: String` is load-bearing — without it the OpenAPI reflection
+  // emits `type: object` for `T | null` unions, breaking generated clients.
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Promo A' })
   name?: string | null;
 
-  @ApiPropertyOptional({ example: 'a@example.com', format: 'email' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'a@example.com', format: 'email' })
   email?: string | null;
 
-  @ApiPropertyOptional({ example: '01009990301' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01009990301' })
   phoneNumber?: string | null;
 }
 
@@ -125,7 +127,7 @@ export class FleetDto {
   @ApiProperty({ example: true })
   isActive!: boolean;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   vipTierId?: string | null;
 
   @ApiProperty({ format: 'date-time' })
@@ -202,7 +204,7 @@ export class UpdateUserDto {
   @MaxLength(128)
   password?: string;
 
-  @ApiPropertyOptional({
+  @ApiPropertyOptional({ type: Number, 
     example: 8,
     nullable: true,
     description: 'Per-user seat override (must be ≥ 1); null clears back to the platform default (5).',

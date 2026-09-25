@@ -71,25 +71,25 @@ export class BusDto {
   @ApiProperty({ example: 'BUS-A-001', minLength: 1, maxLength: 50 })
   registrationNumber!: string;
 
-  @ApiPropertyOptional({ example: 'ABC-1234', maxLength: 50 })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ABC-1234', maxLength: 50 })
   plateNumber?: string | null;
 
-  @ApiPropertyOptional({ example: 'أبيض', maxLength: 50 })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'أبيض', maxLength: 50 })
   color?: string | null;
 
-  @ApiPropertyOptional({ example: 'https://example.com/buses/bus-1.jpg' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'https://example.com/buses/bus-1.jpg' })
   imageUrl?: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid' })
   brandId?: string | null;
 
   @ApiPropertyOptional({ type: () => VehicleBrandDto })
   brand?: VehicleBrandDto | null;
 
-  @ApiPropertyOptional({ example: true })
+  @ApiPropertyOptional({ type: Boolean, nullable: true, example: true })
   isAirConditioned?: boolean | null;
 
-  @ApiPropertyOptional({ example: 2022 })
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 2022 })
   modelYear?: number | null;
 
   @ApiProperty({ example: 45, minimum: 1, maximum: 300 })
@@ -131,7 +131,7 @@ export class CreateBusDto {
   @Length(1, 1024)
   imageUrl!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Admin-managed vehicle brand. Must be active.' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid', description: 'Admin-managed vehicle brand. Must be active.' })
   @IsOptional()
   @IsUUID()
   brandId?: string | null;
@@ -174,7 +174,7 @@ export class UpdateBusDto {
   @Length(1, 1024)
   imageUrl?: string;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Admin-managed vehicle brand. Must be active.' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid', description: 'Admin-managed vehicle brand. Must be active.' })
   @IsOptional()
   @IsUUID()
   brandId?: string | null;

@@ -37,19 +37,19 @@ export class StationDto {
   @ApiProperty({ example: 'Ramses Station' })
   name!: string;
 
-  @ApiPropertyOptional({ example: 'Ramses Square, Cairo' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Ramses Square, Cairo' })
   address?: string | null;
 
-  @ApiPropertyOptional({ example: 30.0631 })
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 30.0631 })
   latitude?: number | null;
 
-  @ApiPropertyOptional({ example: 31.2497 })
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 31.2497 })
   longitude?: number | null;
 
   @ApiPropertyOptional({ example: 1 })
   stopOrder?: number;
 
-  @ApiPropertyOptional({ example: 0 })
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 0 })
   estimatedStopMinutes?: number | null;
 
   @ApiPropertyOptional({ type: () => GovernorateDto })
@@ -263,7 +263,7 @@ export class CreateStationDto {
   @Length(1, 255)
   name!: string;
 
-  @ApiPropertyOptional({ example: 'Ramses Square, Cairo', maxLength: 500 })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Ramses Square, Cairo', maxLength: 500 })
   @IsOptional()
   @IsString()
   @Length(1, 500)
@@ -304,7 +304,7 @@ export class CreateStopDto {
   @Length(1, 255)
   name!: string;
 
-  @ApiPropertyOptional({ example: 'ميدان رمسيس، القاهرة' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ميدان رمسيس، القاهرة' })
   @IsOptional()
   @IsString()
   @Length(1, 500)
@@ -326,7 +326,7 @@ export class CreateStopDto {
   @IsUUID()
   governorateId!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'City/village locality for this stop. Must belong to the stop governorate.' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid', description: 'City/village locality for this stop. Must belong to the stop governorate.' })
   @IsOptional()
   @IsUUID()
   localityId?: string | null;
@@ -344,7 +344,7 @@ export class UpdateStopDto {
   @Length(1, 255)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'ميدان رمسيس، القاهرة' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ميدان رمسيس، القاهرة' })
   @IsOptional()
   @IsString()
   @Length(1, 500)
@@ -369,7 +369,7 @@ export class UpdateStopDto {
   @IsUUID()
   governorateId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'City/village locality for this stop. Must belong to the stop governorate.' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid', description: 'City/village locality for this stop. Must belong to the stop governorate.' })
   @IsOptional()
   @IsUUID()
   localityId?: string | null;
@@ -457,7 +457,7 @@ export class UpdateDirectionalRouteStopsDto {
 }
 
 export class PublicRouteUpcomingTripBusDto {
-  @ApiPropertyOptional({ example: 'ق ب أ 1234' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ق ب أ 1234' })
   plateNumber?: string | null;
 }
 

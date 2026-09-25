@@ -17,24 +17,24 @@ export class CreateFavoriteDto {
   @IsUUID()
   busId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Optional boarding stop preference.' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid', description: 'Optional boarding stop preference.' })
   @IsOptional()
   @IsUUID()
   boardingStationId?: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Optional landing stop preference.' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'uuid', description: 'Optional landing stop preference.' })
   @IsOptional()
   @IsUUID()
   landingStationId?: string | null;
 }
 
 export class UpdateFavoriteDto {
-  @ApiPropertyOptional({ format: 'uuid', nullable: true, description: 'Set null to clear.' })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true, description: 'Set null to clear.' })
   @IsOptional()
   @IsUUID()
   boardingStationId?: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true, description: 'Set null to clear.' })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true, description: 'Set null to clear.' })
   @IsOptional()
   @IsUUID()
   landingStationId?: string | null;
@@ -61,7 +61,7 @@ export class FavoriteBusDto {
   @ApiProperty({ example: 'BUS-A-001' })
   registrationNumber!: string;
 
-  @ApiPropertyOptional({ example: 'ABC-1234' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ABC-1234' })
   plateNumber!: string | null;
 
   @ApiProperty({ example: true })
@@ -89,16 +89,16 @@ export class FavoriteDto {
   @ApiProperty({ enum: ['FLEET', 'BUS'] })
   type!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   fleetId!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   busId!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   boardingStationId!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   landingStationId!: string | null;
 
   @ApiProperty({ format: 'date-time' })

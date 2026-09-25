@@ -74,7 +74,7 @@ export class TripSearchFleetOwnerDto {
   @ApiProperty({ example: 'Waleed Transport' })
   name!: string;
 
-  @ApiPropertyOptional({ example: 'El Waleed', nullable: true, description: 'Passenger-facing familiar name for the fleet owner.' })
+  @ApiPropertyOptional({ type: String, example: 'El Waleed', nullable: true, description: 'Passenger-facing familiar name for the fleet owner.' })
   nickname?: string | null;
 }
 
@@ -85,7 +85,7 @@ export class TripSearchStopDto {
   @ApiProperty()
   name!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   address?: string | null;
 
   @ApiProperty({ enum: ['BOARDING', 'LANDING', 'BOTH'] })
@@ -96,10 +96,10 @@ export class TripSearchResultItemDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   routeId?: string | null;
 
-  @ApiPropertyOptional({
+  @ApiPropertyOptional({ type: String, 
     example: 'Cairo - Alexandria Express',
     nullable: true,
   })
@@ -149,7 +149,7 @@ export class TripStationDto {
   @ApiProperty({ example: 1 })
   stopOrder!: number;
 
-  @ApiPropertyOptional({ example: 0, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 0, nullable: true })
   estimatedStopMinutes?: number | null;
 }
 
@@ -174,7 +174,7 @@ export class TripDetailBusDto {
   @ApiProperty({ example: 'ق ب أ 1234' })
   plateNumber!: string;
 
-  @ApiPropertyOptional({ example: 'BUS-001' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'BUS-001' })
   registrationNumber?: string | null;
 }
 

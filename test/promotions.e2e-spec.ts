@@ -310,6 +310,30 @@ describe('Promotions (e2e, spec 011)', () => {
     expect((searched.body.data as Array<{ name: string | null }>).map((u) => u.name)).toEqual(['Promo B']);
   });
 
+  it('rejects target lists on global codes (create + PATCH)', async () => {
+    const userA = await t.system.user.findUniqueOrThrow({ where: { phoneNumber: '01009990301' } });
+    const created = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({ code: 'GLOBALGT', type: 'FIXED', value: 10, isGlobal: true, targetUserIds: [userA.id] });
+    expect(created.status).toBe(422);
+    expect(created.body.code).toBe('INVALID_PROMO_TARGETS');
+    const global = await api()
+      .post('/platform/promotions')
+      .set(admin())
+      .send({ code: 'GLOBALOK', type: 'FIXED', value: 10 })
+      .expect(201);
+    const patched = await api()
+      .patch(`/platform/promotions/${global.body.data.id as string}`)
+      .set(admin())
+      .send({ targetUserIds: [userA.id] });
+    expect(patched.status).toBe(422);
+    expect(patched.body.code).toBe('INVALID_PROMO_TARGETS');
+    expect(
+      await t.system.promotionTarget.count({ where: { promotionId: global.body.data.id as string } }),
+    ).toBe(0);
+  });
+
   it('force-expire moves checkout to full price with INACTIVE echo', async () => {
     const created = await api()
       .post('/platform/promotions')

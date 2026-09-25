@@ -139,6 +139,13 @@ export class PromotionsService {
       throw new CodedException(422, 'INVALID_PROMO_WINDOW', 'startsAt must be before expiresAt.');
     }
     const isGlobal = dto.isGlobal ?? true;
+    if (isGlobal && (dto.targetUserIds ?? []).length > 0) {
+      throw new CodedException(
+        422,
+        'INVALID_PROMO_TARGETS',
+        'Global codes do not carry a target allowlist; omit targetUserIds.',
+      );
+    }
     const targetUserIds = !isGlobal
       ? await assertTargetsEligible(this.system, dto.targetUserIds ?? [])
       : [];
@@ -215,20 +222,28 @@ export class PromotionsService {
     let beforeTargets: Set<string> | null = null;
     if (dto.targetUserIds !== undefined) {
       const unique = [...new Set(dto.targetUserIds)];
-      // Empty replacement on a global code is a no-op; on a non-global code
-      // it would orphan the promotion (redeemable by nobody) → 422.
-      nextTargets =
-        unique.length === 0 && existing.isGlobal
-          ? []
-          : await assertTargetsEligible(this.system, unique);
-      beforeTargets = new Set(
-        (
-          await this.system.promotionTarget.findMany({
-            where: { promotionId: id },
-            select: { userId: true },
-          })
-        ).map((t) => t.userId),
-      );
+      if (existing.isGlobal) {
+        // Global codes never carry an allowlist (redemption bypasses target
+        // matching): accepting ids here would persist meaningless rows, so
+        // reject instead of silently storing them. Empty array = no-op.
+        if (unique.length > 0) {
+          throw new CodedException(
+            422,
+            'INVALID_PROMO_TARGETS',
+            'Global codes do not carry a target allowlist; omit targetUserIds.',
+          );
+        }
+      } else {
+        nextTargets = await assertTargetsEligible(this.system, unique);
+        beforeTargets = new Set(
+          (
+            await this.system.promotionTarget.findMany({
+              where: { promotionId: id },
+              select: { userId: true },
+            })
+          ).map((t) => t.userId),
+        );
+      }
     }
     const startsAt = dto.startsAt !== undefined ? (dto.startsAt ? new Date(dto.startsAt) : null) : existing.startsAt;
     const expiresAt = dto.expiresAt !== undefined ? (dto.expiresAt ? new Date(dto.expiresAt) : null) : existing.expiresAt;

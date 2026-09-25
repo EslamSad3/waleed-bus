@@ -50,7 +50,7 @@ export class UpdateVipTierDto {
 }
 
 export class AssignFleetVipDto {
-  @ApiPropertyOptional({
+  @ApiPropertyOptional({ type: String, 
     format: 'uuid',
     nullable: true,
     description: 'VIP tier to assign; null clears the assignment.',
@@ -87,10 +87,10 @@ export class FleetOwnerSearchItemDto {
   @ApiProperty({ format: 'uuid', description: 'Owner user id — the grouping key.' })
   fleetOwnerId!: string;
 
-  @ApiPropertyOptional({ example: 'Halem' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Halem' })
   fleetOwnerName!: string | null;
 
-  @ApiPropertyOptional({ example: 1, description: 'Best VIP rank across the owner fleets; null = untiered (sorts last).' })
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 1, description: 'Best VIP rank across the owner fleets; null = untiered (sorts last).' })
   vipRank!: number | null;
 
   @ApiProperty({ type: () => FleetOwnerSearchFleetDto, isArray: true })

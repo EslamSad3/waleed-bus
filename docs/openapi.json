@@ -11330,7 +11330,7 @@
             "format": "uuid"
           },
           "email": {
-            "type": "object",
+            "type": "string",
             "example": "admin@bus.local",
             "format": "email",
             "nullable": true
@@ -11494,12 +11494,12 @@
             "example": false
           },
           "pendingPhoneNumber": {
-            "type": "object",
+            "type": "string",
             "example": "01000000001",
             "nullable": true
           },
           "expiresInSeconds": {
-            "type": "object",
+            "type": "number",
             "example": 60,
             "nullable": true
           },
@@ -11577,7 +11577,7 @@
             "example": true
           },
           "vipTierId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -11671,7 +11671,7 @@
         "type": "object",
         "properties": {
           "vipTierId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true,
             "description": "VIP tier to assign; null clears the assignment."
@@ -12023,7 +12023,7 @@
             "example": true
           },
           "maxBookingSeats": {
-            "type": "object",
+            "type": "number",
             "example": 8,
             "nullable": true,
             "description": "Per-user seat override; null means the platform default (5)."
@@ -12103,16 +12103,19 @@
             "format": "uuid"
           },
           "name": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "Promo A"
           },
           "email": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "a@example.com",
             "format": "email"
           },
           "phoneNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "01009990301"
           }
         },
@@ -12141,7 +12144,7 @@
             "maxLength": 128
           },
           "maxBookingSeats": {
-            "type": "object",
+            "type": "number",
             "example": 8,
             "nullable": true,
             "description": "Per-user seat override (must be ≥ 1); null clears back to the platform default (5)."
@@ -12211,32 +12214,38 @@
             "maxLength": 50
           },
           "plateNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ABC-1234",
             "maxLength": 50
           },
           "color": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "أبيض",
             "maxLength": 50
           },
           "imageUrl": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "https://example.com/buses/bus-1.jpg"
           },
           "brandId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "brand": {
             "$ref": "#/components/schemas/VehicleBrandDto"
           },
           "isAirConditioned": {
-            "type": "object",
+            "type": "boolean",
+            "nullable": true,
             "example": true
           },
           "modelYear": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 2022
           },
           "capacity": {
@@ -12296,7 +12305,8 @@
             "description": "Absolute HTTPS URL of the bus image (Supabase Storage URL; bucket provisioning is a follow-up)."
           },
           "brandId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid",
             "description": "Admin-managed vehicle brand. Must be active."
           },
@@ -12343,7 +12353,8 @@
             "example": "https://example.com/buses/bus-1.jpg"
           },
           "brandId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid",
             "description": "Admin-managed vehicle brand. Must be active."
           },
@@ -12436,7 +12447,7 @@
             "example": "2026-09-10T08:00:00.000Z"
           },
           "routeId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -12590,7 +12601,7 @@
             "example": "Waleed Transport"
           },
           "nickname": {
-            "type": "object",
+            "type": "string",
             "example": "El Waleed",
             "nullable": true,
             "description": "Passenger-facing familiar name for the fleet owner."
@@ -12612,7 +12623,7 @@
             "type": "string"
           },
           "address": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "stopType": {
@@ -12638,12 +12649,12 @@
             "format": "uuid"
           },
           "routeId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "routeName": {
-            "type": "object",
+            "type": "string",
             "example": "Cairo - Alexandria Express",
             "nullable": true
           },
@@ -12730,7 +12741,7 @@
             "example": 1
           },
           "estimatedStopMinutes": {
-            "type": "object",
+            "type": "number",
             "example": 0,
             "nullable": true
           }
@@ -12782,7 +12793,8 @@
             "example": "ق ب أ 1234"
           },
           "registrationNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "BUS-001"
           }
         },
@@ -12986,15 +12998,18 @@
             "example": "Ramses Station"
           },
           "address": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "Ramses Square, Cairo"
           },
           "latitude": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 30.0631
           },
           "longitude": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 31.2497
           },
           "stopOrder": {
@@ -13002,7 +13017,8 @@
             "example": 1
           },
           "estimatedStopMinutes": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 0
           },
           "governorate": {
@@ -13026,7 +13042,8 @@
         "type": "object",
         "properties": {
           "plateNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ق ب أ 1234"
           }
         }
@@ -13236,7 +13253,8 @@
             "example": "ميدان رمسيس"
           },
           "address": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ميدان رمسيس، القاهرة"
           },
           "latitude": {
@@ -13257,7 +13275,8 @@
             "description": "Egyptian governorate for this stop."
           },
           "localityId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid",
             "description": "City/village locality for this stop. Must belong to the stop governorate."
           },
@@ -13281,7 +13300,8 @@
             "example": "ميدان رمسيس"
           },
           "address": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ميدان رمسيس، القاهرة"
           },
           "latitude": {
@@ -13302,7 +13322,8 @@
             "description": "Egyptian governorate for this stop."
           },
           "localityId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid",
             "description": "City/village locality for this stop. Must belong to the stop governorate."
           },
@@ -13523,11 +13544,13 @@
             "format": "uuid"
           },
           "plateNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ق ب أ 1234"
           },
           "registrationNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "BUS-001"
           }
         }
@@ -13580,7 +13603,7 @@
             "format": "uuid"
           },
           "passengerUserId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -13589,7 +13612,8 @@
             "example": "Ahmed Hassan"
           },
           "passengerPhone": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "01000000000"
           },
           "seats": {
@@ -13601,19 +13625,22 @@
             "example": "CONFIRMED"
           },
           "paymentMethod": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "CASH"
           },
           "paymentStatus": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "PENDING"
           },
           "totalAmount": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "100.00"
           },
           "promoCode": {
-            "type": "object",
+            "type": "string",
             "example": "SAVE10",
             "nullable": true
           },
@@ -13622,7 +13649,7 @@
             "example": "10.00"
           },
           "promoStatus": {
-            "type": "object",
+            "type": "string",
             "example": "OK",
             "nullable": true,
             "description": "Promo outcome echoed on create only."
@@ -13636,7 +13663,7 @@
             "example": "SELF"
           },
           "note": {
-            "type": "object",
+            "type": "string",
             "example": "Wait near the bridge.",
             "nullable": true
           },
@@ -13645,22 +13672,22 @@
             "type": "string"
           },
           "boardedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "droppedAt": {
-            "type": "object",
             "format": "date-time",
+            "type": "string",
             "nullable": true
           },
           "busRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           },
           "driverRating": {
-            "type": "object",
+            "type": "number",
             "example": 5,
             "nullable": true
           },
@@ -13812,7 +13839,7 @@
             "type": "string"
           },
           "cancellationReason": {
-            "type": "object",
+            "type": "string",
             "example": "Change of plans",
             "nullable": true
           }
@@ -13888,7 +13915,7 @@
         "type": "object",
         "properties": {
           "plateNumber": {
-            "type": "object",
+            "type": "string",
             "example": "ق ب أ 1234",
             "nullable": true
           },
@@ -13905,17 +13932,17 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "object",
+            "type": "string",
             "example": "Mohamed Ibrahim",
             "nullable": true
           },
           "phone": {
-            "type": "object",
+            "type": "string",
             "example": "01100000000",
             "nullable": true
           },
           "picture": {
-            "type": "object",
+            "type": "string",
             "example": null,
             "nullable": true
           }
@@ -15111,14 +15138,17 @@
             "type": "number"
           },
           "maxTotalUses": {
-            "type": "object"
+            "type": "number",
+            "nullable": true
           },
           "startsAt": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "date-time"
           },
           "expiresAt": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "date-time"
           },
           "isActive": {
@@ -15178,15 +15208,18 @@
             "description": "Max redemptions per user."
           },
           "maxTotalUses": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "description": "Null = unlimited platform-wide."
           },
           "startsAt": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "date-time"
           },
           "expiresAt": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "date-time"
           }
         },
@@ -15208,14 +15241,17 @@
             "type": "number"
           },
           "maxTotalUses": {
-            "type": "object"
+            "type": "number",
+            "nullable": true
           },
           "startsAt": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "date-time"
           },
           "expiresAt": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "date-time"
           },
           "isActive": {
@@ -15244,17 +15280,17 @@
             "example": "Ahmed Hassan"
           },
           "email": {
-            "type": "object",
+            "type": "string",
             "example": "admin@bus.local",
             "nullable": true
           },
           "phoneNumber": {
-            "type": "object",
+            "type": "string",
             "example": "01001234567",
             "nullable": true
           },
           "picture": {
-            "type": "object",
+            "type": "string",
             "maxLength": 1024,
             "nullable": true
           }
@@ -15545,11 +15581,13 @@
             "description": "Owner user id — the grouping key."
           },
           "fleetOwnerName": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "Halem"
           },
           "vipRank": {
-            "type": "object",
+            "type": "number",
+            "nullable": true,
             "example": 1,
             "description": "Best VIP rank across the owner fleets; null = untiered (sorts last)."
           },
@@ -15741,7 +15779,8 @@
             "example": "BUS-A-001"
           },
           "plateNumber": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "example": "ABC-1234"
           },
           "isActive": {
@@ -15798,22 +15837,22 @@
             ]
           },
           "fleetId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "busId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "boardingStationId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
           "landingStationId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -15892,12 +15931,14 @@
             "description": "Required for BUS favorites."
           },
           "boardingStationId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid",
             "description": "Optional boarding stop preference."
           },
           "landingStationId": {
-            "type": "object",
+            "type": "string",
+            "nullable": true,
             "format": "uuid",
             "description": "Optional landing stop preference."
           }
@@ -15910,13 +15951,13 @@
         "type": "object",
         "properties": {
           "boardingStationId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true,
             "description": "Set null to clear."
           },
           "landingStationId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true,
             "description": "Set null to clear."

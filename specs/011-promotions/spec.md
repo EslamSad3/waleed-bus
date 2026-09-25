@@ -25,6 +25,9 @@
   every id must belong to an existing, active user (else 422), enforced also by FK
   `promotion_targets.user_id → users(id)` ON DELETE CASCADE. Eligible-picker endpoint
   `GET /users/target-options?q=&limit=` searches active `passenger`-role accounts server-side.
+  Global codes never carry an allowlist: create/PATCH with a non-empty `targetUserIds`
+  on a global code → 422 (storing those rows would be meaningless — redemption bypasses
+  target matching).
 - Once-per-user: `maxUsesPerUser` default 1 (enforced ON by default per user decision). Global
   kill-switch `PROMO_ENFORCE_ONCE_PER_USER` (default `true`); when `false`, per-user counting is
   skipped but total caps still apply. Platform can raise `maxUsesPerUser` per code (§104 "extend").

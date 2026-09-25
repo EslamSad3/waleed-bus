@@ -49,18 +49,18 @@ export class CreatePromotionDto {
   @Min(1)
   maxUsesPerUser?: number;
 
-  @ApiPropertyOptional({ description: 'Null = unlimited platform-wide.' })
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Null = unlimited platform-wide.' })
   @IsOptional()
   @IsInt()
   @Min(1)
   maxTotalUses?: number | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
   @IsOptional()
   @IsISO8601()
   startsAt?: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
   @IsOptional()
   @IsISO8601()
   expiresAt?: string | null;
@@ -79,18 +79,18 @@ export class UpdatePromotionDto {
   @Min(1)
   maxUsesPerUser?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
   @IsInt()
   @Min(1)
   maxTotalUses?: number | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
   @IsOptional()
   @IsISO8601()
   startsAt?: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
   @IsOptional()
   @IsISO8601()
   expiresAt?: string | null;
@@ -145,13 +145,13 @@ export class PromotionDto {
   @ApiProperty()
   maxUsesPerUser!: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Number, nullable: true })
   maxTotalUses!: number | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
   startsAt!: string | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
   expiresAt!: string | null;
 
   @ApiProperty()

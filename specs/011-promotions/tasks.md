@@ -8,8 +8,9 @@
 - [x] Booking integration: `promoCode` DTO, tx resolution, usage row, response snapshot (`promoStatus`), admin list/detail/refund carry promo
 - [x] Config `PROMO_ENFORCE_ONCE_PER_USER` (default true); `.env.example`
 - [x] Boundary: `SYSTEM_PRISMA_JUSTIFICATIONS.md` §13 + allowlist
-- [x] Review round 2-4 hardening: targetUserIds in platform responses; updatePromotion newly-added-only §42 notify; PATCH empty-target invariant (non-global + [] → 422); @ArrayUnique on both DTOs; target eligibility gate (exist + active, FK `promotion_targets.user_id → users(id)` CASCADE in migration `...00010`); `GET /users/target-options` server-side eligible search; promo emits awaited via allSettled
-- [x] E2E `test/promotions.e2e-spec.ts` (15 tests: + PATCH empty-target 422 + targets preserved, unknown-target 422, duplicate-ids 400)
+- [x] Review round 2-4 hardening: targetUserIds in platform responses; updatePromotion newly-added-only §42 notify; PATCH empty-target invariant (non-global + [] → 422); global + non-empty targets → 422 (no meaningless rows); @ArrayUnique on both DTOs; target eligibility gate (exist + active, FK `promotion_targets.user_id → users(id)` CASCADE in migration `...00010`); `GET /users/target-options` server-side eligible search; promo emits awaited via allSettled
+- [x] E2E `test/promotions.e2e-spec.ts` (16 tests: + PATCH empty-target 422 + targets preserved, global-targets 422 both verbs, unknown-target 422, duplicate-ids 400, target-options search)
+- [ ] Follow-up: trigram/GIN index evaluation for user search (`name`/`email`/`phoneNumber` contains) at scale
 - [x] RLS: platform tables excluded + revoked (catalog pattern); `db:check-rls` green
 - [x] `typecheck + lint + test` (279 unit) green; `docs:generate` regenerated
 - [x] Dashboard: `/promotions` CRUD + expire + usage viewer with audience selector (all / specific via server-side eligible search); booking detail promo line

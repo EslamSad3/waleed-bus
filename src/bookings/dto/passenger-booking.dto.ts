@@ -195,10 +195,10 @@ export class BookingBusSummaryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   id?: string;
 
-  @ApiPropertyOptional({ example: 'ق ب أ 1234' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ق ب أ 1234' })
   plateNumber?: string | null;
 
-  @ApiPropertyOptional({ example: 'BUS-001' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'BUS-001' })
   registrationNumber?: string | null;
 }
 
@@ -229,13 +229,13 @@ export class PassengerBookingItemDto {
   @ApiProperty({ format: 'uuid' })
   tripId!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   passengerUserId?: string | null;
 
   @ApiProperty({ example: 'Ahmed Hassan' })
   passengerName!: string;
 
-  @ApiPropertyOptional({ example: '01000000000' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01000000000' })
   passengerPhone?: string | null;
 
   @ApiProperty({ example: 2 })
@@ -244,43 +244,43 @@ export class PassengerBookingItemDto {
   @ApiProperty({ example: 'CONFIRMED' })
   status!: string;
 
-  @ApiPropertyOptional({ example: 'CASH' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'CASH' })
   paymentMethod?: string | null;
 
-  @ApiPropertyOptional({ example: 'PENDING' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'PENDING' })
   paymentStatus?: string | null;
 
-  @ApiPropertyOptional({ example: '100.00' })
+  @ApiPropertyOptional({ type: String, nullable: true, example: '100.00' })
   totalAmount?: string | null;
 
-  @ApiPropertyOptional({ example: 'SAVE10', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'SAVE10', nullable: true })
   promoCode?: string | null;
 
   @ApiProperty({ example: '10.00' })
   discountAmount!: string;
 
-  @ApiPropertyOptional({ example: 'OK', nullable: true, description: 'Promo outcome echoed on create only.' })
+  @ApiPropertyOptional({ type: String, example: 'OK', nullable: true, description: 'Promo outcome echoed on create only.' })
   promoStatus?: string | null;
 
   @ApiProperty({ enum: ['SELF', 'OTHER'], example: 'SELF' })
   bookingFor!: string;
 
-  @ApiPropertyOptional({ example: 'Wait near the bridge.', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Wait near the bridge.', nullable: true })
   note?: string | null;
 
   @ApiProperty({ format: 'date-time' })
   confirmedAt!: Date;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   boardedAt?: Date | null;
 
-  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ type: Date, format: 'date-time', nullable: true })
   droppedAt?: Date | null;
 
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   busRating?: number | null;
 
-  @ApiPropertyOptional({ example: 5, nullable: true })
+  @ApiPropertyOptional({ type: Number, example: 5, nullable: true })
   driverRating?: number | null;
 
   @ApiProperty({ type: () => BookingTripSummaryDto })
@@ -308,23 +308,23 @@ export class CancelledBookingResponseDto {
   @ApiProperty({ format: 'date-time' })
   cancelledAt!: Date;
 
-  @ApiPropertyOptional({ example: 'Change of plans', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Change of plans', nullable: true })
   cancellationReason?: string | null;
 }
 
 export class ActiveTripDriverDto {
-  @ApiPropertyOptional({ example: 'Mohamed Ibrahim', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'Mohamed Ibrahim', nullable: true })
   name?: string | null;
 
-  @ApiPropertyOptional({ example: '01100000000', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '01100000000', nullable: true })
   phone?: string | null;
 
-  @ApiPropertyOptional({ example: null, nullable: true })
+  @ApiPropertyOptional({ type: String, example: null, nullable: true })
   picture?: string | null;
 }
 
 export class ActiveTripBusDto {
-  @ApiPropertyOptional({ example: 'ق ب أ 1234', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'ق ب أ 1234', nullable: true })
   plateNumber?: string | null;
 
   @ApiProperty({ example: 14 })

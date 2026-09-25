@@ -17,7 +17,8 @@ What remains: convert existing `BOTH` rows, then flip the DB default.
 - `@@unique([routeId, stopOrder])`
 - `@@unique([routeId, stationId])`
 
-A same-station pair violates the second constraint, and there is no
+A same-station pair violates the second uniqueness enforcement (a unique
+index, see note in the draft SQL below), and there is no
 fractional `stopOrder` room. The migration must therefore:
 
 1. Drop `@@unique([routeId, stationId])` (pair rows share a station).
@@ -48,8 +49,11 @@ ORDER BY r.code, rs.stop_order;
 ## Draft migration (DO NOT place under prisma/migrations/ until Step 0 passes)
 
 ```sql
--- 1. Allow same-station pairs.
-ALTER TABLE "route_stations" DROP CONSTRAINT IF EXISTS "route_stations_route_id_station_id_key";
+-- 1. Allow same-station pairs. NOTE: the original migration created this as
+-- a UNIQUE INDEX (not a table constraint), so it must be dropped with
+-- DROP INDEX — ALTER TABLE ... DROP CONSTRAINT would silently do nothing
+-- (IF EXISTS) and the pair INSERT below would fail on conflict.
+DROP INDEX IF EXISTS "route_stations_route_id_station_id_key";
 
 -- 2. Open ordering gaps.
 UPDATE "route_stations" SET "stop_order" = "stop_order" * 10;
@@ -113,14 +117,16 @@ forms link out to Maps from the stored coordinates for verification.
 
 ## Follow-up schema change (do this AFTER the DB conversion)
 
-In this order — otherwise the next `db:migrate:diff` re-adds the dropped constraint:
+In this order — otherwise the next `db:migrate:diff` re-adds the dropped uniqueness:
 
 1. Confirm the DB state: pair rows exist, default is `BOARDING`, the
-   `route_stations_route_id_station_id_key` constraint is gone.
+   `route_stations_route_id_station_id_key` unique INDEX is gone
+   (`SELECT indexname FROM pg_indexes WHERE indexname =
+   'route_stations_route_id_station_id_key';` → 0 rows).
 2. Update `prisma/schema.prisma`:
    - REMOVE the `@@unique([routeId, stationId])` line from `RouteStation`
      (keep `@@unique([routeId, stopOrder])`).
    - Change `stopType` to `@default("BOARDING")`.
 3. `pnpm run db:migrate:diff` → save as a new migration
    (`<ts>_route_station_both_cleanup`) → review the SQL (it must NOT
-   re-create the dropped unique constraint) → deploy → `db:check-rls`.
+   re-create the dropped uniqueness) → deploy → `db:check-rls`.
