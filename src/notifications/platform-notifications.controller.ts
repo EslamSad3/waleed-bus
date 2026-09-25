@@ -1,5 +1,15 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import type { RequestUser } from '../auth/jwt-payload.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import {
   ApiAuthErrors,
   ApiCursorPagination,
@@ -11,6 +21,11 @@ import {
   buildCursorArgs,
   toCursorPage,
 } from '../common/pagination.js';
+import { NotificationsService } from './notifications.service.js';
+import {
+  SendPlatformNotificationDto,
+  SendPlatformNotificationResponseDto,
+} from './dto/platform-notification.dto.js';
 
 @ApiTags('platform-notifications')
 @ApiSecurity('bearer')
@@ -18,7 +33,10 @@ import {
 @Platform()
 @Controller('platform/notifications')
 export class PlatformNotificationsController {
-  constructor(private readonly system: SystemPrismaService) {}
+  constructor(
+    private readonly system: SystemPrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Ops visibility into recent notifications (filter by userId/category).' })
@@ -41,12 +59,38 @@ export class PlatformNotificationsController {
         userId: true,
         category: true,
         title: true,
+        body: true,
         tripId: true,
         promotionId: true,
         isRead: true,
         createdAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phoneNumber: true,
+          },
+        },
       },
     });
     return toCursorPage(rows, pageSize);
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary:
+      'Send a notification to a single user or broadcast globally to all active users.',
+  })
+  @ApiEnvelopeResponse(
+    201,
+    'Notification dispatched.',
+    SendPlatformNotificationResponseDto,
+  )
+  async send(
+    @CurrentUser() actor: RequestUser,
+    @Body() dto: SendPlatformNotificationDto,
+  ) {
+    return this.notifications.sendFromPlatform(dto, actor.id);
   }
 }

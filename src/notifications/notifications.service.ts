@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service.js';
 import {
   buildCursorArgs,
   toCursorPage,
@@ -35,7 +37,10 @@ export interface NotifyInput {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly system: SystemPrismaService) {}
+  constructor(
+    private readonly system: SystemPrismaService,
+    @Optional() private readonly audit?: AuditService,
+  ) {}
 
   private get db() {
     return this.system.notification;
@@ -196,5 +201,153 @@ export class NotificationsService {
       where: { userId: actor.id },
     });
     return { deleted: result.count };
+  }
+
+  async sendFromPlatform(
+    input: {
+      userId?: string | null;
+      isGlobal?: boolean;
+      category?: NotificationCategory | string;
+      title: string;
+      body: string;
+      tripId?: string | null;
+      promotionId?: string | null;
+    },
+    actorUserId?: string,
+  ): Promise<{ sentCount: number; isGlobal: boolean; notificationIds: string[] }> {
+    const isGlobal = Boolean(input.isGlobal);
+    const category = (input.category ?? 'TEXT') as NotificationCategory;
+    const { title, body, tripId = null, promotionId = null } = input;
+
+    const valid =
+      (category === 'TEXT' && !tripId && !promotionId) ||
+      (category === 'TRIP' && !!tripId && !promotionId) ||
+      (category === 'DISCOUNT_CODE' && !tripId && !!promotionId);
+    if (!valid) {
+      throw new CodedException(
+        422,
+        category === 'TEXT' || category === 'TRIP' || category === 'DISCOUNT_CODE'
+          ? 'INVALID_NOTIFICATION_REF'
+          : 'INVALID_NOTIFICATION_CATEGORY',
+        'Category must be TEXT (no refs), TRIP (tripId only), or DISCOUNT_CODE (promotionId only).',
+      );
+    }
+
+    if (tripId) {
+      const trip = await this.system.trip.findUnique({
+        where: { id: tripId },
+        select: { id: true },
+      });
+      if (!trip) {
+        throw new CodedException(
+          422,
+          'INVALID_NOTIFICATION_REF',
+          'Referenced trip does not exist.',
+        );
+      }
+    }
+
+    if (promotionId) {
+      const promo = await this.system.promotion.findUnique({
+        where: { id: promotionId },
+        select: { id: true },
+      });
+      if (!promo) {
+        throw new CodedException(
+          422,
+          'INVALID_NOTIFICATION_REF',
+          'Referenced promotion does not exist.',
+        );
+      }
+    }
+
+    if (!isGlobal) {
+      if (!input.userId) {
+        throw new CodedException(
+          422,
+          'INVALID_NOTIFICATION_TARGET',
+          'Specify a target userId or set isGlobal to true.',
+        );
+      }
+      const user = await this.system.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, isActive: true },
+      });
+      if (!user) {
+        throw new CodedException(
+          404,
+          'USER_NOT_FOUND',
+          'Target user does not exist.',
+        );
+      }
+      const created = await this.notify({
+        userId: user.id,
+        category,
+        title,
+        body,
+        tripId,
+        promotionId,
+      });
+
+      if (this.audit && actorUserId) {
+        await this.audit.log({
+          actorUserId,
+          action: 'notification.send_single',
+          resource: 'notifications',
+          resourceId: created.id,
+          metadata: { targetUserId: user.id, category, title },
+        });
+      }
+
+      return {
+        sentCount: 1,
+        isGlobal: false,
+        notificationIds: [created.id],
+      };
+    }
+
+    // Global: send to all active users
+    const activeUsers = await this.system.user.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    if (activeUsers.length === 0) {
+      return {
+        sentCount: 0,
+        isGlobal: true,
+        notificationIds: [],
+      };
+    }
+
+    const records = activeUsers.map((u) => ({
+      id: randomUUID(),
+      userId: u.id,
+      category,
+      title,
+      body,
+      tripId,
+      promotionId,
+      isRead: false,
+    }));
+
+    await this.db.createMany({
+      data: records,
+    });
+
+    if (this.audit && actorUserId) {
+      await this.audit.log({
+        actorUserId,
+        action: 'notification.broadcast_global',
+        resource: 'notifications',
+        metadata: { recipientCount: records.length, category, title },
+      });
+    }
+
+    return {
+      sentCount: records.length,
+      isGlobal: true,
+      notificationIds: records.map((r) => r.id),
+    };
   }
 }

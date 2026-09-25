@@ -7632,6 +7632,60 @@
         "tags": [
           "platform-notifications"
         ]
+      },
+      "post": {
+        "operationId": "PlatformNotificationsController_send",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendPlatformNotificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification dispatched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 201
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SendPlatformNotificationResponseDto"
+                    }
+                  },
+                  "required": [
+                    "statusCode",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, revoked session, stale authVersion, or deactivated account."
+          },
+          "403": {
+            "description": "Authenticated but lacking the required permission (or no ACTIVE membership)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a notification to a single user or broadcast globally to all active users.",
+        "tags": [
+          "platform-notifications"
+        ]
       }
     },
     "/drivers": {
@@ -15317,6 +15371,82 @@
             }
           }
         }
+      },
+      "SendPlatformNotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "sentCount": {
+            "type": "number",
+            "example": 1
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "example": false
+          },
+          "notificationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "sentCount",
+          "isGlobal",
+          "notificationIds"
+        ]
+      },
+      "SendPlatformNotificationDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "object",
+            "description": "Target specific user UUID. Required if isGlobal is false or omitted.",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "description": "If true, notification is broadcast to all active users.",
+            "default": false
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "TRIP",
+              "DISCOUNT_CODE"
+            ],
+            "default": "TEXT"
+          },
+          "title": {
+            "type": "string",
+            "example": "تنبيه هام",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "example": "يرجى العلم بأنه تم تحديث جدول مواعيد الرحلات.",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "tripId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "promotionId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
       },
       "OwnerProfileDto": {
         "type": "object",
